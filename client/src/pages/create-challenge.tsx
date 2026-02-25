@@ -1,27 +1,55 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, Info, Dumbbell, Route, Target, Link as LinkIcon, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, Info, Dumbbell, Route, Target, Link as LinkIcon, CheckCircle2, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 export default function CreateChallenge() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const [modalidade, setModalidade] = useState("academia");
+  const [validationType, setValidationType] = useState("foto");
   const [entryValue, setEntryValue] = useState("50");
   const [customDuration, setCustomDuration] = useState("");
   const [durationPreset, setDurationPreset] = useState("30");
   const [linkCopied, setLinkCopied] = useState(false);
+  const [freq, setFreq] = useState("5");
+  const [minParticipants, setMinParticipants] = useState("2");
+  const [moderators, setModerators] = useState(["Você (Criador)"]);
 
   const duration = durationPreset === "custom" ? customDuration || "0" : durationPreset;
+  const rawTotal = Number(entryValue) * Number(minParticipants);
+  const prizePool = rawTotal * 0.9;
 
   const copyLink = () => {
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
+
+  const modalidades = [
+    { id: "corrida", icon: Route, label: "Corrida" },
+    { id: "academia", icon: Dumbbell, label: "Academia" },
+    { id: "crossfit", icon: Flame, label: "Crossfit" },
+    { id: "ciclismo", icon: Zap, label: "Ciclismo" },
+    { id: "natacao", icon: Waves, label: "Natação" },
+    { id: "funcional", icon: Target, label: "Funcional" },
+    { id: "yoga", icon: Target, label: "Yoga" },
+    { id: "hiit", icon: Zap, label: "HIIT" },
+    { id: "personalizado", icon: Target, label: "Livre" }
+  ];
+
+  const validationTypes = [
+    { id: "foto", icon: Camera, label: "Foto" },
+    { id: "tempo", icon: Timer, label: "Tempo" },
+    { id: "distancia", icon: Ruler, label: "Distância" },
+    { id: "repeticoes", icon: Repeat, label: "Repetições" },
+    { id: "combinacao", icon: Zap, label: "Combinação" }
+  ];
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
@@ -31,232 +59,158 @@ export default function CreateChallenge() {
         </button>
         <h1 className="font-display font-bold text-xl">Criar Desafio</h1>
         <div className="ml-auto text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-          Passo {step}/4
+          Passo {step}/5
         </div>
       </header>
 
       <div className="flex-1 p-6 space-y-8">
-        {/* Step 1: Modalidade & Nome */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">O Básico</h2>
-              <p className="text-muted-foreground">Qual será o foco deste desafio?</p>
+              <h2 className="text-2xl font-bold">Modalidade</h2>
+              <p className="text-muted-foreground">Escolha o tipo de atividade do desafio.</p>
             </div>
-
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <Label>Modalidade</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { id: "academia", icon: Dumbbell, label: "Academia" },
-                    { id: "corrida", icon: Route, label: "Corrida" },
-                    { id: "personalizado", icon: Target, label: "Livre" }
-                  ].map((mod) => {
-                    const Icon = mod.icon;
-                    const isActive = modalidade === mod.id;
-                    return (
-                      <button
-                        key={mod.id}
-                        onClick={() => setModalidade(mod.id)}
-                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${isActive ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
-                      >
-                        <Icon size={24} className="mb-2" />
-                        <span className="text-xs font-semibold">{mod.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Nome do Desafio</Label>
-                <Input placeholder="Ex: Projeto Verão 30 Dias" className="h-14 rounded-xl px-4" />
-              </div>
-
-              {modalidade === "corrida" && (
-                <div className="space-y-2 bg-primary/5 p-4 rounded-xl border border-primary/20">
-                  <Label className="text-primary">Meta de Distância (km)</Label>
-                  <Input type="number" placeholder="Ex: 5" className="h-12 bg-background" />
-                  <p className="text-xs text-muted-foreground">Check-in exigirá foto do painel/app mostrando os km.</p>
-                </div>
-              )}
+            <div className="grid grid-cols-3 gap-3">
+              {modalidades.map((mod) => (
+                <button
+                  key={mod.id}
+                  onClick={() => setModalidade(mod.id)}
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${modalidade === mod.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
+                >
+                  <mod.icon size={20} className="mb-2" />
+                  <span className="text-[10px] font-semibold">{mod.label}</span>
+                </button>
+              ))}
             </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-8" onClick={() => setStep(2)}>
-              Próximo
-            </Button>
+            <div className="space-y-2">
+              <Label>Nome do Desafio</Label>
+              <Input placeholder="Ex: Maratona de Inverno" className="h-14 rounded-xl px-4" />
+            </div>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(2)}>Próximo</Button>
           </div>
         )}
 
-        {/* Step 2: Duração & Frequência */}
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Tempo & Regras</h2>
-              <p className="text-muted-foreground">Defina a dificuldade do desafio.</p>
+              <h2 className="text-2xl font-bold">Validação</h2>
+              <p className="text-muted-foreground">Como os participantes provarão o treino?</p>
             </div>
-
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <Label>Duração do Desafio</Label>
-                <RadioGroup value={durationPreset} onValueChange={setDurationPreset} className="grid grid-cols-3 gap-3">
-                  <div>
-                    <RadioGroupItem value="7" id="dur-7" className="peer sr-only" />
-                    <Label htmlFor="dur-7" className="flex flex-col items-center justify-center rounded-xl border-2 border-border bg-card p-4 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
-                      <span className="text-2xl font-display font-bold">7</span>
-                      <span className="text-[10px] uppercase">Dias</span>
-                    </Label>
-                  </div>
-                  <div>
-                    <RadioGroupItem value="30" id="dur-30" className="peer sr-only" />
-                    <Label htmlFor="dur-30" className="flex flex-col items-center justify-center rounded-xl border-2 border-border bg-card p-4 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
-                      <span className="text-2xl font-display font-bold">30</span>
-                      <span className="text-[10px] uppercase">Dias</span>
-                    </Label>
-                  </div>
-                  <div>
-                    <RadioGroupItem value="custom" id="dur-custom" className="peer sr-only" />
-                    <Label htmlFor="dur-custom" className="flex flex-col items-center justify-center rounded-xl border-2 border-border bg-card p-4 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
-                      <span className="text-sm font-display font-bold mt-1">Outro</span>
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {durationPreset === "custom" && (
-                  <div className="pt-2 animate-in slide-in-from-top-2">
-                    <Input 
-                      type="number" 
-                      placeholder="Dias (ex: 21)" 
-                      value={customDuration}
-                      onChange={(e) => setCustomDuration(e.target.value)}
-                      className="h-14 rounded-xl px-4" 
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Frequência Semanal (Check-ins exigidos)</Label>
-                <select className="flex h-14 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-                  <option value="3">3 vezes na semana</option>
-                  <option value="4">4 vezes na semana</option>
-                  <option value="5">5 vezes na semana (Recomendado)</option>
-                  <option value="6">6 vezes na semana</option>
-                  <option value="7">Todos os dias (Hardcore)</option>
-                </select>
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              {validationTypes.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setValidationType(type.id)}
+                  className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
+                >
+                  <type.icon size={20} />
+                  <span className="text-xs font-semibold">{type.label}</span>
+                </button>
+              ))}
             </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-8" onClick={() => setStep(3)}>
-              Próximo
-            </Button>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(3)}>Próximo</Button>
           </div>
         )}
 
-        {/* Step 3: Valor da Entrada */}
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">A Aposta</h2>
-              <p className="text-muted-foreground">Coloque dinheiro para criar compromisso.</p>
+              <h2 className="text-2xl font-bold">Configurações</h2>
+              <p className="text-muted-foreground">Duração, frequência e participantes.</p>
             </div>
-
-            <div className="glass-card rounded-3xl p-6 text-center space-y-6 bg-card">
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Entrada por pessoa</p>
-              
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-3xl font-display text-muted-foreground">R$</span>
-                <input 
-                  type="number" 
-                  value={entryValue}
-                  onChange={(e) => setEntryValue(e.target.value)}
-                  className="bg-transparent text-6xl font-display font-bold w-32 text-center outline-none text-foreground" 
-                />
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label>Duração (Dias)</Label>
+                <RadioGroup value={durationPreset} onValueChange={setDurationPreset} className="grid grid-cols-3 gap-3">
+                  {["7", "30", "custom"].map(v => (
+                    <div key={v}>
+                      <RadioGroupItem value={v} id={`v-${v}`} className="peer sr-only" />
+                      <Label htmlFor={`v-${v}`} className="flex flex-col items-center justify-center rounded-xl border-2 border-border bg-card p-4 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
+                        <span className="text-xl font-display font-bold">{v === 'custom' ? '...' : v}</span>
+                        <span className="text-[10px] uppercase">{v === 'custom' ? 'Outro' : 'Dias'}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+                {durationPreset === "custom" && <Input type="number" placeholder="Ex: 15" value={customDuration} onChange={(e) => setCustomDuration(e.target.value)} className="h-12 rounded-xl mt-2" />}
               </div>
-
-              <div className="flex gap-2 justify-center">
-                {["20", "50", "100", "200"].map(val => (
-                  <button 
-                    key={val}
-                    onClick={() => setEntryValue(val)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border ${entryValue === val ? 'bg-foreground text-background dark:bg-white dark:text-black border-foreground' : 'bg-card border-border hover:bg-accent'} transition-colors`}
-                  >
-                    R${val}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <Label>Check-ins por Semana</Label>
+                <Select value={freq} onValueChange={setFreq}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n} vezes</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 items-start">
-              <Info className="text-blue-500 shrink-0 mt-0.5" size={20} />
-              <div className="text-sm text-blue-700 dark:text-blue-200 space-y-1">
-                <p><strong>Como o prêmio funciona:</strong></p>
-                <p>As entradas formam o pote total. Quem falhar nos check-ins semanais é eliminado e perde o valor. O pote final é dividido entre os vencedores.</p>
+              <div className="space-y-2">
+                <Label>Mínimo de Participantes</Label>
+                <Input type="number" min="2" value={minParticipants} onChange={(e) => setMinParticipants(e.target.value)} className="h-12 rounded-xl" />
               </div>
             </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-8" onClick={() => setStep(4)}>
-              Revisar & Finalizar
-            </Button>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(4)}>Próximo</Button>
           </div>
         )}
 
-        {/* Step 4: Revisão e Link */}
         {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Tudo Certo!</h2>
-              <p className="text-muted-foreground">Revise e publique seu desafio.</p>
+              <h2 className="text-2xl font-bold">Finanças & Moderação</h2>
+              <p className="text-muted-foreground">Defina o prêmio e quem ajuda a cuidar.</p>
             </div>
-
-            <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-lg">Desafio Público</p>
-                <p className="text-sm text-muted-foreground leading-tight mt-1">Aparece na aba Explorar. Se desligado, apenas com link.</p>
+            <div className="glass-card rounded-3xl p-6 text-center space-y-4 bg-card border-primary/20">
+              <Label className="uppercase text-[10px] tracking-widest text-muted-foreground">Entrada Mínima R$10</Label>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl font-display text-muted-foreground">R$</span>
+                <input type="number" min="10" value={entryValue} onChange={(e) => setEntryValue(e.target.value)} className="bg-transparent text-5xl font-display font-bold w-32 text-center outline-none" />
               </div>
-              <Switch defaultChecked />
+              <div className="pt-4 border-t border-border flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Pote Simulado ({minParticipants} pessoas)</span>
+                <span className="font-bold text-primary text-lg">R$ {prizePool.toFixed(2)}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">*Já descontados 10% da taxa da plataforma</p>
             </div>
-
-            <div className="border border-border rounded-3xl p-6 space-y-4 bg-card">
-              <h3 className="font-display font-bold text-lg mb-4">Resumo</h3>
-              
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-muted-foreground">Modalidade</span>
-                <span className="font-medium text-right capitalize">{modalidade}</span>
+            <div className="space-y-3">
+              <Label>Moderadores (Opcional)</Label>
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {moderators.map(m => <Badge key={m} variant="secondary" className="rounded-full py-1 px-3 bg-primary/10 text-primary border-primary/20">{m}</Badge>)}
               </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-muted-foreground">Duração</span>
-                <span className="font-medium text-right">{duration} Dias</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-muted-foreground">Meta Semanal</span>
-                <span className="font-medium text-right">5 check-ins</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Taxa de Entrada</span>
-                <span className="font-medium text-primary text-right">R$ {entryValue},00</span>
+              <div className="flex gap-2">
+                <Input placeholder="@usuario" className="h-12 rounded-xl" id="mod-input" />
+                <Button variant="outline" className="h-12 rounded-xl" onClick={() => {
+                  const input = document.getElementById('mod-input') as HTMLInputElement;
+                  if (input.value) {
+                    setModerators([...moderators, input.value]);
+                    input.value = "";
+                  }
+                }}>Add</Button>
               </div>
             </div>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(5)}>Revisar</Button>
+          </div>
+        )}
 
+        {step === 5 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Resumo Final</h2>
+              <p className="text-muted-foreground">Confira antes de publicar.</p>
+            </div>
+            <div className="border border-border rounded-3xl p-6 space-y-4 bg-card shadow-sm">
+              <div className="flex justify-between py-2 border-b border-border"><span className="text-muted-foreground">Modalidade</span><span className="font-medium capitalize">{modalidade}</span></div>
+              <div className="flex justify-between py-2 border-b border-border"><span className="text-muted-foreground">Validação</span><span className="font-medium capitalize">{validationType}</span></div>
+              <div className="flex justify-between py-2 border-b border-border"><span className="text-muted-foreground">Duração</span><span className="font-medium">{duration} Dias</span></div>
+              <div className="flex justify-between py-2 border-b border-border"><span className="text-muted-foreground">Entrada</span><span className="font-medium text-primary">R$ {entryValue},00</span></div>
+              <div className="flex justify-between py-2"><span className="text-muted-foreground">Moderadores</span><span className="font-medium">{moderators.length}</span></div>
+            </div>
             <div className="space-y-3 pt-4">
               <p className="font-semibold text-sm text-center">Seu Link de Convite</p>
-              <Button 
-                variant="outline" 
-                className="w-full h-14 rounded-xl border-dashed border-primary/50 text-primary bg-primary/5"
-                onClick={copyLink}
-              >
+              <Button variant="outline" className="w-full h-14 rounded-xl border-dashed border-primary/50 text-primary bg-primary/5" onClick={copyLink}>
                 {linkCopied ? <CheckCircle2 className="mr-2" /> : <LinkIcon className="mr-2" size={18} />}
                 {linkCopied ? "Copiado!" : "fitstake.app/c/x8a92k"}
               </Button>
             </div>
-
-            <Button 
-              className="w-full h-14 rounded-2xl text-lg font-semibold mt-4 shadow-lg shadow-primary/20" 
-              onClick={() => setLocation("/dashboard")}
-            >
-              Publicar & Depositar Pix
-            </Button>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4 shadow-lg shadow-primary/20" onClick={() => setLocation("/dashboard")}>Publicar & Criar</Button>
           </div>
         )}
       </div>

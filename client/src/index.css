@@ -38,6 +38,40 @@
 }
 
 :root {
+  /* Light Mode Default */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 4%;
+
+  --card: 0 0% 98%;
+  --card-foreground: 0 0% 4%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 4%;
+
+  /* Primary Neon Green but slightly darker for text contrast on light */
+  --primary: 142 76% 36%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 4%;
+
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 40%;
+
+  --accent: 142 76% 36%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 142 76% 36%;
+
+  --radius: 1rem;
+}
+
+.dark {
   /* Dark Mode Default for Fintech/Fitness */
   --background: 0 0% 4%;
   --foreground: 0 0% 98%;
@@ -67,8 +101,6 @@
   --border: 0 0% 15%;
   --input: 0 0% 15%;
   --ring: 142 71% 45%;
-
-  --radius: 1rem;
 }
 
 @layer base {
@@ -100,13 +132,12 @@
   background: hsl(var(--muted-foreground));
 }
 
-/* Utilities for glassmorphism and subtle textures */
 @layer utilities {
   .glass {
-    @apply bg-background/60 backdrop-blur-xl border border-white/5;
+    @apply bg-background/60 backdrop-blur-xl border border-black/5 dark:border-white/5;
   }
   .glass-card {
-    @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-2xl shadow-black/50;
+    @apply bg-card/60 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-black/50;
   }
   .text-glow {
     text-shadow: 0 0 20px hsl(var(--primary) / 0.5);

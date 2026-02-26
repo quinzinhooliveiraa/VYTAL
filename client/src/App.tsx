@@ -17,6 +17,8 @@ import CreateChallenge from "@/pages/create-challenge";
 import ChallengeDetails from "@/pages/challenge-details";
 import CheckIn from "@/pages/check-in";
 import Profile from "@/pages/profile";
+import PublicProfile from "@/pages/public-profile";
+import Friends from "@/pages/friends";
 
 function Router() {
   const [location] = useLocation();
@@ -40,6 +42,8 @@ function Router() {
         <Route path="/challenge/:id" component={ChallengeDetails} />
         <Route path="/check-in/:id" component={CheckIn} />
         <Route path="/profile" component={Profile} />
+        <Route path="/user/:username" component={PublicProfile} />
+        <Route path="/friends" component={Friends} />
         <Route component={NotFound} />
       </Switch>
     </MobileLayout>

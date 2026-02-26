@@ -19,6 +19,7 @@ import CheckIn from "@/pages/check-in";
 import Profile from "@/pages/profile";
 import PublicProfile from "@/pages/public-profile";
 import Friends from "@/pages/friends";
+import Wallet from "@/pages/wallet";
 
 function Router() {
   const [location] = useLocation();
@@ -41,6 +42,7 @@ function Router() {
         <Route path="/create" component={CreateChallenge} />
         <Route path="/challenge/:id" component={ChallengeDetails} />
         <Route path="/check-in/:id" component={CheckIn} />
+        <Route path="/wallet" component={Wallet} />
         <Route path="/profile" component={Profile} />
         <Route path="/user/:username" component={PublicProfile} />
         <Route path="/friends" component={Friends} />

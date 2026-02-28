@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Search, Users, Trophy, Clock, Filter, SlidersHorizontal, Flame, Sparkles, TrendingUp } from "lucide-react";
+import { Search, Users, Trophy, Clock, Filter, SlidersHorizontal, Flame, Sparkles, TrendingUp, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ const PUBLIC_CHALLENGES = [
     modality: "Corrida",
     isTrending: true,
     isNew: false,
+    needsApproval: true,
   },
   {
     id: 3,
@@ -41,30 +42,7 @@ const PUBLIC_CHALLENGES = [
     modality: "Academia",
     isTrending: true,
     isNew: true,
-  },
-  {
-    id: 4,
-    title: "Caminhada Diária 5k",
-    participants: 89,
-    prizePool: "R$ 1.780",
-    daysLeft: 15,
-    entryFee: 20,
-    image: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&q=80",
-    modality: "Funcional",
-    isTrending: false,
-    isNew: true,
-  },
-  {
-    id: 5,
-    title: "Pedal de Fim de Semana",
-    participants: 56,
-    prizePool: "R$ 2.800",
-    daysLeft: 20,
-    entryFee: 50,
-    image: "https://images.unsplash.com/photo-1541625602330-2277a4c4bb98?w=800&q=80",
-    modality: "Ciclismo",
-    isTrending: false,
-    isNew: false,
+    needsApproval: true,
   }
 ];
 
@@ -119,16 +97,6 @@ export default function Explorar() {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold">Valor de Entrada</p>
-                  <div className="flex gap-2">
-                    {["R$ 0-50", "R$ 50-100", "R$ 100+"].map(range => (
-                      <Badge key={range} variant="outline" className="px-4 py-2 rounded-full cursor-pointer hover:bg-accent">
-                        {range}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
               </div>
               <DrawerFooter className="pb-8">
                 <DrawerClose asChild>
@@ -172,47 +140,9 @@ export default function Explorar() {
 
       {/* Sections */}
       <div className="space-y-8">
-        {/* Desafios em Alta (Trending) */}
-        {selectedModality === "Todos" && !search && (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={20} className="text-primary" />
-              <h2 className="text-xl font-display font-bold">Desafios em Alta</h2>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 no-scrollbar">
-              {PUBLIC_CHALLENGES.filter(c => c.isTrending).map((challenge) => (
-                <Link key={challenge.id} href={`/challenge/${challenge.id}`}>
-                  <motion.div 
-                    whileTap={{ scale: 0.98 }}
-                    className="relative w-72 h-44 rounded-[2rem] overflow-hidden shrink-0 group cursor-pointer"
-                  >
-                    <img src={challenge.image} alt={challenge.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                    <div className="absolute top-4 left-4">
-                      <Badge className="bg-primary/90 text-primary-foreground border-none font-bold backdrop-blur-sm shadow-xl">
-                        Trending 🔥
-                      </Badge>
-                    </div>
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <h3 className="text-white font-display font-bold text-lg leading-tight mb-2">{challenge.title}</h3>
-                      <div className="flex items-center gap-3 text-white/80 text-xs font-medium">
-                        <span className="flex items-center gap-1"><Users size={12} /> {challenge.participants}</span>
-                        <span className="flex items-center gap-1"><Trophy size={12} /> {challenge.prizePool}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* List of Challenges */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold">
-              {selectedModality !== "Todos" ? `Desafios de ${selectedModality}` : "Todos os Desafios"}
-            </h2>
+            <h2 className="text-xl font-display font-bold">Públicos</h2>
             <span className="text-xs text-muted-foreground font-medium">{filteredChallenges.length} resultados</span>
           </div>
 
@@ -231,10 +161,10 @@ export default function Explorar() {
                     <div className="glass-card rounded-[2rem] overflow-hidden cursor-pointer group hover:border-primary/30 transition-all active:scale-[0.98]">
                       <div className="flex p-3 gap-4">
                         <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
-                          <img src={challenge.image} alt={challenge.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                          {challenge.isNew && (
-                            <div className="absolute top-1 left-1 bg-blue-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Novo</div>
-                          )}
+                          <img src={challenge.image} alt={challenge.title} className="w-full h-full object-cover" />
+                          <div className="absolute top-1 left-1 bg-orange-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase flex items-center gap-1">
+                            <ShieldAlert size={8} /> Pendente
+                          </div>
                         </div>
                         <div className="flex-1 flex flex-col justify-between py-1">
                           <div>
@@ -257,21 +187,6 @@ export default function Explorar() {
                 </motion.div>
               ))}
             </AnimatePresence>
-
-            {filteredChallenges.length === 0 && (
-              <div className="text-center py-20 space-y-4">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground">
-                  <Search size={32} />
-                </div>
-                <div>
-                  <p className="font-display font-bold text-lg">Nenhum desafio encontrado</p>
-                  <p className="text-muted-foreground text-sm">Tente mudar os filtros ou a busca.</p>
-                </div>
-                <Button variant="outline" className="rounded-xl" onClick={() => { setSearch(""); setSelectedModality("Todos"); }}>
-                  Limpar Filtros
-                </Button>
-              </div>
-            )}
           </div>
         </section>
       </div>

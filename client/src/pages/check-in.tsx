@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, RefreshCcw, MapPin, CheckCircle, Camera, Timer, Ruler, Repeat, Zap } from "lucide-react";
+import { ChevronLeft, RefreshCcw, MapPin, CheckCircle, Camera, Timer, Ruler, Repeat, Zap, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,13 +10,21 @@ export default function CheckIn() {
   const { id } = useParams();
   const [captured, setCaptured] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [checkinStep, setCheckinStep] = useState(1); // 1 for start, 2 for end (time based)
+  const [startPhoto, setStartPhoto] = useState<string | null>(null);
   
   // Mock modality and validation type
-  const [modality, setModality] = useState("corrida"); 
-  const [validationType, setValidationType] = useState("distancia");
+  const [modality, setModality] = useState("academia"); 
+  const [validationType, setValidationType] = useState("tempo");
 
   const handleCapture = () => {
-    setCaptured(true);
+    if (validationType === 'tempo' && checkinStep === 1) {
+      setStartPhoto("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80");
+      setCheckinStep(2);
+      setCaptured(false);
+    } else {
+      setCaptured(true);
+    }
   };
 
   const handleSubmit = () => {
@@ -34,7 +42,7 @@ export default function CheckIn() {
         </button>
         <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-xs font-semibold">
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          GPS Ativo
+          {validationType === 'tempo' ? `PASSO ${checkinStep}/2` : 'GPS Ativo'}
         </div>
       </header>
 
@@ -42,12 +50,22 @@ export default function CheckIn() {
         {!captured ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6 text-center">
             {validationType === 'foto' ? <Camera size={48} className="text-white/20 mb-4" /> : <Zap size={48} className="text-white/20 mb-4" />}
-            <h2 className="text-xl font-display font-bold mb-2">Check-in: {modality}</h2>
+            <h2 className="text-xl font-display font-bold mb-2">
+              {validationType === 'tempo' ? (checkinStep === 1 ? 'Foto Início' : 'Foto Término') : `Check-in: ${modality}`}
+            </h2>
             <p className="text-white/60 font-mono uppercase tracking-widest text-[10px]">
-              {validationType === 'foto' ? 'Mostre sua localização no treino' : 
+              {validationType === 'tempo' ? 'Apenas câmera ao vivo - Sem galeria' : 
                validationType === 'distancia' ? 'Foto do painel com km percorridos' :
-               validationType === 'tempo' ? 'Foto do cronômetro ou app' : 'Validação via Foto'}
+               'Validação via Foto'}
             </p>
+            {validationType === 'tempo' && checkinStep === 2 && startPhoto && (
+              <div className="mt-4 p-2 bg-white/5 rounded-xl border border-white/10">
+                <p className="text-[10px] text-primary font-bold mb-2 uppercase">Início capturado às 08:00 AM</p>
+                <div className="w-24 h-32 rounded-lg overflow-hidden border border-white/20 opacity-50">
+                  <img src={startPhoto} alt="Start" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="absolute inset-0">
@@ -99,7 +117,7 @@ export default function CheckIn() {
                     </div>
                   </div>
                )}
-               {validationType === 'tempo' && (
+               {validationType === 'tempo' && checkinStep === 2 && (
                   <div className="space-y-1 col-span-2">
                     <Label className="text-white/60 text-[10px] uppercase font-bold">Duração (minutos)</Label>
                     <div className="relative">
@@ -108,19 +126,16 @@ export default function CheckIn() {
                     </div>
                   </div>
                )}
-               {validationType === 'repeticoes' && (
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-white/60 text-[10px] uppercase font-bold">Repetições</Label>
-                    <div className="relative">
-                      <Repeat className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
-                      <Input type="number" placeholder="Ex: 50" className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold" />
-                    </div>
-                  </div>
-               )}
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" className="h-14 flex-1 bg-transparent border-white/30 text-white hover:bg-white/10" onClick={() => setCaptured(false)}>Refazer</Button>
+              <Button variant="outline" className="h-14 flex-1 bg-transparent border-white/30 text-white hover:bg-white/10" onClick={() => {
+                setCaptured(false);
+                if (validationType === 'tempo') {
+                  setCheckinStep(1);
+                  setStartPhoto(null);
+                }
+              }}>Refazer</Button>
               <Button className="flex-[2] h-14 rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-[0_0_20px_rgba(34,197,94,0.3)] border-none" onClick={handleSubmit} disabled={submitting}>
                 {submitting ? "Enviando..." : "Confirmar"}
               </Button>

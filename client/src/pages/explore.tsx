@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Search, Users, Trophy, Clock, Filter, SlidersHorizontal, Flame, Sparkles, TrendingUp, ShieldAlert } from "lucide-react";
+import { Search, Users, Trophy, Clock, SlidersHorizontal, Flame, Sparkles, TrendingUp, ShieldAlert, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ const PUBLIC_CHALLENGES = [
     isTrending: true,
     isNew: false,
     needsApproval: true,
+    startDate: "05 Mar",
   },
   {
     id: 3,
@@ -43,6 +44,35 @@ const PUBLIC_CHALLENGES = [
     isTrending: true,
     isNew: true,
     needsApproval: true,
+    startDate: "10 Mar",
+  },
+  {
+    id: 4,
+    title: "Caminhada Diária 5k",
+    participants: 89,
+    prizePool: "R$ 1.780",
+    daysLeft: 15,
+    entryFee: 20,
+    image: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&q=80",
+    modality: "Funcional",
+    isTrending: false,
+    isNew: true,
+    needsApproval: true,
+    startDate: "02 Mar",
+  },
+  {
+    id: 5,
+    title: "Pedal de Fim de Semana",
+    participants: 56,
+    prizePool: "R$ 2.800",
+    daysLeft: 20,
+    entryFee: 50,
+    image: "https://images.unsplash.com/photo-1541625602330-2277a4c4bb98?w=800&q=80",
+    modality: "Ciclismo",
+    isTrending: false,
+    isNew: false,
+    needsApproval: true,
+    startDate: "15 Mar",
   }
 ];
 
@@ -60,7 +90,7 @@ export default function Explorar() {
   });
 
   return (
-    <div className="p-6 pb-32 space-y-6">
+    <div className="p-6 pb-32 space-y-8">
       <header className="pt-4 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold">Explorar</h1>
@@ -138,58 +168,104 @@ export default function Explorar() {
         <ScrollBar orientation="horizontal" className="hidden" />
       </ScrollArea>
 
-      {/* Sections */}
-      <div className="space-y-8">
+      {/* Trending Section - Back to Original Highlight Style */}
+      {selectedModality === "Todos" && !search && (
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold">Públicos</h2>
-            <span className="text-xs text-muted-foreground font-medium">{filteredChallenges.length} resultados</span>
+          <div className="flex items-center gap-2">
+            <TrendingUp size={20} className="text-primary" />
+            <h2 className="text-xl font-display font-bold">Desafios em Alta</h2>
           </div>
-
-          <div className="space-y-4">
-            <AnimatePresence mode="popLayout">
-              {filteredChallenges.map((challenge, i) => (
+          <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 no-scrollbar">
+            {PUBLIC_CHALLENGES.filter(c => c.isTrending).map((challenge) => (
+              <Link key={challenge.id} href={`/challenge/${challenge.id}`}>
                 <motion.div 
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: i * 0.05 }}
-                  key={challenge.id}
+                  whileTap={{ scale: 0.98 }}
+                  className="relative w-72 h-44 rounded-[2rem] overflow-hidden shrink-0 group cursor-pointer"
                 >
-                  <Link href={`/challenge/${challenge.id}`}>
-                    <div className="glass-card rounded-[2rem] overflow-hidden cursor-pointer group hover:border-primary/30 transition-all active:scale-[0.98]">
-                      <div className="flex p-3 gap-4">
-                        <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
-                          <img src={challenge.image} alt={challenge.title} className="w-full h-full object-cover" />
-                          <div className="absolute top-1 left-1 bg-orange-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase flex items-center gap-1">
-                            <ShieldAlert size={8} /> Pendente
+                  <img src={challenge.image} alt={challenge.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <Badge className="bg-primary/90 text-primary-foreground border-none font-bold backdrop-blur-sm shadow-xl">
+                      Trending 🔥
+                    </Badge>
+                    <Badge className="bg-orange-500 text-white border-none font-bold backdrop-blur-sm shadow-xl flex gap-1">
+                      <ShieldAlert size={10} /> Pendente
+                    </Badge>
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <div className="flex items-center gap-1.5 text-white/90 text-[10px] font-bold uppercase mb-1">
+                      <Calendar size={12} className="text-primary" /> Começa em {challenge.startDate}
+                    </div>
+                    <h3 className="text-white font-display font-bold text-lg leading-tight mb-2">{challenge.title}</h3>
+                    <div className="flex items-center gap-3 text-white/80 text-xs font-medium">
+                      <span className="flex items-center gap-1"><Users size={12} /> {challenge.participants}</span>
+                      <span className="flex items-center gap-1"><Trophy size={12} /> {challenge.prizePool}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* List of Challenges */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-display font-bold">
+            {selectedModality !== "Todos" ? `Desafios de ${selectedModality}` : "Novos Desafios"}
+          </h2>
+          <span className="text-xs text-muted-foreground font-medium">{filteredChallenges.length} resultados</span>
+        </div>
+
+        <div className="space-y-4">
+          <AnimatePresence mode="popLayout">
+            {filteredChallenges.map((challenge, i) => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: i * 0.05 }}
+                key={challenge.id}
+              >
+                <Link href={`/challenge/${challenge.id}`}>
+                  <div className="glass-card rounded-[2rem] overflow-hidden cursor-pointer group hover:border-primary/30 transition-all active:scale-[0.98]">
+                    <div className="flex p-3 gap-4">
+                      <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
+                        <img src={challenge.image} alt={challenge.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        <div className="absolute top-1 left-1 bg-orange-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase flex items-center gap-1">
+                          <ShieldAlert size={8} /> Pendente
+                        </div>
+                      </div>
+                      <div className="flex-1 flex flex-col justify-between py-1">
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-display font-bold text-base leading-tight group-hover:text-primary transition-colors">{challenge.title}</h3>
+                            <p className="font-bold text-primary text-sm shrink-0 ml-2">R$ {challenge.entryFee}</p>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="bg-muted/50 text-[10px] h-5 py-0 border-none font-semibold">{challenge.modality}</Badge>
+                            <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
+                              <Calendar size={10} /> {challenge.startDate}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex-1 flex flex-col justify-between py-1">
-                          <div>
-                            <div className="flex justify-between items-start">
-                              <h3 className="font-display font-bold text-base leading-tight group-hover:text-primary transition-colors">{challenge.title}</h3>
-                              <p className="font-bold text-primary text-sm shrink-0 ml-2">R$ {challenge.entryFee}</p>
-                            </div>
-                            <Badge variant="secondary" className="mt-1 bg-muted/50 text-[10px] h-5 py-0 border-none font-semibold">{challenge.modality}</Badge>
-                          </div>
-                          
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
-                            <span className="flex items-center gap-1"><Users size={12} className="text-primary" />{challenge.participants}</span>
-                            <span className="flex items-center gap-1 font-bold text-foreground"><Trophy size={12} className="text-yellow-500" />{challenge.prizePool}</span>
-                            <span className="flex items-center gap-1"><Clock size={12} />{challenge.daysLeft}d</span>
-                          </div>
+                        
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+                          <span className="flex items-center gap-1"><Users size={12} className="text-primary" />{challenge.participants}</span>
+                          <span className="flex items-center gap-1 font-bold text-foreground"><Trophy size={12} className="text-yellow-500" />{challenge.prizePool}</span>
+                          <span className="flex items-center gap-1"><Clock size={12} />{challenge.daysLeft}d</span>
                         </div>
                       </div>
                     </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </section>
-      </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Settings, LogOut, Moon, Sun, ShieldCheck, CheckCircle2, Camera, Eye, Smartphone, Palette, CreditCard, ChevronRight, UserCircle } from "lucide-react";
+import { Settings, LogOut, Moon, Sun, ShieldCheck, CheckCircle2, Camera, Eye, Smartphone, Palette, CreditCard, ChevronRight, UserCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +46,26 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Organizer Options */}
+        <div className="space-y-4">
+          <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Organização</h3>
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                <Star size={20} />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm">Organizar como Evento</p>
+                <p className="text-[10px] text-muted-foreground">Ganhe uma taxa por cada participante no seu desafio.</p>
+              </div>
+            </div>
+            <Button className="w-full rounded-xl bg-primary text-primary-foreground font-bold h-12 shadow-lg shadow-primary/20 border-none">
+              Solicitar Aprovação do ADM
+            </Button>
+            <p className="text-[10px] text-center text-muted-foreground">Sujeito a análise da equipe FitStake.</p>
+          </div>
+        </div>
+
         {/* User Stats Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center justify-center text-center">
@@ -60,24 +80,9 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Account Settings */}
-        <div className="space-y-4">
-          <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Configurações de Conta</h3>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label className="px-2 text-xs">Nome de Exibição</Label>
-              <Input defaultValue="Alex Costa" className="h-12 rounded-xl bg-card border-border" />
-            </div>
-            <div className="space-y-2">
-              <Label className="px-2 text-xs">Username</Label>
-              <Input defaultValue="@alex_costa" className="h-12 rounded-xl bg-card border-border" />
-            </div>
-          </div>
-        </div>
-
         {/* Preferences */}
         <div className="space-y-4">
-          <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Preferências do App</h3>
+          <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Preferências</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
               <div className="flex items-center gap-3"><Palette size={18} className="text-primary" /><span>Tema Visual</span></div>
@@ -86,16 +91,6 @@ export default function Profile() {
                 <button onClick={() => setTheme("dark")} className={`p-1.5 rounded-md ${theme === 'dark' ? 'bg-background shadow-sm' : 'opacity-50'}`}><Moon size={14} /></button>
                 <button onClick={() => setTheme("system")} className={`p-1.5 rounded-md ${theme === 'system' ? 'bg-background shadow-sm' : 'opacity-50'}`}><Smartphone size={14} /></button>
               </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><CreditCard size={18} className="text-primary" /><span>Chave Pix</span></div>
-              <Button variant="link" size="sm" className="text-primary text-xs h-auto p-0">Configurar</Button>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><Eye size={18} className="text-primary" /><span>Visibilidade de Ganhos</span></div>
-              <Switch checked={showEarnings} onCheckedChange={setShowEarnings} />
             </div>
           </div>
         </div>

@@ -1,9 +1,11 @@
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, History, Info } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, ArrowUpRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ChallengeDetails() {
   const [, setLocation] = useLocation();
@@ -11,14 +13,23 @@ export default function ChallengeDetails() {
   const [activeTab, setActiveTab] = useState("progresso");
 
   // Mock data
-  const isAdmin = true;
+  const isAdmin = true; // In a real app, check if user is in moderators list
   const isChallengeEnded = false;
 
-  const checkins = [
-    { id: 1, user: "Alex C.", time: "10 min ago", status: "pending", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80", flagged: false },
-    { id: 2, user: "Maria S.", time: "1 hour ago", status: "approved", image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80", flagged: false },
-    { id: 3, user: "João P.", time: "5 hours ago", status: "flagged", image: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=400&q=80", flagged: true, reason: "Localização suspeita" },
+  const participants = [
+    { id: 1, name: "Maria S.", score: 15, avatar: "https://i.pravatar.cc/150?u=maria", active: true },
+    { id: 2, name: "Alex C. (Você)", score: 13, avatar: "https://i.pravatar.cc/150?u=alex", active: true, isUser: true },
+    { id: 3, name: "João P.", score: 12, avatar: "https://i.pravatar.cc/150?u=joao", active: true },
+    { id: 4, name: "Ana L.", score: 10, avatar: "https://i.pravatar.cc/150?u=ana", active: false },
   ];
+
+  const checkins = [
+    { id: 1, user: "Alex C.", time: "10 min atrás", status: "pending", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80", flagged: false },
+    { id: 2, user: "Maria S.", time: "1 hora atrás", status: "approved", image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80", flagged: false },
+    { id: 3, user: "João P.", time: "5 horas atrás", status: "flagged", image: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=400&q=80", flagged: true, reason: "Localização suspeita" },
+  ];
+
+  const winners = participants.filter(p => p.active);
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background pb-24">
@@ -33,106 +44,152 @@ export default function ChallengeDetails() {
         <div className="absolute bottom-4 left-6 right-6">
           <div className="flex gap-2 mb-2 items-center">
             <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/20">Academia</Badge>
-            {isAdmin && <Badge className="bg-orange-500 text-white border-none flex gap-1"><ShieldAlert size={10} /> Moderador</Badge>}
+            {isAdmin && <Badge className="bg-orange-500 text-white border-none flex gap-1 items-center px-2 py-0.5"><ShieldAlert size={10} /> Você é moderador</Badge>}
           </div>
           <h1 className="text-3xl font-display font-bold text-white drop-shadow-md">Projeto Verão 2024</h1>
         </div>
       </div>
 
       <div className="px-6 mt-6 space-y-6">
-        <Tabs defaultValue="progresso" className="w-full" onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 h-12 rounded-xl bg-muted p-1">
-            <TabsTrigger value="progresso" className="rounded-lg">Progresso</TabsTrigger>
-            <TabsTrigger value="ranking" className="rounded-lg">Ranking</TabsTrigger>
-            {isAdmin && <TabsTrigger value="mod" className="rounded-lg flex gap-1"><ShieldAlert size={14}/> Mod</TabsTrigger>}
+            <TabsTrigger value="progresso" className="rounded-lg font-bold">Resumo</TabsTrigger>
+            <TabsTrigger value="ranking" className="rounded-lg font-bold">Ranking</TabsTrigger>
+            {isAdmin && <TabsTrigger value="mod" className="rounded-lg font-bold flex gap-1 items-center text-orange-600 dark:text-orange-400"><ShieldAlert size={14}/> Mod</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="progresso" className="space-y-6 mt-4">
+          <TabsContent value="progresso" className="space-y-6 mt-4 animate-in fade-in slide-in-from-bottom-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-                <p className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Pote Total</p>
+                <p className="text-muted-foreground text-[10px] uppercase font-bold mb-1 tracking-wider">Pote Estimado</p>
                 <p className="text-2xl font-display font-bold text-primary">R$ 6.200</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-                <p className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Sua Aposta</p>
+                <p className="text-muted-foreground text-[10px] uppercase font-bold mb-1 tracking-wider">Investimento</p>
                 <p className="text-2xl font-display font-bold">R$ 50</p>
               </div>
             </div>
 
-            <div className="border border-primary/20 bg-primary/5 rounded-3xl p-5 space-y-4">
-              <h3 className="font-display font-bold">Seu Check-in Semanal</h3>
-              <div className="flex justify-between text-sm items-end">
-                <p className="text-muted-foreground">Faltam 2 para o objetivo</p>
-                <p className="font-bold text-lg"><span className="text-primary">3</span>/5</p>
+            <div className="border border-primary/20 bg-primary/5 rounded-3xl p-6 space-y-4">
+              <h3 className="font-display font-bold text-lg">Seu Status</h3>
+              <div className="flex justify-between items-end">
+                <p className="text-sm text-muted-foreground">Meta: 5 check-ins/semana</p>
+                <p className="font-display font-bold text-xl"><span className="text-primary">3</span>/5</p>
               </div>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((d) => (
-                  <div key={d} className={`h-2 flex-1 rounded-full ${d <= 3 ? 'bg-primary shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-muted'}`} />
+                  <div key={d} className={`h-2.5 flex-1 rounded-full ${d <= 3 ? 'bg-primary shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-muted'}`} />
                 ))}
               </div>
-              <Button className="w-full h-14 rounded-xl font-bold bg-foreground text-background dark:bg-white dark:text-black mt-2" onClick={() => setLocation(`/check-in/${id}`)}>
-                <Camera className="mr-2" size={20} /> Fazer Check-in
+              <Button className="w-full h-14 rounded-2xl font-bold bg-foreground text-background dark:bg-white dark:text-black mt-2 shadow-xl" onClick={() => setLocation(`/check-in/${id}`)}>
+                <Camera className="mr-2" size={20} /> Fazer Check-in Hoje
               </Button>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1">Regras & Info</h4>
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
+                <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>Termina em 12 dias</span></div>
+                <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{participants.length} participantes ativos</span></div>
+                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação via Foto + GPS</span></div>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="ranking" className="mt-4">
-             <div className="bg-card border border-border rounded-3xl overflow-hidden divide-y divide-border">
-                {[
-                  { pos: 1, name: "Maria S.", score: 15, avatar: "https://i.pravatar.cc/150?u=maria" },
-                  { pos: 2, name: "Alex C. (Você)", score: 13, avatar: "https://i.pravatar.cc/150?u=alex", isUser: true },
-                  { pos: 3, name: "João P.", score: 12, avatar: "https://i.pravatar.cc/150?u=joao" },
-                ].map((user, i) => (
-                  <div key={i} className={`flex items-center gap-4 p-4 ${user.isUser ? 'bg-primary/5' : ''}`}>
-                    <span className="w-6 font-display font-bold text-muted-foreground">{user.pos}</span>
-                    <div className="w-10 h-10 rounded-full overflow-hidden"><img src={user.avatar} className="w-full h-full object-cover" /></div>
-                    <div className="flex-1"><p className="font-semibold text-sm">{user.name}</p></div>
-                    <div className="text-right"><p className="font-bold">{user.score} ck</p></div>
+          <TabsContent value="ranking" className="mt-4 animate-in fade-in slide-in-from-bottom-2">
+             <div className="bg-card border border-border rounded-[2rem] overflow-hidden divide-y divide-border shadow-sm">
+                {participants.sort((a,b) => b.score - a.score).map((user, i) => (
+                  <div key={user.id} className={`flex items-center gap-4 p-5 ${user.isUser ? 'bg-primary/5' : ''} ${!user.active ? 'opacity-50 grayscale' : ''}`}>
+                    <span className="w-6 font-display font-bold text-muted-foreground text-center">{i + 1}</span>
+                    <Avatar className="w-12 h-12 border-2 border-border shadow-sm">
+                      <AvatarImage src={user.avatar} />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-bold text-sm">{user.name}</p>
+                      {!user.active && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Eliminado</Badge>}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display font-bold text-lg">{user.score}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Check-ins</p>
+                    </div>
                   </div>
                 ))}
              </div>
           </TabsContent>
 
           {isAdmin && (
-            <TabsContent value="mod" className="space-y-6 mt-4">
-              <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-4 flex gap-3 items-start">
-                <Info className="text-orange-500 shrink-0 mt-1" size={18} />
-                <p className="text-xs text-orange-700 dark:text-orange-400">Como moderador, você deve aprovar fotos e GPS. Desafios finalizam automaticamente após 48h sem ação.</p>
+            <TabsContent value="mod" className="space-y-6 mt-4 animate-in fade-in slide-in-from-bottom-2">
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4 flex gap-3 items-start">
+                <ShieldAlert className="text-orange-500 shrink-0 mt-1" size={18} />
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-orange-600 dark:text-orange-400">Área de Moderação</p>
+                  <p className="text-xs text-orange-600/80 dark:text-orange-400/80">Você deve revisar as evidências. Eliminações são permanentes após a confirmação.</p>
+                </div>
               </div>
 
+              {isChallengeEnded && (
+                <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center space-y-6 animate-bounce">
+                  <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto text-primary">
+                    <Trophy size={40} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-display font-bold">Aprovação Final</h3>
+                    <p className="text-sm text-muted-foreground">O desafio terminou. Confirme os {winners.length} vencedores para distribuir <strong>R$ 6.200</strong>.</p>
+                  </div>
+                  <Button className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-bold shadow-xl shadow-primary/20">
+                    <CheckCircle2 className="mr-2" size={20} /> Liberar Pagamentos
+                  </Button>
+                </div>
+              )}
+
               <div className="space-y-4">
-                <h4 className="font-bold flex items-center gap-2"><AlertCircle size={16} className="text-orange-500" /> Pendentes ({checkins.filter(c => c.status !== 'approved').length})</h4>
-                <div className="space-y-4">
+                <div className="flex justify-between items-center px-1">
+                  <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Revisões Pendentes</h4>
+                  <Badge className="bg-orange-500">{checkins.filter(c => c.status !== 'approved').length}</Badge>
+                </div>
+                
+                <div className="space-y-6 pb-20">
                   {checkins.filter(c => c.status !== 'approved').map(c => (
-                    <div key={c.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                      <div className="p-3 flex justify-between items-center border-b border-border">
-                        <div>
-                          <p className="font-bold text-sm">{c.user}</p>
-                          <p className="text-[10px] text-muted-foreground">{c.time}</p>
+                    <div key={c.id} className="bg-card border border-border rounded-[2rem] overflow-hidden shadow-md">
+                      <div className="p-4 flex justify-between items-center border-b border-border bg-muted/30">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8 border border-border">
+                            <AvatarImage src={`https://i.pravatar.cc/150?u=${c.user}`} />
+                            <AvatarFallback>{c.user.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-bold text-sm">{c.user}</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">{c.time}</p>
+                          </div>
                         </div>
-                        {c.flagged && <Badge variant="destructive" className="text-[8px] py-0 px-1.5 h-4 uppercase">Suspeito</Badge>}
+                        {c.flagged && <Badge variant="destructive" className="animate-pulse flex gap-1 items-center px-2 py-0.5"><AlertCircle size={10} /> Suspeito</Badge>}
                       </div>
-                      <div className="h-32 bg-muted relative">
-                        <img src={c.image} className="w-full h-full object-cover" />
-                        {c.flagged && <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center"><AlertCircle className="text-red-500" /></div>}
+                      
+                      <div className="h-56 bg-zinc-900 relative group">
+                        <img src={c.image} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                        {c.flagged && (
+                          <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-bold shadow-xl border border-red-400">
+                             <AlertCircle size={14} /> {c.reason}
+                          </div>
+                        )}
+                        <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] text-white flex items-center gap-2 border border-white/10">
+                           <Clock size={12} /> Enviado às 08:42 AM
+                        </div>
                       </div>
-                      <div className="p-2 grid grid-cols-2 gap-2">
-                        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-500/10"><XCircle size={14} className="mr-1"/> Rejeitar</Button>
-                        <Button size="sm" className="bg-primary text-primary-foreground"><CheckCircle2 size={14} className="mr-1"/> Aprovar</Button>
+
+                      <div className="p-3 grid grid-cols-2 gap-3 bg-card">
+                        <Button variant="outline" className="h-12 rounded-xl text-red-500 border-red-500/20 hover:bg-red-500/5 font-bold">
+                          <XCircle size={18} className="mr-2"/> Rejeitar
+                        </Button>
+                        <Button className="h-12 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 border-none">
+                          <CheckCircle2 size={18} className="mr-2"/> Aprovar
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {isChallengeEnded && (
-                <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 text-center space-y-4">
-                  <Trophy className="mx-auto text-primary" size={40} />
-                  <h3 className="font-bold">Desafio Encerrado!</h3>
-                  <p className="text-sm text-muted-foreground">Aprove a lista final de vencedores para liberar o Pix.</p>
-                  <Button className="w-full bg-primary text-primary-foreground font-bold">Liberar Premiação (R$ 6.200)</Button>
-                </div>
-              )}
             </TabsContent>
           )}
         </Tabs>

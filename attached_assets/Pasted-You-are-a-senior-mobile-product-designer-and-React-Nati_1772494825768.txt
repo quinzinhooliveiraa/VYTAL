@@ -1,0 +1,90 @@
+You are a senior mobile product designer and React Native developer.
+
+Help me design and implement a complete onboarding flow for my fitness accountability app.
+
+App concept:
+The app pays or rewards users for staying consistent with workouts through accountability and competition. The core idea is creating long-term workout consistency through financial commitment and social accountability.
+
+Goal of onboarding:
+Educate the user about the value of the app, show social proof, explain how it works, collect user info, and guide them into starting their first challenge.
+
+Design principles:
+- Clean, modern mobile UI
+- Short screens with clear visuals
+- Smooth swipe-based onboarding
+- Motivational and energetic tone
+- Optimized for conversion and retention
+
+Create the onboarding flow with the following steps:
+
+1. Welcome Screen
+Headline: "Get Paid to Stay Consistent"
+Subtext explaining that the app rewards workout consistency through challenges and accountability.
+CTA: "Start"
+
+2. Value Proposition
+Explain that the app helps create long-term fitness consistency.
+Include a visual graph showing progress over time (consistency curve).
+Headline example: "Consistency beats motivation."
+
+3. Social Proof
+Show a statistic like:
+"83% of users maintain their workout streak for 30+ days."
+Add community feeling: thousands of people staying accountable together.
+
+4. How It Works
+3 simple steps with icons:
+- Commit to a workout challenge
+- Check in with proof after workouts
+- Stay consistent and earn rewards
+
+5. Check-in Explanation
+Show before/after concept:
+User commits → does workout → uploads proof → streak grows.
+
+6. Personalization
+Collect user info:
+- Name
+- Fitness goal
+- Workout frequency per week
+
+7. Commitment Screen
+Explain the accountability concept:
+Users commit to a challenge and stay consistent.
+CTA: "I'm ready to commit."
+
+8. Share With Friends
+Encourage inviting partners to join a challenge.
+Include a share button that opens the native mobile share sheet
+(iOS / Android share menu with WhatsApp, Messages, Copy Link, etc.)
+
+9. Notifications Permission
+Explain why notifications matter:
+"Get reminders so you never miss your workout streak."
+Button: "Enable Notifications"
+
+10. Account Creation
+Allow the user to save progress.
+Options:
+- Sign in with Apple
+- Sign in with Google
+- Sign in with Email
+
+11. Start Journey
+Final screen:
+"Start your fitness journey."
+
+Options:
+- Invite a Partner
+- Enter Invite Code
+- Start Solo
+
+Requirements:
+- Build this as a modular onboarding flow
+- Each step should be a separate component
+- Include example UI structure
+- Use modern mobile UX patterns
+- Include placeholder illustrations/icons
+- Add smooth transitions between screens
+
+Also suggest improvements that would increase onboarding completion rate and user activation.

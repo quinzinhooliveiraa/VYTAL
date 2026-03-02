@@ -1,0 +1,153 @@
+Não altere a arquitetura, rotas, lógica de negócio ou funcionalidades existentes.
+
+O objetivo é apenas aplicar um branding consistente no app, melhorando o design visual e experiência do usuário sem modificar o funcionamento atual.
+
+⸻
+
+REGRAS IMPORTANTES
+	1.	Não alterar lógica do app
+	2.	Não remover funcionalidades existentes
+	3.	Não mudar estrutura de navegação
+	4.	Não alterar APIs ou backend
+	5.	Não quebrar componentes existentes
+
+Você deve apenas:
+	•	melhorar UI
+	•	padronizar estilos
+	•	aplicar branding
+	•	melhorar hierarquia visual
+	•	melhorar responsividade
+
+⸻
+
+IDENTIDADE DA MARCA
+
+Tema: fitness competitivo gamificado
+
+O aplicativo deve transmitir:
+	•	competição
+	•	progresso
+	•	energia
+	•	disciplina
+	•	vitória
+
+Estética: dark mode esportivo moderno com opção de modo claro e escuro 
+
+⸻
+
+PALETA DE CORES
+
+Cor primária
+#00FF85 (verde energia)
+
+Background principal
+#0D0D0D
+
+Background secundário
+#1A1A1A
+
+Texto principal
+#FFFFFF
+
+Texto secundário
+#A0A0A0
+
+Cor de destaque (ações / CTA)
+#FF5C00
+
+⸻
+
+TIPOGRAFIA
+
+Fonte principal: Inter
+
+Aplicar hierarquia clara:
+
+H1 → bold
+H2 → semibold
+Body → regular
+
+⸻
+
+ESTILO DE COMPONENTES
+
+Botões:
+	•	cantos arredondados
+	•	destaque em verde
+	•	efeito hover suave
+	•	leve glow em ações importantes
+
+Cards:
+	•	fundo cinza escuro
+	•	bordas suaves
+	•	sombra leve
+
+Progress bars:
+	•	animadas
+	•	cor verde energia
+
+⸻
+
+ELEMENTOS DE GAMIFICAÇÃO VISUAL
+
+Adicionar elementos visuais consistentes para:
+	•	medalhas
+	•	ranking
+	•	progresso de desafio
+	•	streaks
+
+Exemplo:
+
+🔥 streak indicator
+🏆 medal icon
+📈 progress bars
+
+⸻
+
+MELHORIAS NA HOME
+
+Sem alterar lógica:
+
+Melhorar layout de:
+	•	desafios ativos
+	•	progresso do desafio
+	•	próximos check-ins
+	•	ranking
+
+Usar:
+	•	cards visuais
+	•	barras de progresso
+	•	hierarquia clara
+
+⸻
+
+MELHORIAS NO PERFIL
+
+Adicionar visualmente:
+	•	estatísticas destacadas
+	•	medalhas
+	•	histórico de desafios
+
+Mas sem alterar dados existentes.
+
+⸻
+
+MELHORIAS DE MICROINTERAÇÕES
+
+Adicionar:
+	•	animações suaves de loading
+	•	animações em progress bars
+	•	feedback visual ao clicar
+
+⸻
+
+RESULTADO ESPERADO
+
+O aplicativo deve parecer:
+	•	moderno
+	•	esportivo
+	•	competitivo
+	•	gamificado
+	•	premium
+
+Sem modificar funcionalidades já implementadas.

@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, History, Settings, LogOut, Moon, Sun, ShieldCheck, CheckCircle2, Camera, Eye, Smartphone, Palette, CreditCard, UserCircle, Trophy, Flame, Medal, Award } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, History, Settings, LogOut, Moon, Sun, ShieldCheck, CheckCircle2, Camera, Eye, Smartphone, Palette, CreditCard, UserCircle, Trophy, Flame, Medal, Award, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";

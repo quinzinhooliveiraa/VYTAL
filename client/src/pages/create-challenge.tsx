@@ -22,10 +22,13 @@ export default function CreateChallenge() {
   const [minParticipants, setMinParticipants] = useState("2");
   const [moderators, setModerators] = useState(["Você (Criador)"]);
   const [splitPrize, setSplitPrize] = useState(false);
+  const [splitPercentages, setSplitPercentages] = useState({ 1: 50, 2: 30, 3: 20 });
 
   const duration = durationPreset === "custom" ? customDuration || "0" : durationPreset;
   const numParticipants = Number(minParticipants);
-  const rawTotal = Number(entryValue) * numParticipants;
+  const entry = Number(entryValue);
+  const isEntryInvalid = entry < 10;
+  const rawTotal = entry * numParticipants;
   const prizePool = rawTotal * 0.9;
   
   const isLargeChallenge = numParticipants >= 1000;
@@ -169,11 +172,19 @@ export default function CreateChallenge() {
               <h2 className="text-2xl font-bold">Finanças & Moderação</h2>
               <p className="text-muted-foreground">Defina o prêmio e quem ajuda a cuidar.</p>
             </div>
-            <div className="glass-card rounded-3xl p-6 text-center space-y-4 bg-card border-primary/20">
-              <Label className="uppercase text-[10px] tracking-widest text-muted-foreground">Entrada Mínima R$10</Label>
+            <div className={`glass-card rounded-3xl p-6 text-center space-y-4 transition-all ${isEntryInvalid ? 'border-red-500 bg-red-500/5' : 'border-primary/20 bg-card'}`}>
+              <Label className={`uppercase text-[10px] tracking-widest ${isEntryInvalid ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
+                {isEntryInvalid ? 'Valor mínimo: R$ 10' : 'Entrada Mínima R$ 10'}
+              </Label>
               <div className="flex items-center justify-center gap-2">
-                <span className="text-2xl font-display text-muted-foreground">R$</span>
-                <input type="number" min="10" value={entryValue} onChange={(e) => setEntryValue(e.target.value)} className="bg-transparent text-5xl font-display font-bold w-32 text-center outline-none" />
+                <span className={`text-2xl font-display ${isEntryInvalid ? 'text-red-500' : 'text-muted-foreground'}`}>R$</span>
+                <input 
+                  type="number" 
+                  min="10" 
+                  value={entryValue} 
+                  onChange={(e) => setEntryValue(e.target.value)} 
+                  className={`bg-transparent text-5xl font-display font-bold w-32 text-center outline-none ${isEntryInvalid ? 'text-red-500' : ''}`} 
+                />
               </div>
               <div className="pt-4 border-t border-border flex flex-col gap-3">
                 <div className="flex items-center justify-between p-2 rounded-xl bg-muted/50">
@@ -183,6 +194,36 @@ export default function CreateChallenge() {
                   </div>
                   <Switch checked={splitPrize} onCheckedChange={setSplitPrize} />
                 </div>
+
+                {splitPrize && (
+                  <div className="space-y-3 p-3 bg-muted/30 rounded-2xl animate-in zoom-in-95 duration-200">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-left">Distribuição (%)</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((pos) => (
+                        <div key={pos} className="space-y-1">
+                          <Label className="text-[9px] font-bold">TOP {pos}</Label>
+                          <div className="relative">
+                            <Input 
+                              type="number" 
+                              value={splitPercentages[pos as keyof typeof splitPercentages]} 
+                              onChange={(e) => {
+                                const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                                setSplitPercentages(prev => ({ ...prev, [pos]: val }));
+                              }}
+                              className="h-9 px-2 text-xs font-bold rounded-lg text-center pr-4"
+                            />
+                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground">%</span>
+                          </div>
+                          <p className="text-[9px] font-bold text-primary">R$ {((prizePool * splitPercentages[pos as keyof typeof splitPercentages]) / 100).toFixed(0)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {Object.values(splitPercentages).reduce((a, b) => a + b, 0) !== 100 && (
+                      <p className="text-[9px] text-red-500 font-bold">A soma deve ser 100% (Atual: {Object.values(splitPercentages).reduce((a, b) => a + b, 0)}%)</p>
+                    )}
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-center text-sm pt-2">
                   <span className="text-muted-foreground">Pote Simulado ({minParticipants} pessoas)</span>
                   <span className="font-bold text-primary text-lg">R$ {prizePool.toFixed(2)}</span>
@@ -209,8 +250,12 @@ export default function CreateChallenge() {
                 }}>Add</Button>
               </div>
             </div>
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(5)} disabled={needsModerators}>
-              {needsModerators ? "Adicione mais moderadores" : "Revisar"}
+            <Button 
+              className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" 
+              onClick={() => setStep(5)} 
+              disabled={needsModerators || isEntryInvalid || (splitPrize && Object.values(splitPercentages).reduce((a, b) => a + b, 0) !== 100)}
+            >
+              {isEntryInvalid ? "Valor mínimo R$ 10" : needsModerators ? "Adicione mais moderadores" : "Revisar"}
             </Button>
           </div>
         )}

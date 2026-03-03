@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, Info, Dumbbell, Route, Target, Link as LinkIcon, CheckCircle2, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Info, Dumbbell, Route, Target, Link as LinkIcon, CheckCircle2, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ export default function CreateChallenge() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [freq, setFreq] = useState("5");
   const [minParticipants, setMinParticipants] = useState("2");
+  const [invitedUsers, setInvitedUsers] = useState<string[]>([]);
   const [moderators, setModerators] = useState(["Você (Criador)"]);
   const [splitPrize, setSplitPrize] = useState(false);
   const [splitPercentages, setSplitPercentages] = useState({ 1: 50, 2: 30, 3: 20 });
@@ -157,9 +158,64 @@ export default function CreateChallenge() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Mínimo de Participantes</Label>
-                <Input type="number" min="2" value={minParticipants} onChange={(e) => setMinParticipants(e.target.value)} className="h-12 rounded-xl" />
+              <div className="space-y-4">
+                <Label>Participantes Diretos</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="@usuario" 
+                    className="h-12 rounded-xl" 
+                    id="invite-input"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.currentTarget;
+                        if (input.value) {
+                          setInvitedUsers([...invitedUsers, input.value.startsWith('@') ? input.value : `@${input.value}`]);
+                          input.value = "";
+                        }
+                      }
+                    }}
+                  />
+                  <Button variant="outline" className="h-12 rounded-xl px-6" onClick={() => {
+                    const input = document.getElementById('invite-input') as HTMLInputElement;
+                    if (input.value) {
+                      setInvitedUsers([...invitedUsers, input.value.startsWith('@') ? input.value : `@${input.value}`]);
+                      input.value = "";
+                    }
+                  }}>Convidar</Button>
+                </div>
+                
+                {invitedUsers.length > 0 && (
+                  <div className="flex gap-2 flex-wrap p-3 bg-muted/30 rounded-2xl animate-in fade-in zoom-in-95 duration-200">
+                    {invitedUsers.map((user, i) => (
+                      <Badge key={i} className="bg-primary/10 text-primary border-primary/20 py-1.5 px-3 rounded-full flex gap-2 items-center">
+                        {user}
+                        <button onClick={() => setInvitedUsers(invitedUsers.filter((_, idx) => idx !== i))} className="hover:text-destructive transition-colors">
+                          <XCircle size={14} />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-12 rounded-xl border-dashed border-2 flex gap-2 items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all"
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({
+                          title: 'FitStake Challenge',
+                          text: 'Bora participar desse desafio comigo no FitStake?',
+                          url: window.location.origin + '/explore',
+                        });
+                      } else {
+                        copyLink();
+                      }
+                    }}
+                  >
+                    <LinkIcon size={18} /> {linkCopied ? "Link Copiado!" : "Compartilhar Link de Convite"}
+                  </Button>
+                </div>
               </div>
             </div>
             <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(4)}>Próximo</Button>

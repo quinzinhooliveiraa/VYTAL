@@ -4,8 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Plus Jakarta Sans', sans-serif;
-  --font-display: 'Clash Display', sans-serif;
+  --font-sans: 'Montserrat', sans-serif;
+  --font-display: 'Bebas Neue', cursive;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -48,9 +48,9 @@
   --popover: 0 0% 100%;
   --popover-foreground: 230 25% 10%;
 
-  /* Brand Primary: Electric Purple #8B5CF6 */
-  --primary: 262 83% 58%;
-  --primary-foreground: 0 0% 100%;
+  /* Brand Primary: Electric Green #00FF85 */
+  --primary: 151 100% 50%;
+  --primary-foreground: 151 100% 5%;
 
   --secondary: 230 15% 94%;
   --secondary-foreground: 230 25% 10%;
@@ -58,8 +58,8 @@
   --muted: 230 15% 96%;
   --muted-foreground: 230 10% 45%;
 
-  /* Brand Highlight: Cyan #06B6D4 */
-  --accent: 189 94% 43%;
+  /* Brand Highlight: Orange #FF5C00 */
+  --accent: 22 100% 50%;
   --accent-foreground: 0 0% 100%;
 
   --border: 230 15% 92%;
@@ -80,9 +80,9 @@
   --popover: 222 47% 10%;
   --popover-foreground: 0 0% 100%;
 
-  /* Brand Primary: Electric Purple #A78BFA */
-  --primary: 262 83% 70%;
-  --primary-foreground: 262 83% 10%;
+  /* Brand Primary: Electric Green #00FF85 */
+  --primary: 151 100% 50%;
+  --primary-foreground: 151 100% 5%;
 
   --secondary: 222 47% 15%;
   --secondary-foreground: 0 0% 100%;
@@ -90,7 +90,7 @@
   --muted: 222 47% 15%;
   --muted-foreground: 222 20% 63%;
 
-  --accent: 189 94% 50%;
+  --accent: 22 100% 50%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;

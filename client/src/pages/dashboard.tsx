@@ -34,14 +34,13 @@ export default function Dashboard() {
       {/* Header */}
       <header className="flex justify-between items-center pt-4">
         <div className="space-y-1">
-          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Bem-vindo de volta</p>
-          <h1 className="text-3xl font-display font-bold">Alex Costa</h1>
+          <h1 className="text-3xl font-display font-bold italic tracking-tighter text-primary">VOLTFIT</h1>
         </div>
         <Link href="/profile">
           <motion.div 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-bold text-xl cursor-pointer shadow-lg shadow-black/10"
+            className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-display font-black text-xl cursor-pointer shadow-lg shadow-black/10 text-primary"
           >
             AC
           </motion.div>

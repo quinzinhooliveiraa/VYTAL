@@ -48,8 +48,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 220 20% 10%;
 
-  /* Brand Primary: #00FF85 adjusted for light mode contrast (slightly darker/richer) */
-  --primary: 151 100% 35%;
+  /* Brand Primary: Verde Esmeralda Suave - Mais amigável para acessibilidade */
+  --primary: 158 35% 40%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 220 15% 94%;
@@ -81,9 +81,9 @@
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 100%;
 
-    /* Brand Primary: #00FF85 */
-    --primary: 151 100% 50%;
-    --primary-foreground: 151 100% 5%;
+    /* Brand Primary: Verde Esmeralda Profundo - Menos vibrante, mais relaxante */
+    --primary: 158 30% 45%;
+    --primary-foreground: 158 100% 5%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 100%;

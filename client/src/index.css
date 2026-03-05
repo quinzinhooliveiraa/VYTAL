@@ -4,8 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Montserrat', sans-serif;
-  --font-display: 'Bebas Neue', cursive;
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -40,55 +40,55 @@
 :root {
   /* Light Mode - More Professional & Readable */
   --background: 0 0% 99%;
-  --foreground: 230 25% 10%;
+  --foreground: 220 20% 10%;
 
   --card: 0 0% 100%;
-  --card-foreground: 230 25% 10%;
+  --card-foreground: 220 20% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 230 25% 10%;
+  --popover-foreground: 220 20% 10%;
 
-  /* Brand Primary: Electric Green #00FF85 */
-  --primary: 151 100% 50%;
-  --primary-foreground: 151 100% 5%;
+  /* Brand Primary: #00FF85 adjusted for light mode contrast (slightly darker/richer) */
+  --primary: 151 100% 35%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 230 15% 94%;
-  --secondary-foreground: 230 25% 10%;
+  --secondary: 220 15% 94%;
+  --secondary-foreground: 220 20% 10%;
 
-  --muted: 230 15% 96%;
-  --muted-foreground: 230 10% 45%;
+  --muted: 220 15% 96%;
+  --muted-foreground: 220 10% 45%;
 
-  /* Brand Highlight: Orange #FF5C00 */
-  --accent: 22 100% 50%;
+  /* Brand Highlight: #FF5C00 adjusted for light */
+  --accent: 22 100% 45%;
   --accent-foreground: 0 0% 100%;
 
-  --border: 230 15% 92%;
-  --input: 230 15% 92%;
-  --ring: 262 83% 58%;
+  --border: 220 15% 92%;
+  --input: 220 15% 92%;
+  --ring: 151 100% 35%;
 
   --radius: 1.25rem;
 }
 
 .dark {
-  /* Brand Dark Mode: Deep Navy #0F172A */
-  --background: 222 47% 7%;
+  /* Brand Dark Mode: #0D0D0D */
+  --background: 0 0% 5%;
   --foreground: 0 0% 100%;
 
-  --card: 222 47% 10%;
+  --card: 0 0% 10%;
   --card-foreground: 0 0% 100%;
 
-  --popover: 222 47% 10%;
+  --popover: 0 0% 10%;
   --popover-foreground: 0 0% 100%;
 
-  /* Brand Primary: Electric Green #00FF85 */
+  /* Brand Primary: #00FF85 */
   --primary: 151 100% 50%;
   --primary-foreground: 151 100% 5%;
 
-  --secondary: 222 47% 15%;
+  --secondary: 0 0% 15%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 222 47% 15%;
-  --muted-foreground: 222 20% 63%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 63%;
 
   --accent: 22 100% 50%;
   --accent-foreground: 0 0% 100%;
@@ -96,9 +96,9 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 222 47% 15%;
-  --input: 222 47% 15%;
-  --ring: 262 83% 70%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 151 100% 50%;
 }
 
 @layer base {

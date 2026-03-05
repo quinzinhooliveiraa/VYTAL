@@ -30,8 +30,8 @@ export default function Profile() {
   return (
     <div className="pb-32 animate-in fade-in duration-500">
       <header className="px-6 pt-8 pb-4 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-50">
-        <h1 className="text-xl font-display font-bold italic tracking-tighter text-primary">VOLTFIT</h1>
-        <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted text-primary">
+        <h1 className="text-2xl font-display font-bold">Configurações</h1>
+        <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
           <Settings size={22} />
         </Button>
       </header>

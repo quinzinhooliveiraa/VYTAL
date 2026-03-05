@@ -29,15 +29,15 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
     className="flex flex-col items-center text-center space-y-8"
   >
-    <div className="w-24 h-24 bg-primary rounded-[2rem] flex items-center justify-center text-primary-foreground border-4 border-white/20 shadow-2xl shadow-primary/40 rotate-6">
-      <Zap size={48} fill="currentColor" />
+    <div className="w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-xl shadow-primary/5">
+      <Activity size={48} strokeWidth={2.5} />
     </div>
     <div className="space-y-4">
-      <h1 className="text-5xl font-display font-black tracking-tighter italic uppercase">
-        VoltFit
+      <h1 className="text-4xl font-display font-bold leading-tight">
+        Seja pago por ser <span className="text-primary text-glow">Consistente.</span>
       </h1>
       <p className="text-muted-foreground text-lg px-4">
-        A plataforma definitiva para desafios fitness com apostas reais via Pix.
+        O FitStake recompensa sua disciplina através de desafios sociais e compromisso financeiro.
       </p>
     </div>
     <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground mt-12 shadow-lg shadow-primary/20" onClick={onNext}>
@@ -293,7 +293,7 @@ export default function Onboarding() {
       {/* Footer Info */}
       {step === 1 && (
         <div className="pb-6 text-center space-y-2 opacity-50 z-10">
-          <p className="text-[10px] font-bold uppercase tracking-widest">VoltFit Elite System</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest">FitStake Accountability System</p>
         </div>
       )}
     </div>

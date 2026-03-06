@@ -48,8 +48,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 220 20% 10%;
 
-  /* Brand Primary: Verde Esmeralda Suave - Mais amigável para acessibilidade */
-  --primary: 158 35% 38%;
+  /* Brand Primary: Verde Esmeralda Vibrante mas Equilibrado */
+  --primary: 158 85% 42%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 220 15% 94%;
@@ -64,7 +64,7 @@
 
   --border: 220 15% 92%;
   --input: 220 15% 92%;
-  --ring: 158 35% 38%;
+  --ring: 158 85% 42%;
 
   --radius: 1.25rem;
 }
@@ -81,9 +81,9 @@
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 100%;
 
-    /* Brand Primary: Verde Esmeralda Profundo - Menos vibrante, mais relaxante */
-    --primary: 158 30% 40%;
-    --primary-foreground: 158 100% 5%;
+    /* Brand Primary: Verde Esmeralda Neon/Cyber para Dark Mode */
+    --primary: 151 100% 45%;
+    --primary-foreground: 151 100% 5%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 100%;
@@ -99,7 +99,7 @@
 
     --border: 0 0% 15%;
     --input: 0 0% 15%;
-    --ring: 158 30% 40%;
+    --ring: 151 100% 45%;
   }
 }
 
@@ -137,13 +137,13 @@
     @apply bg-card/60 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-black/50;
   }
   .text-glow {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+    text-shadow: 0 0 15px hsl(var(--primary) / 0.4);
   }
   .accent-glow {
-    text-shadow: 0 0 10px hsl(var(--accent) / 0.3);
+    text-shadow: 0 0 15px hsl(var(--accent) / 0.4);
   }
   .btn-primary-glow {
-    box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
   }
 }
 

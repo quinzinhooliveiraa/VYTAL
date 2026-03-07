@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap } from "lucide-react";
+import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Map, Clock, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,6 +25,12 @@ export default function Dashboard() {
   const totalEarned = "R$ 420,00";
   const availableBalance = "R$ 132,50";
 
+  const metrics = [
+    { label: "Distância", value: "42.5 km", icon: Map, color: "text-blue-500" },
+    { label: "Tempo", value: "12h 30m", icon: Clock, color: "text-orange-500" },
+    { label: "Atividade", value: "85%", icon: Activity, color: "text-primary" },
+  ];
+
   const moderationAlerts = [
     { id: 1, challenge: "Projeto Verão 2024", pending: 3 }
   ];
@@ -47,6 +53,27 @@ export default function Dashboard() {
           </motion.div>
         </Link>
       </header>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-3 gap-3">
+        {metrics.map((metric, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.1 }}
+            className="bg-card border border-border/50 p-4 rounded-3xl space-y-2"
+          >
+            <div className={`p-2 rounded-xl bg-muted/50 w-fit ${metric.color}`}>
+              <metric.icon size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{metric.label}</p>
+              <p className="text-sm font-display font-bold">{metric.value}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
       {/* Resumo Financeiro - Premium Branding */}
       <div className="grid grid-cols-1 gap-4">

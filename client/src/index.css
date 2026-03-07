@@ -38,8 +38,8 @@
 }
 
 :root {
-  /* Light Mode - More Professional & Readable */
-  --background: 0 0% 99%;
+  /* Light Mode - Minimalist & Clean */
+  --background: 0 0% 100%;
   --foreground: 220 20% 10%;
 
   --card: 0 0% 100%;
@@ -48,48 +48,48 @@
   --popover: 0 0% 100%;
   --popover-foreground: 220 20% 10%;
 
-  /* Brand Primary: Verde Esmeralda Vibrante mas Equilibrado */
-  --primary: 158 85% 42%;
+  /* Brand Primary: Verde Esmeralda Elegante */
+  --primary: 158 80% 40%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 15% 94%;
+  --secondary: 220 15% 96%;
   --secondary-foreground: 220 20% 10%;
 
-  --muted: 220 15% 96%;
+  --muted: 220 15% 98%;
   --muted-foreground: 220 10% 45%;
 
-  /* Brand Highlight: #FF5C00 adjusted for light */
-  --accent: 22 100% 45%;
+  /* Brand Highlight: Laranja Minimalista */
+  --accent: 22 90% 48%;
   --accent-foreground: 0 0% 100%;
 
-  --border: 220 15% 92%;
-  --input: 220 15% 92%;
-  --ring: 158 85% 42%;
+  --border: 220 15% 94%;
+  --input: 220 15% 94%;
+  --ring: 158 80% 40%;
 
-  --radius: 1.25rem;
+  --radius: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Brand Dark Mode: #0D0D0D */
-    --background: 0 0% 5%;
-    --foreground: 0 0% 100%;
+    /* Brand Dark Mode: Profundo e Minimalista */
+    --background: 220 20% 3%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 100%;
+    --card: 220 20% 5%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 220 20% 5%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Brand Primary: Verde Esmeralda Neon/Cyber para Dark Mode */
+    /* Verde Primary: Neon Suave para Dark */
     --primary: 151 100% 45%;
     --primary-foreground: 151 100% 5%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 220 20% 8%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 63%;
+    --muted: 220 20% 8%;
+    --muted-foreground: 220 10% 60%;
 
     --accent: 22 100% 50%;
     --accent-foreground: 0 0% 100%;
@@ -97,29 +97,29 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
+    --border: 220 20% 10%;
+    --input: 220 20% 10%;
     --ring: 151 100% 45%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border/50;
   }
   body {
-    @apply bg-background text-foreground font-sans selection:bg-primary/30 selection:text-primary;
+    @apply bg-background text-foreground font-sans selection:bg-primary/20 selection:text-primary;
     -webkit-tap-highlight-color: transparent;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight font-bold;
+    @apply font-display tracking-tight font-semibold;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -131,19 +131,19 @@
 
 @layer utilities {
   .glass {
-    @apply bg-background/60 backdrop-blur-xl border border-black/5 dark:border-white/5;
+    @apply bg-background/70 backdrop-blur-md border border-foreground/5;
   }
   .glass-card {
-    @apply bg-card/60 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-black/50;
+    @apply bg-card/40 backdrop-blur-md border border-foreground/5 shadow-sm;
   }
   .text-glow {
-    text-shadow: 0 0 15px hsl(var(--primary) / 0.4);
+    text-shadow: none;
   }
   .accent-glow {
-    text-shadow: 0 0 15px hsl(var(--accent) / 0.4);
+    text-shadow: none;
   }
   .btn-primary-glow {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+    box-shadow: 0 4px 14px 0 hsl(var(--primary) / 0.15);
   }
 }
 

@@ -65,19 +65,44 @@ const ValueProp = ({ onNext }: { onNext: () => void }) => (
       <h2 className="text-3xl font-display font-bold italic">"Consistência vence a motivação."</h2>
     </div>
     
-    <div className="bg-card border border-border rounded-3xl p-6 h-48 flex items-end justify-between relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
-      {[40, 30, 55, 45, 70, 60, 90].map((h, i) => (
-        <motion.div 
-          key={i}
-          initial={{ height: 0 }} animate={{ height: `${h}%` }}
-          transition={{ delay: i * 0.1 }}
-          className="w-8 bg-primary rounded-t-lg shadow-lg shadow-primary/10"
-        />
-      ))}
+    <div className="bg-card border border-border rounded-3xl p-6 space-y-4">
+      <div className="flex justify-between items-end gap-3">
+        {[
+          { day: "Seg", value: 45, label: "treino" },
+          { day: "Ter", value: 60, label: "corrida" },
+          { day: "Qua", value: 55, label: "treino" },
+          { day: "Qui", value: 70, label: "crossfit" },
+          { day: "Sex", value: 65, label: "treino" },
+          { day: "Sab", value: 80, label: "yoga" },
+          { day: "Dom", value: 90, label: "treino" }
+        ].map((item, i) => (
+          <div key={i} className="flex flex-col items-center gap-2 flex-1">
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: `${item.value * 1.5}px`, opacity: 1 }}
+              transition={{ delay: i * 0.1, duration: 0.6 }}
+              className="w-full bg-gradient-to-t from-primary to-primary/70 rounded-t-lg shadow-lg shadow-primary/20 relative"
+            >
+              <motion.div 
+                className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-primary whitespace-nowrap"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.1 + 0.4 }}
+              >
+                {item.value}%
+              </motion.div>
+            </motion.div>
+            <p className="text-[9px] font-bold text-muted-foreground">{item.day}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground pt-2 border-t border-border">
+        <span>Semana de Exemplo</span>
+        <span className="font-bold text-primary">Média: 67%</span>
+      </div>
     </div>
     <p className="text-muted-foreground text-center">
-      Criamos o ambiente perfeito para você manter o ritmo a longo prazo, não apenas por uma semana.
+      Veja como nossos usuários mantêm consistência: treinos diários, provas registradas, sequência garantida.
     </p>
     <Button className="w-full h-16 text-lg font-bold rounded-2xl" onClick={onNext}>
       Entendi <ArrowRight className="ml-2" />

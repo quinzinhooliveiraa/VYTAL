@@ -1,4 +1,4 @@
-import { useLocation, useParams } from "wouter";
+import { Link, useLocation, useParams } from "wouter";
 import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, ArrowUpRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -105,10 +105,12 @@ export default function ChallengeDetails() {
                       <AvatarImage src={user.avatar} />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="font-bold text-sm">{user.name}</p>
-                      {!user.active && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Eliminado</Badge>}
-                    </div>
+                    <Link href={`/user/${user.name.toLowerCase().replace(' ', '_')}`}>
+                      <div className="flex-1 cursor-pointer hover:opacity-80">
+                        <p className="font-bold text-sm">{user.name}</p>
+                        {!user.active && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Eliminado</Badge>}
+                      </div>
+                    </Link>
                     <div className="text-right">
                       <p className="font-display font-bold text-lg">{user.score}</p>
                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Check-ins</p>
@@ -158,10 +160,12 @@ export default function ChallengeDetails() {
                             <AvatarImage src={`https://i.pravatar.cc/150?u=${c.user}`} />
                             <AvatarFallback>{c.user.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <div>
+                        <Link href={`/user/${c.user.toLowerCase().replace(' ', '_')}`}>
+                          <div className="cursor-pointer hover:opacity-80">
                             <p className="font-bold text-sm">{c.user}</p>
                             <p className="text-[10px] text-muted-foreground font-medium">{c.time}</p>
                           </div>
+                        </Link>
                         </div>
                         {c.flagged && <Badge variant="destructive" className="animate-pulse flex gap-1 items-center px-2 py-0.5"><AlertCircle size={10} /> Suspeito</Badge>}
                       </div>

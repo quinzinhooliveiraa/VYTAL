@@ -11,6 +11,8 @@ export default function PublicProfile() {
   const [, setLocation] = useLocation();
   const { username } = useParams();
   const [isFriend, setIsFriend] = useState(false);
+  const [friendStatus, setFriendStatus] = useState("none"); // none, requested, friends
+  const isPrivate = localStorage.getItem(`fitstake-private-${username}`) === "true" || username === "ana_clara";
 
   // Mock user data
   const user = {
@@ -65,82 +67,113 @@ export default function PublicProfile() {
               <h1 className="text-2xl font-display font-bold">{user.name}</h1>
               <p className="text-primary font-medium text-sm">@{user.username}</p>
             </div>
-            <Button 
-              variant={isFriend ? "outline" : "default"} 
-              className="rounded-xl h-10 px-6 font-bold"
-              onClick={() => setIsFriend(!isFriend)}
-            >
-              {isFriend ? "Amigo" : <><UserPlus size={18} className="mr-2" /> Adicionar</>}
-            </Button>
+            {friendStatus === "friends" ? (
+              <Button 
+                variant="outline"
+                className="rounded-xl h-10 px-6 font-bold"
+                onClick={() => setFriendStatus("none")}
+              >
+                Remover
+              </Button>
+            ) : friendStatus === "requested" ? (
+              <Button 
+                variant="secondary"
+                className="rounded-xl h-10 px-6 font-bold bg-muted"
+                onClick={() => setFriendStatus("none")}
+              >
+                Solicitado
+              </Button>
+            ) : (
+              <Button 
+                className="rounded-xl h-10 px-6 font-bold"
+                onClick={() => setFriendStatus(isPrivate ? "requested" : "friends")}
+              >
+                <UserPlus size={18} className="mr-2" /> Seguir
+              </Button>
+            )}
           </div>
           <p className="text-muted-foreground text-sm pt-2 leading-relaxed">
-            {user.bio}
+            {isPrivate && friendStatus !== "friends" ? "Este perfil é privado." : user.bio}
           </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="p-4 bg-card border-border rounded-2xl flex flex-col items-center text-center shadow-sm">
-            <Trophy className="text-yellow-500 mb-1" size={20} />
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Desafios Vencidos</p>
-            <p className="text-xl font-display font-bold">{user.stats.won}</p>
-          </Card>
-          <Card className="p-4 bg-card border-border rounded-2xl flex flex-col items-center text-center shadow-sm">
-            <Flame className="text-orange-500 mb-1" size={20} />
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reputação</p>
-            <p className="text-xl font-display font-bold">{user.stats.reputation}/5</p>
-          </Card>
-          {user.showEarnings && (
-            <Card className="p-4 bg-card border-border rounded-2xl flex flex-col items-center text-center shadow-sm col-span-2">
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Ganho na Plataforma</p>
-              <p className="text-2xl font-display font-bold text-primary">{user.stats.earned}</p>
-            </Card>
-          )}
-        </div>
-
-        {/* Secondary Stats */}
-        <div className="flex justify-around py-2 border-y border-border">
-          <div className="text-center">
-            <p className="text-lg font-bold">{user.stats.completed}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-medium">Completos</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{user.stats.moderations}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-medium">Moderações</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{friends.length}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-medium">Amigos</p>
-          </div>
-        </div>
-
-        {/* Friends */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-display font-bold flex items-center gap-2">
-              <Users size={18} className="text-primary" /> Amigos em Comum
-            </h3>
-            <Link href="/friends">
-              <Button variant="link" size="sm" className="text-xs text-primary p-0">Ver todos</Button>
-            </Link>
-          </div>
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-4">
-              {friends.map((friend) => (
-                <Link key={friend.username} href={`/user/${friend.username}`}>
-                  <div className="flex flex-col items-center gap-2 cursor-pointer">
-                    <Avatar className="w-14 h-14 border-2 border-primary/10">
-                      <AvatarImage src={friend.avatar} />
-                      <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-[10px] font-medium text-center">{friend.name.split(' ')[0]}</span>
-                  </div>
-                </Link>
-              ))}
+        {(!isPrivate || friendStatus === "friends") ? (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="p-4 bg-card border-border rounded-2xl flex flex-col items-center text-center shadow-sm">
+                <Trophy className="text-yellow-500 mb-1" size={20} />
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Desafios Vencidos</p>
+                <p className="text-xl font-display font-bold">{user.stats.won}</p>
+              </Card>
+              <Card className="p-4 bg-card border-border rounded-2xl flex flex-col items-center text-center shadow-sm">
+                <Flame className="text-orange-500 mb-1" size={20} />
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reputação</p>
+                <p className="text-xl font-display font-bold">{user.stats.reputation}/5</p>
+              </Card>
+              {user.showEarnings && (
+                <Card className="p-4 bg-card border-border rounded-2xl flex flex-col items-center text-center shadow-sm col-span-2">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Ganho na Plataforma</p>
+                  <p className="text-2xl font-display font-bold text-primary">{user.stats.earned}</p>
+                </Card>
+              )}
             </div>
-            <ScrollBar orientation="horizontal" className="hidden" />
-          </ScrollArea>
-        </div>
+
+            {/* Secondary Stats */}
+            <div className="flex justify-around py-2 border-y border-border">
+              <div className="text-center">
+                <p className="text-lg font-bold">{user.stats.completed}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-medium">Completos</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold">{user.stats.moderations}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-medium">Moderações</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold">{friends.length}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-medium">Amigos</p>
+              </div>
+            </div>
+
+            {/* Friends */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-display font-bold flex items-center gap-2">
+                  <Users size={18} className="text-primary" /> Amigos em Comum
+                </h3>
+                <Link href="/friends">
+                  <Button variant="link" size="sm" className="text-xs text-primary p-0">Ver todos</Button>
+                </Link>
+              </div>
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex gap-4">
+                  {friends.map((friend) => (
+                    <Link key={friend.username} href={`/user/${friend.username}`}>
+                      <div className="flex flex-col items-center gap-2 cursor-pointer">
+                        <Avatar className="w-14 h-14 border-2 border-primary/10">
+                          <AvatarImage src={friend.avatar} />
+                          <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-[10px] font-medium text-center">{friend.name.split(' ')[0]}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="hidden" />
+              </ScrollArea>
+            </div>
+          </>
+        ) : (
+          <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+              <ShieldCheck size={40} className="text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-display font-bold text-xl">Esta conta é privada</p>
+              <p className="text-sm text-muted-foreground">Siga esta conta para ver suas fotos, vídeos e desafios.</p>
+            </div>
+          </div>
+        )}
 
         {/* Suggestions */}
         <div className="space-y-4 pt-4">

@@ -11,9 +11,9 @@ export default function Profile() {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   
-  const [profileName, setProfileName] = useState(localStorage.getItem("fitstake-user-name") || "Alex Costa");
+  const [profileName, setProfileName] = useState(localStorage.getItem("fitstake-user-name") || "Seu Nome");
   const [bio, setBio] = useState(localStorage.getItem("fitstake-user-bio") || "Em busca da consistência diária. 🏃‍♂️💨\nCriador do #ProjetoVerão2024\n📍 São Paulo, SP");
-  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("fitstake-user-avatar") || "https://i.pravatar.cc/150?u=alex_costa");
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("fitstake-user-avatar") || "https://ui-avatars.com/api/?name=S+N&background=0D8BFF&color=fff");
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,7 +45,7 @@ export default function Profile() {
   return (
     <div className="pb-32 animate-in fade-in duration-500 bg-background min-h-screen">
       <header className="px-6 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-50 border-b border-border/50">
-        <h1 className="text-xl font-bold flex items-center gap-2">alex_costa <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">{profileName.toLowerCase().replace(' ', '_')} <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
         <div className="flex gap-2">
           <Link href="/settings">
             <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">

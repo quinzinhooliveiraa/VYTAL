@@ -10,11 +10,15 @@ export default function CheckIn() {
   const { id } = useParams();
   const [captured, setCaptured] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [checkinStep, setCheckinStep] = useState(1); // 1 for start, 2 for end (time based)
+  const [checkinStep, setCheckinStep] = useState(1); // 1: Selfie Início, 2: Local Início, 3: Selfie Fim, 4: Local Fim
   const [startPhoto, setStartPhoto] = useState<string | null>(null);
+  const [startPhotoBack, setStartPhotoBack] = useState<string | null>(null);
+  const [endPhotoFront, setEndPhotoFront] = useState<string | null>(null);
+  const [endPhotoBack, setEndPhotoBack] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [durationMins, setDurationMins] = useState<number>(0);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [cameraPermissionGranted, setCameraPermissionGranted] = useState(localStorage.getItem("fitstake-camera-granted") === "true");
   
   // Mock modality and validation type
@@ -41,10 +45,10 @@ export default function CheckIn() {
     }
   }, []);
 
-  const startCamera = async () => {
+  const startCamera = async (facing: "user" | "environment" = cameraFacing) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: checkinStep === 1 ? "user" : "environment" } 
+        video: { facingMode: facing } 
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -82,17 +86,32 @@ export default function CheckIn() {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      if (validationType === 'tempo' && checkinStep === 1) {
-        setStartPhoto(url);
-        setStartTime(Date.now());
-        setCheckinStep(2);
-        setCaptured(false);
+      if (validationType === 'tempo') {
+        if (checkinStep === 1) {
+           setStartPhoto(url);
+           setCameraFacing("environment");
+           setCheckinStep(2);
+        } else if (checkinStep === 2) {
+           setStartPhotoBack(url);
+           setStartTime(Date.now());
+           setCheckinStep(3);
+           setCaptured(false);
+           setCameraFacing("user");
+        } else if (checkinStep === 3) {
+           setEndPhotoFront(url);
+           setCameraFacing("environment");
+           setCheckinStep(4);
+        } else if (checkinStep === 4) {
+           setEndPhotoBack(url);
+           setPhotoUrl(url);
+           if (startTime) {
+             const diff = Math.floor((Date.now() - startTime) / 60000);
+             setDurationMins(diff < 1 ? 45 : diff);
+           }
+           setCaptured(true);
+        }
       } else {
         setPhotoUrl(url);
-        if (validationType === 'tempo' && startTime) {
-           const diff = Math.floor((Date.now() - startTime) / 60000);
-           setDurationMins(diff < 1 ? 45 : diff);
-        }
         setCaptured(true);
       }
     }
@@ -109,19 +128,36 @@ export default function CheckIn() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const url = canvas.toDataURL('image/jpeg');
         
-        if (validationType === 'tempo' && checkinStep === 1) {
-          setStartPhoto(url);
-          setStartTime(Date.now());
-          setCheckinStep(2);
-          setCaptured(false);
-        } else {
-          setPhotoUrl(url);
-          if (validationType === 'tempo' && startTime) {
-             const diff = Math.floor((Date.now() - startTime) / 60000);
-             // Mock 45 minutes if clicked instantly for demo purposes
-             setDurationMins(diff < 1 ? 45 : diff);
+        if (validationType === 'tempo') {
+          if (checkinStep === 1) {
+             setStartPhoto(url);
+             setCameraFacing("environment");
+             startCamera("environment");
+             setCheckinStep(2);
+          } else if (checkinStep === 2) {
+             setStartPhotoBack(url);
+             setStartTime(Date.now());
+             setCheckinStep(3);
+             setCaptured(false);
+             setCameraFacing("user");
+             stopCamera(); // Pause the camera until user is ready for end check-in
+          } else if (checkinStep === 3) {
+             setEndPhotoFront(url);
+             setCameraFacing("environment");
+             startCamera("environment");
+             setCheckinStep(4);
+          } else if (checkinStep === 4) {
+             setEndPhotoBack(url);
+             setPhotoUrl(url);
+             if (startTime) {
+               const diff = Math.floor((Date.now() - startTime) / 60000);
+               setDurationMins(diff < 1 ? 45 : diff);
+             }
+             setCaptured(true);
           }
-          setCaptured(true);
+        } else {
+           setPhotoUrl(url);
+           setCaptured(true);
         }
       }
     }
@@ -168,20 +204,47 @@ export default function CheckIn() {
             
             <div className="absolute top-1/4 px-6 text-center w-full pointer-events-none">
               <h2 className="text-2xl font-display font-bold mb-2 text-white drop-shadow-lg">
-                {validationType === 'tempo' ? (checkinStep === 1 ? 'Tire uma Selfie' : 'Mostre o Local') : `Check-in: ${modality}`}
+                {validationType === 'tempo' 
+                  ? (checkinStep === 1 ? (!startPhoto ? 'Tire uma Selfie (Início)' : 'Tirando...') 
+                      : checkinStep === 2 ? (!startPhotoBack ? 'Mostre o Local (Início)' : 'Tirando...')
+                      : checkinStep === 3 ? (!endPhotoFront ? 'Tire uma Selfie (Fim)' : 'Tirando...')
+                      : (!endPhotoBack ? 'Mostre o Local (Fim)' : 'Tirando...')) 
+                  : `Check-in: ${modality}`}
               </h2>
               <p className="text-white font-mono uppercase tracking-widest text-[10px] bg-black/50 inline-block px-3 py-1 rounded-full">
-                {validationType === 'tempo' ? (checkinStep === 1 ? 'Câmera Frontal' : 'Câmera Traseira') : 
-                 validationType === 'distancia' ? 'Foto do painel com km percorridos' :
+                {validationType === 'tempo' 
+                  ? (checkinStep === 1 ? 'Câmera Frontal' 
+                      : checkinStep === 2 ? 'Câmera Traseira'
+                      : checkinStep === 3 ? 'Câmera Frontal'
+                      : 'Câmera Traseira') 
+                 : validationType === 'distancia' ? 'Foto do painel com km percorridos' :
                  'Validação via Foto'}
               </p>
             </div>
 
-            {validationType === 'tempo' && checkinStep === 2 && startPhoto && (
+            {validationType === 'tempo' && checkinStep > 1 && startPhoto && (
               <div className="absolute top-24 left-6 p-1 bg-white/10 rounded-xl border border-white/20 backdrop-blur-md">
-                <p className="text-[8px] text-primary font-bold mb-1 uppercase px-1">Selfie Início</p>
+                <p className="text-[8px] text-primary font-bold mb-1 uppercase px-1">Selfie (Início)</p>
                 <div className="w-20 h-28 rounded-lg overflow-hidden border border-white/20">
-                  <img src={startPhoto} alt="Start" className="w-full h-full object-cover" />
+                  <img src={startPhoto} alt="Start Selfie" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            )}
+
+            {validationType === 'tempo' && checkinStep > 2 && startPhotoBack && (
+              <div className="absolute top-24 right-6 p-1 bg-white/10 rounded-xl border border-white/20 backdrop-blur-md">
+                <p className="text-[8px] text-primary font-bold mb-1 uppercase px-1">Local (Início)</p>
+                <div className="w-20 h-28 rounded-lg overflow-hidden border border-white/20">
+                  <img src={startPhotoBack} alt="Start Location" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            )}
+            
+            {validationType === 'tempo' && checkinStep > 3 && endPhotoFront && (
+              <div className="absolute bottom-32 left-6 p-1 bg-white/10 rounded-xl border border-white/20 backdrop-blur-md">
+                <p className="text-[8px] text-primary font-bold mb-1 uppercase px-1">Selfie (Fim)</p>
+                <div className="w-20 h-28 rounded-lg overflow-hidden border border-white/20">
+                  <img src={endPhotoFront} alt="End Selfie" className="w-full h-full object-cover" />
                 </div>
               </div>
             )}
@@ -194,9 +257,9 @@ export default function CheckIn() {
               className="w-full h-full object-cover opacity-90" 
             />
             
-            {(validationType === 'tempo' && startPhoto) && (
+            {(validationType === 'tempo' && endPhotoFront) && (
               <div className="absolute top-24 left-6 w-28 h-40 rounded-xl overflow-hidden border-2 border-white shadow-2xl">
-                 <img src={startPhoto} alt="Selfie" className="w-full h-full object-cover" />
+                 <img src={endPhotoFront} alt="Selfie Fim" className="w-full h-full object-cover" />
               </div>
             )}
 
@@ -221,14 +284,18 @@ export default function CheckIn() {
               className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
               onClick={() => {
                 if (validationType === 'tempo') {
-                  setCheckinStep(prev => prev === 1 ? 2 : 1);
+                  const newFacing = cameraFacing === "user" ? "environment" : "user";
+                  setCameraFacing(newFacing);
+                  startCamera(newFacing);
                 }
               }}
             >
               <RefreshCcw size={20} />
             </button>
             
-            {cameraActive ? (
+            {validationType === 'tempo' && checkinStep === 3 ? (
+               <div className="w-20 h-20" /> // Placeholder to keep spacing
+            ) : cameraActive ? (
               <button 
                 className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 relative group"
                 onClick={handleCapture}
@@ -301,6 +368,11 @@ export default function CheckIn() {
                 if (validationType === 'tempo') {
                   setCheckinStep(1);
                   setStartPhoto(null);
+                  setStartPhotoBack(null);
+                  setEndPhotoFront(null);
+                  setEndPhotoBack(null);
+                  setCameraFacing("user");
+                  startCamera("user");
                 }
               }}>Refazer</Button>
               <Button className="flex-[2] h-14 rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-[0_0_20px_rgba(34,197,94,0.3)] border-none" onClick={handleSubmit} disabled={submitting}>

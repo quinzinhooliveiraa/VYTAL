@@ -83,6 +83,8 @@ export default function Explorar() {
   const [selectedModality, setSelectedModality] = useState("Todos");
   const [sortBy, setSortBy] = useState("trending");
 
+  const userName = localStorage.getItem("fitstake-user-name") || "Atleta";
+  
   const filteredChallenges = PUBLIC_CHALLENGES.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase());
     const matchesModality = selectedModality === "Todos" || c.modality === selectedModality;

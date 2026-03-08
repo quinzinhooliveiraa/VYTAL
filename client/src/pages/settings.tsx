@@ -76,6 +76,10 @@ export default function Settings() {
               <Button variant="link" size="sm" className="text-primary text-[10px] h-auto p-0 font-bold uppercase tracking-widest">Configurar</Button>
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
+              <div className="flex items-center gap-3"><Eye size={18} className="text-foreground" /> <span className="text-sm font-bold">Perfil Privado</span></div>
+              <Switch />
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
               <div className="flex items-center gap-3"><Eye size={18} className="text-foreground" /> <span className="text-sm font-bold">Privacidade de Ganhos</span></div>
               <Switch checked={showEarnings} onCheckedChange={(checked) => {
                 setShowEarnings(checked);

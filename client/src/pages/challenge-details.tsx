@@ -125,8 +125,8 @@ export default function ChallengeDetails() {
                       <AvatarImage src={user.avatar} />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <Link href={`/user/${user.name.split(' ')[0].toLowerCase()}`}>
-                      <div className="flex-1 cursor-pointer hover:opacity-80">
+                    <Link href={`/user/${user.name.split(' ')[0].toLowerCase().replace('.', '')}`} className="flex-1">
+                      <div className="cursor-pointer hover:opacity-80">
                         <p className="font-bold text-sm">{user.name}</p>
                         {!user.active && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Eliminado</Badge>}
                       </div>

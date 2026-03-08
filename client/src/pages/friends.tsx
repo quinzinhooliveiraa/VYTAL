@@ -49,12 +49,15 @@ export default function Friends() {
 
       <div className="p-6">
         <Tabs defaultValue="friends" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-12 rounded-xl bg-muted p-1 mb-6">
-            <TabsTrigger value="friends" className="rounded-lg font-bold flex gap-2">
-              <UserCheck size={16} /> Meus Amigos
+          <TabsList className="grid w-full grid-cols-3 h-12 rounded-xl bg-muted p-1 mb-6">
+            <TabsTrigger value="friends" className="rounded-lg font-bold text-xs flex gap-1">
+              <Users size={14} /> Seguindo
             </TabsTrigger>
-            <TabsTrigger value="explore" className="rounded-lg font-bold flex gap-2">
-              <Sparkles size={16} /> Sugestões
+            <TabsTrigger value="followers" className="rounded-lg font-bold text-xs flex gap-1">
+              <UserCheck size={14} /> Seguidores
+            </TabsTrigger>
+            <TabsTrigger value="explore" className="rounded-lg font-bold text-xs flex gap-1">
+              <Sparkles size={14} /> Sugestões
             </TabsTrigger>
           </TabsList>
 
@@ -67,24 +70,22 @@ export default function Friends() {
                   animate={{ opacity: 1, scale: 1 }}
                   key={friend.username}
                 >
-                  <Link href={`/user/${friend.username}`}>
-                    <div className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer active:scale-[0.98] transition-all">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={friend.avatar} />
-                          <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-bold text-sm">{friend.name}</p>
-                          <p className="text-[10px] text-muted-foreground">@{friend.username}</p>
-                          <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{friend.bio}"</p>
-                        </div>
+                  <div onClick={() => setLocation(`/user/${friend.username}`)} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer active:scale-[0.98] hover:border-primary/50 transition-all">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={friend.avatar} />
+                        <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{friend.name}</p>
+                        <p className="text-[10px] text-muted-foreground">@{friend.username}</p>
+                        <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{friend.bio}"</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-muted-foreground">
-                        <ChevronLeft className="rotate-180" size={20} />
-                      </Button>
                     </div>
-                  </Link>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); }}>
+                      <ChevronLeft className="rotate-180" size={20} />
+                    </Button>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -96,26 +97,45 @@ export default function Friends() {
             )}
           </TabsContent>
 
+          <TabsContent value="followers" className="space-y-4">
+            {suggested.slice(0, 2).map((sug) => (
+              <div key={sug.username} onClick={() => setLocation(`/user/${sug.username}`)} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={sug.avatar} />
+                    <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-bold text-sm">{sug.name}</p>
+                    <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
+                    <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{sug.bio}"</p>
+                  </div>
+                </div>
+                <Button size="sm" className="rounded-xl font-bold bg-primary text-primary-foreground" onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("Seguindo " + sug.name); }}>
+                  <UserPlus size={16} className="mr-1" /> Seguir de volta
+                </Button>
+              </div>
+            ))}
+          </TabsContent>
+
           <TabsContent value="explore" className="space-y-4">
             {suggested.map((sug) => (
-              <Link key={sug.username} href={`/user/${sug.username}`}>
-                <div className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={sug.avatar} />
-                      <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-bold text-sm">{sug.name}</p>
-                      <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
-                      <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{sug.bio}"</p>
-                    </div>
+              <div key={sug.username} onClick={() => setLocation(`/user/${sug.username}`)} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={sug.avatar} />
+                    <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-bold text-sm">{sug.name}</p>
+                    <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
+                    <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{sug.bio}"</p>
                   </div>
-                  <Button size="sm" className="rounded-xl font-bold bg-primary text-primary-foreground" onClick={(e) => e.preventDefault()}>
-                    <UserPlus size={16} className="mr-1" /> Seguir
-                  </Button>
                 </div>
-              </Link>
+                <Button size="sm" className="rounded-xl font-bold bg-primary text-primary-foreground" onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("Seguindo " + sug.name); }}>
+                  <UserPlus size={16} className="mr-1" /> Seguir
+                </Button>
+              </div>
             ))}
           </TabsContent>
         </Tabs>

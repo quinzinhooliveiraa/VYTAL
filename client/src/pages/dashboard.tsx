@@ -52,15 +52,26 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Bem-vindo de volta</p>
           <h1 className="text-3xl font-display font-bold">{userName}</h1>
         </div>
-        <Link href="/profile">
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-bold text-xl cursor-pointer shadow-lg shadow-black/10"
-          >
-            {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : initials}
-          </motion.div>
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/wallet">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-14 h-14 rounded-2xl border border-border bg-card flex items-center justify-center text-foreground cursor-pointer shadow-sm"
+            >
+              <Wallet size={24} />
+            </motion.div>
+          </Link>
+          <Link href="/profile">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-bold text-xl cursor-pointer shadow-lg shadow-black/10"
+            >
+              {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : initials}
+            </motion.div>
+          </Link>
+        </div>
       </header>
 
       {/* Resumo Financeiro - Premium Branding */}
@@ -79,11 +90,7 @@ export default function Dashboard() {
               <p className="text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Saldo Total</p>
               <h2 className="text-5xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,133,0.3)]">{availableBalance}</h2>
             </div>
-            <Link href="/wallet">
-              <Button size="icon" className="rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 border-none w-12 h-12">
-                <Wallet size={20} />
-              </Button>
-            </Link>
+            <div className="w-12 h-12"></div> {/* Placeholder to keep layout balanced */}
           </div>
           
           <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/10 relative z-10">

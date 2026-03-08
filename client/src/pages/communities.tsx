@@ -85,7 +85,7 @@ export default function Communities() {
                       <span className="text-xs font-bold">{comm.active} desafios</span>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs font-bold border-primary text-primary hover:bg-primary/5">
+                  <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs font-bold border-primary text-primary hover:bg-primary/5" onClick={(e) => { e.stopPropagation(); setLocation('/chat-hub'); }}>
                     Participar
                   </Button>
                 </div>

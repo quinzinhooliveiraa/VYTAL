@@ -25,6 +25,7 @@ import Settings from "@/pages/settings";
 import Messages from "@/pages/messages";
 import Communities from "@/pages/communities";
 import CreateCommunity from "@/pages/create-community";
+import ChatHub from "@/pages/chat-hub";
 
 function Router() {
   const [location] = useLocation();
@@ -69,6 +70,7 @@ function Router() {
         <Route path="/user/:username" component={PublicProfile} />
         <Route path="/friends" component={Friends} />
         <Route path="/messages/:username" component={Messages} />
+        <Route path="/chat-hub" component={ChatHub} />
         <Route path="/communities" component={Communities} />
         <Route path="/create-community" component={CreateCommunity} />
         <Route component={NotFound} />

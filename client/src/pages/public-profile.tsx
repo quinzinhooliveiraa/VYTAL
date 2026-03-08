@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useParams, Link } from "wouter";
 import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, ArrowUpRight, Flame, MapPin, Swords, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ export default function PublicProfile() {
   const [friendStatus, setFriendStatus] = useState("none"); // none, requested, friends
   const isPrivate = localStorage.getItem(`fitstake-private-${username}`) === "true" || username === "ana_clara";
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [username]);
+
   // Mock user data
   // Retrieve friends and their bios from the friends page mock data
   const getMockBio = (uname: string) => {
@@ -27,9 +31,11 @@ export default function PublicProfile() {
       "maria": "Sempre em busca da melhor versão! 🏋️‍♀️",
       "alex": "Criador de desafios e focado na consistência.",
       "joão": "Bora pra cima! Mais um dia concluído. 🔥",
-      "ana": "Corredora de fim de semana."
+      "ana": "Corredora de fim de semana.",
+      "gabsouza": "Treino em casa.",
+      "rod_oliver": "Ciclismo é vida."
     };
-    return bios[uname] || "Em busca da consistência diária.";
+    return bios[uname?.toLowerCase()] || "Em busca da consistência diária.";
   };
 
   const getMockName = (uname: string) => {
@@ -43,9 +49,11 @@ export default function PublicProfile() {
       "maria": "Maria S.",
       "alex": "Alex C.",
       "joão": "João P.",
-      "ana": "Ana L."
+      "ana": "Ana L.",
+      "gabsouza": "Gabriel Souza",
+      "rod_oliver": "Rodrigo Oliver"
     };
-    return names[uname] || uname;
+    return names[uname?.toLowerCase()] || uname;
   };
 
   const currentUsername = username || "marcos_silva";
@@ -66,14 +74,14 @@ export default function PublicProfile() {
   };
 
   const friends = [
-    { name: "Ana Clara", username: "anaclara", avatar: "https://i.pravatar.cc/150?u=1" },
-    { name: "Lucas Melo", username: "lucasm", avatar: "https://i.pravatar.cc/150?u=2" },
-    { name: "Bia Santos", username: "biasantos", avatar: "https://i.pravatar.cc/150?u=3" },
+    { name: "Ana Clara", username: "anaclara", avatar: "https://i.pravatar.cc/150?u=anaclara" },
+    { name: "Lucas Melo", username: "lucasm", avatar: "https://i.pravatar.cc/150?u=lucasm" },
+    { name: "Bia Santos", username: "biasantos", avatar: "https://i.pravatar.cc/150?u=biasantos" },
   ];
 
   const suggested = [
-    { name: "Felipe Góes", username: "felipegoes", avatar: "https://i.pravatar.cc/150?u=4" },
-    { name: "Carol Lima", username: "carollima", avatar: "https://i.pravatar.cc/150?u=5" },
+    { name: "Felipe Góes", username: "felipegoes", avatar: "https://i.pravatar.cc/150?u=felipegoes" },
+    { name: "Carol Lima", username: "carollima", avatar: "https://i.pravatar.cc/150?u=carollima" },
   ];
 
   const activeChallenges = [
@@ -246,7 +254,7 @@ export default function PublicProfile() {
               </div>
               <div className="text-center cursor-pointer hover:opacity-80" onClick={() => setLocation("/friends")}>
                 <p className="text-lg font-bold">{friends.length}</p>
-                <p className="text-[10px] text-muted-foreground uppercase font-medium">Amigos</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-medium">Seguidores</p>
               </div>
             </div>
 
@@ -256,22 +264,18 @@ export default function PublicProfile() {
                 <h3 className="font-display font-bold flex items-center gap-2">
                   <Users size={18} className="text-primary" /> Amigos em Comum
                 </h3>
-                <Link href="/friends">
-                  <Button variant="link" size="sm" className="text-xs text-primary p-0">Ver todos</Button>
-                </Link>
+                <Button variant="link" size="sm" className="text-xs text-primary p-0" onClick={() => setLocation("/friends")}>Ver todos</Button>
               </div>
               <ScrollArea className="w-full whitespace-nowrap">
                 <div className="flex gap-4">
                   {friends.map((friend) => (
-                    <Link key={friend.username} href={`/user/${friend.username}`}>
-                      <div className="flex flex-col items-center gap-2 cursor-pointer">
-                        <Avatar className="w-14 h-14 border-2 border-primary/10">
-                          <AvatarImage src={friend.avatar} />
-                          <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-[10px] font-medium text-center">{friend.name.split(' ')[0]}</span>
-                      </div>
-                    </Link>
+                    <div key={friend.username} onClick={() => setLocation(`/user/${friend.username}`)} className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                      <Avatar className="w-14 h-14 border-2 border-primary/10">
+                        <AvatarImage src={friend.avatar} />
+                        <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-[10px] font-medium text-center">{friend.name.split(' ')[0]}</span>
+                    </div>
                   ))}
                 </div>
                 <ScrollBar orientation="horizontal" className="hidden" />
@@ -295,21 +299,19 @@ export default function PublicProfile() {
           <h3 className="font-display font-bold">Sugestões para você</h3>
           <div className="space-y-3">
             {suggested.map((sug) => (
-              <Link key={sug.username} href={`/user/${sug.username}`}>
-                <div className="flex items-center justify-between p-3 bg-card rounded-2xl border border-border cursor-pointer hover:border-primary/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage src={sug.avatar} />
-                      <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-bold">{sug.name}</p>
-                      <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
-                    </div>
+              <div key={sug.username} onClick={() => setLocation(`/user/${sug.username}`)} className="flex items-center justify-between p-3 bg-card rounded-2xl border border-border cursor-pointer hover:border-primary/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={sug.avatar} />
+                    <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-bold">{sug.name}</p>
+                    <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
                   </div>
-                  <Button size="sm" variant="outline" className="rounded-lg h-8 text-xs font-bold border-primary text-primary hover:bg-primary/5" onClick={(e) => { e.preventDefault(); /* Prevent link navigation just to show button state change if wanted, or let it navigate */ }}>Seguir</Button>
                 </div>
-              </Link>
+                <Button size="sm" variant="outline" className="rounded-lg h-8 text-xs font-bold border-primary text-primary hover:bg-primary/5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("Seguindo " + sug.name); }}>Seguir</Button>
+              </div>
             ))}
           </div>
         </div>

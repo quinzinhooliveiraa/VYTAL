@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Compass, PlusSquare, Wallet, User, Users } from "lucide-react";
+import { Home, Compass, PlusSquare, MessageCircle, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ export function BottomNav() {
     { href: "/dashboard", icon: Home, label: "Início" },
     { href: "/explore", icon: Compass, label: "Explorar" },
     { href: "/create", icon: PlusSquare, label: "Criar" },
-    { href: "/communities", icon: Users, label: "Comunidades" },
+    { href: "/chat-hub", icon: MessageCircle, label: "Chats", badge: 3 },
     { href: "/profile", icon: User, label: "Perfil" },
   ];
 
@@ -18,7 +18,7 @@ export function BottomNav() {
     <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-safe">
       <div className="w-full max-w-md bg-background/80 backdrop-blur-xl border-t px-4 py-4 flex justify-between items-center relative">
         {navItems.map((item) => {
-          const isActive = location === item.href;
+          const isActive = location === item.href || (item.href === "/chat-hub" && location.startsWith("/messages"));
           const Icon = item.icon;
           
           return (
@@ -38,7 +38,14 @@ export function BottomNav() {
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                <div className="relative">
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  {item.badge && (
+                    <div className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center border-2 border-background">
+                      {item.badge}
+                    </div>
+                  )}
+                </div>
                 <span className="text-[9px] font-medium tracking-wide">
                   {item.label}
                 </span>

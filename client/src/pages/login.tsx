@@ -25,6 +25,17 @@ export default function Login() {
     }
   };
 
+  const handleSocialAuth = (provider: string) => {
+    localStorage.setItem("fitstake-user-email", `usuario@${provider}.com`);
+    
+    if (isLogin) {
+      localStorage.setItem("fitstake-onboarding-done", "true");
+      setLocation("/dashboard");
+    } else {
+      setLocation("/onboarding");
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] flex flex-col p-6 items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8">
@@ -64,10 +75,18 @@ export default function Login() {
             </div>
           </div>
 
-          <Button variant="outline" className="w-full h-14 rounded-xl font-bold flex gap-3 border-border">
+          <Button 
+            variant="outline" 
+            className="w-full h-14 rounded-xl font-bold flex gap-3 border-border"
+            onClick={() => handleSocialAuth("apple")}
+          >
             <Apple size={20} fill="currentColor" /> {isLogin ? "Entrar" : "Criar conta"} com Apple
           </Button>
-          <Button variant="outline" className="w-full h-14 rounded-xl font-bold flex gap-3 border-border">
+          <Button 
+            variant="outline" 
+            className="w-full h-14 rounded-xl font-bold flex gap-3 border-border"
+            onClick={() => handleSocialAuth("google")}
+          >
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="" /> {isLogin ? "Entrar" : "Criar conta"} com Google
           </Button>
         </div>

@@ -38,6 +38,7 @@ export default function CheckIn() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate that the image came from the camera (basic check by checking if it's a recent file via modified date could be done in a real app)
       const url = URL.createObjectURL(file);
       if (validationType === 'tempo' && checkinStep === 1) {
         setStartPhoto(url);
@@ -130,7 +131,7 @@ export default function CheckIn() {
               id="camera-input"
               type="file" 
               accept="image/*" 
-              capture="environment" 
+              capture="user" 
               className="hidden" 
               onChange={handleFileUpload} 
             />

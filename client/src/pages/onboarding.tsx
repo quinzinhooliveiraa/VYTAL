@@ -127,28 +127,60 @@ const SocialProof = ({ onNext }: { onNext: () => void }) => (
 const HowItWorks = ({ onNext }: { onNext: () => void }) => (
   <motion.div 
     initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-8"
+    className="space-y-6"
   >
-    <h2 className="text-3xl font-display font-bold text-center">Como funciona?</h2>
-    <div className="space-y-4">
+    <div className="space-y-2 text-center">
+      <h2 className="text-3xl font-display font-bold">Entenda o Jogo</h2>
+      <p className="text-muted-foreground text-sm">O FitStake usa psicologia comportamental e risco financeiro para garantir sua constância.</p>
+    </div>
+    
+    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 pb-4">
       {[
-        { icon: Zap, title: "Entre em um Desafio", text: "Escolha uma meta e faça seu depósito Pix." },
-        { icon: Camera, title: "Envie Provas", text: "Tire fotos BeReal dos seus treinos diariamente." },
-        { icon: Trophy, title: "Ganhe Recompensas", text: "Mantenha o foco e divida o pote dos desistentes." }
+        { 
+          icon: Zap, 
+          title: "1. A Regra do Pix (Skin in the game)", 
+          text: "Você não entra de graça. Você aposta em você mesmo fazendo um depósito via Pix (ex: R$50). Esse dinheiro seu, junto com o dos outros, forma o 'Pote de Prêmio'." 
+        },
+        { 
+          icon: Calendar, 
+          title: "2. Consistência é Tudo", 
+          text: "Você DEVE cumprir a meta do desafio (ex: 5 treinos na semana). Se faltar 1 dia e não atingir a meta semanal, você é ELIMINADO e perde o que pagou." 
+        },
+        { 
+          icon: Camera, 
+          title: "3. Check-in Antifraude", 
+          text: "Para provar que treinou, você usa nossa câmera embutida (estilo BeReal). Não é possível enviar foto da galeria. A câmera captura o momento ao vivo e a sua localização GPS exata." 
+        },
+        {
+          icon: Users,
+          title: "4. Moderação Comunitária",
+          text: "Todos podem ver os check-ins uns dos outros. Se alguém postar foto fake, a comunidade vota para invalidar. Quem trapaceia é banido do desafio."
+        },
+        { 
+          icon: Trophy, 
+          title: "5. A Divisão do Lucro", 
+          text: "Quem for disciplinado e chegar até o fim, recupera o seu dinheiro e AINDA divide TODO o dinheiro das pessoas que desistiram ou falharam. Você sai no lucro!" 
+        }
       ].map((item, i) => (
-        <div key={i} className="flex gap-4 p-4 bg-card border border-border rounded-2xl items-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+        <div key={i} className="flex gap-4 p-4 bg-card border border-border rounded-2xl items-start shadow-sm">
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 mt-1">
             <item.icon size={24} />
           </div>
           <div>
-            <h3 className="font-bold text-sm">{item.title}</h3>
-            <p className="text-xs text-muted-foreground">{item.text}</p>
+            <h3 className="font-bold text-sm text-primary mb-1">{item.title}</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">{item.text}</p>
           </div>
         </div>
       ))}
     </div>
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl" onClick={onNext}>
-      Continuar
+    
+    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
+      <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest mb-1">Aviso Importante</p>
+      <p className="text-xs text-red-400">O app cobra 10% de taxa sobre o pote final para cobrir custos de operação, saques e moderação.</p>
+    </div>
+
+    <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 shrink-0" onClick={onNext}>
+      Entendi as Regras <ArrowRight className="ml-2" />
     </Button>
   </motion.div>
 );

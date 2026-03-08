@@ -50,7 +50,7 @@ export default function ChatHub() {
           <TabsList className="grid grid-cols-3 h-12 rounded-xl bg-muted p-1 mb-6">
             <TabsTrigger value="direct" className="rounded-lg font-bold">Privado</TabsTrigger>
             <TabsTrigger value="challenges" className="rounded-lg font-bold">Desafios</TabsTrigger>
-            <TabsTrigger value="communities" className="rounded-lg font-bold">Tribos</TabsTrigger>
+            <TabsTrigger value="communities" className="rounded-lg font-bold">Comunidades</TabsTrigger>
           </TabsList>
 
           <TabsContent value="direct" className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
@@ -123,7 +123,7 @@ export default function ChatHub() {
                 </div>
                 <div>
                   <p className="font-bold text-sm text-primary">Explorar Comunidades</p>
-                  <p className="text-[10px] text-primary/80">Encontre tribos do seu esporte</p>
+                  <p className="text-[10px] text-primary/80">Encontre grupos do seu esporte</p>
                 </div>
               </div>
               <ChevronRight size={20} className="text-primary" />

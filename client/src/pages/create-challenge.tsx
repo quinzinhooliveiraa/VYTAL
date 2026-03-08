@@ -79,7 +79,7 @@ export default function CreateChallenge() {
         </button>
         <h1 className="font-display font-bold text-xl">Criar Desafio</h1>
         <div className="ml-auto text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-          {step < 6 ? `Passo ${step}/5` : `Concluído`}
+          {step < 5 ? `Passo ${step}/4` : `Concluído`}
         </div>
       </header>
 
@@ -232,65 +232,96 @@ export default function CreateChallenge() {
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Sistema de Pontuação</h2>
-              <p className="text-muted-foreground">Como os vencedores serão definidos?</p>
+              <h2 className="text-2xl font-bold">Sistema de Pontuação & Validação</h2>
+              <p className="text-muted-foreground">Como funciona e como será medido o progresso?</p>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
               {[
-                { id: "checkin", title: "Check-in Diário", icon: Camera, description: "Todos que completarem a meta dividem o prêmio igualmente." },
-                { id: "ranking", title: "Ranking de Performance", icon: Trophy, description: "O prêmio é dividido entre os TOP 3 que mais acumularem pontos." },
-                { id: "survival", title: "Sobrevivência", icon: Flame, description: "O último a sobrar ou quem não falhar nenhum dia leva tudo." }
+                { 
+                  id: "checkin", 
+                  title: "Check-in Diário", 
+                  icon: Camera, 
+                  description: "Todos que completarem a meta dividem o prêmio igualmente.",
+                  methods: ["foto"]
+                },
+                { 
+                  id: "ranking", 
+                  title: "Ranking de Performance", 
+                  icon: Trophy, 
+                  description: "O prêmio é dividido entre os TOP 3 que mais acumularem pontos.",
+                  methods: ["distancia", "repeticoes", "tempo", "combinacao"]
+                },
+                { 
+                  id: "survival", 
+                  title: "Sobrevivência", 
+                  icon: Flame, 
+                  description: "O último a sobrar ou quem não falhar nenhum dia leva tudo.",
+                  methods: ["foto", "tempo"]
+                }
               ].map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setScoringSystem(item.id)}
-                  className={`w-full text-left p-5 rounded-3xl border-2 transition-all space-y-2 ${scoringSystem === item.id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted'}`}
+                  className={`w-full text-left p-5 rounded-3xl border-2 transition-all space-y-4 ${scoringSystem === item.id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted'}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-xl ${scoringSystem === item.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                       <item.icon size={20} />
                     </div>
-                    <span className="font-bold">{item.title}</span>
+                    <div>
+                      <p className="font-bold">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
                 </button>
               ))}
             </div>
 
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(4)}>
+            {scoringSystem && (
+              <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 animate-in zoom-in-95">
+                <div className="space-y-2">
+                  <p className="text-sm font-bold text-primary">Método de Validação</p>
+                  <p className="text-xs text-muted-foreground">
+                    Como o progresso será medido e comprovado para este sistema:
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {validationTypes
+                    .filter(type => {
+                      const recommendedMethods = {
+                        checkin: ["foto"],
+                        ranking: ["distancia", "repeticoes", "tempo", "combinacao"],
+                        survival: ["foto", "tempo"]
+                      };
+                      return recommendedMethods[scoringSystem as keyof typeof recommendedMethods]?.includes(type.id);
+                    })
+                    .map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => setValidationType(type.id)}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/20 text-primary' : 'border-primary/30 bg-primary/5 text-muted-foreground hover:bg-primary/10'}`}
+                      >
+                        <type.icon size={16} />
+                        <span className="text-[10px] font-semibold text-center">{type.label}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            <Button 
+              className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" 
+              onClick={() => setStep(4)}
+              disabled={!scoringSystem || !validationType}
+            >
               Próximo
             </Button>
           </div>
         )}
 
         {step === 4 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Método de Validação</h2>
-              <p className="text-muted-foreground">Como os check-ins serão validados?</p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {validationTypes.map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => setValidationType(type.id)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
-                >
-                  <type.icon size={18} />
-                  <span className="text-xs font-semibold text-center">{type.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(5)}>
-              Próximo
-            </Button>
-          </div>
-        )}
-
-        {step === 5 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-bold">Defina o Valor da Entrada</h2>
@@ -392,7 +423,7 @@ export default function CreateChallenge() {
           </div>
         )}
 
-        {step === 6 && (
+        {step === 5 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 flex flex-col items-center justify-center py-16">
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}

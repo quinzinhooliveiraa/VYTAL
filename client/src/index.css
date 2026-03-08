@@ -38,7 +38,7 @@
 }
 
 :root {
-  /* Light Mode - High Contrast & Modern */
+  /* Light Mode - Elegante e Harmonioso */
   --background: 0 0% 100%;
   --foreground: 240 10% 4%;
 
@@ -48,8 +48,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 4%;
 
-  /* Brand Primary: Verde Floresta Profundo (Elegante e Seguro) */
-  --primary: 162 76% 21%;
+  /* Brand Primary: Verde Escuro Harmônico e Natural */
+  --primary: 165 50% 30%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 240 5% 96%;
@@ -58,20 +58,20 @@
   --muted: 240 5% 98%;
   --muted-foreground: 240 4% 46%;
 
-  /* Brand Highlight: Ouro/Bronze para Contraste */
-  --accent: 38 92% 50%;
+  /* Brand Highlight: Âmbar Suave */
+  --accent: 38 75% 48%;
   --accent-foreground: 0 0% 100%;
 
   --border: 240 6% 90%;
   --input: 240 6% 90%;
-  --ring: 162 76% 21%;
+  --ring: 165 50% 30%;
 
   --radius: 0.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Dark Mode - Obsidian Style */
+    /* Dark Mode - Profundo e Harmônico */
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
 
@@ -81,9 +81,9 @@
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
 
-    /* Verde Primary: Menta Vibrante para Dark */
-    --primary: 158 95% 45%;
-    --primary-foreground: 158 100% 5%;
+    /* Verde Primary: Verde Escuro Natural para Dark */
+    --primary: 165 55% 40%;
+    --primary-foreground: 165 100% 5%;
 
     --secondary: 240 10% 10%;
     --secondary-foreground: 0 0% 98%;
@@ -91,7 +91,7 @@
     --muted: 240 10% 10%;
     --muted-foreground: 240 5% 65%;
 
-    --accent: 38 92% 50%;
+    --accent: 38 75% 48%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -99,7 +99,7 @@
 
     --border: 240 10% 12%;
     --input: 240 10% 12%;
-    --ring: 158 95% 45%;
+    --ring: 165 55% 40%;
   }
 }
 

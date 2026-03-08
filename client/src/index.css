@@ -38,68 +38,69 @@
 }
 
 :root {
-  /* Light Mode - Elegante e Harmonioso */
+  /* Light Mode - Normal com Elementos Coloridos */
   --background: 0 0% 100%;
-  --foreground: 240 10% 4%;
+  --foreground: 0 0% 20%;
 
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 4%;
+  --card-foreground: 0 0% 20%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 4%;
+  --popover-foreground: 0 0% 20%;
 
-  /* Brand Primary: Vermelho Vibrante que Incentiva Ação */
-  --primary: 0 85% 50%;
+  /* Brand Primary: Vermelho Vibrante para Ação */
+  --primary: 0 80% 55%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 10% 4%;
+  --secondary: 0 0% 95%;
+  --secondary-foreground: 0 0% 20%;
 
-  --muted: 240 5% 98%;
-  --muted-foreground: 240 4% 46%;
+  --muted: 0 0% 93%;
+  --muted-foreground: 0 0% 50%;
 
-  /* Brand Highlight: Vermelho Mais Brilhante */
-  --accent: 0 85% 60%;
+  /* Brand Highlight: Verde Vibrante */
+  --accent: 140 70% 45%;
   --accent-foreground: 0 0% 100%;
 
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
-  --ring: 0 85% 50%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 0 80% 55%;
 
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Dark Mode - Profundo e Harmônico */
-    --background: 240 10% 4%;
-    --foreground: 0 0% 98%;
+    /* Dark Mode - Normal com Elementos Coloridos */
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
 
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Brand Primary: Vermelho Vibrante que Incentiva Ação */
-    --primary: 0 85% 60%;
+    /* Brand Primary: Vermelho Vibrante para Ação */
+    --primary: 0 80% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 10% 10%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 240 10% 10%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 0 85% 70%;
+    /* Brand Highlight: Verde Vibrante */
+    --accent: 140 70% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 10% 12%;
-    --input: 240 10% 12%;
-    --ring: 0 85% 60%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 80% 60%;
   }
 }
 

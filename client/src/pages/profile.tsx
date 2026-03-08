@@ -1,24 +1,17 @@
-import { ArrowDownLeft, ArrowUpRight, History, Settings, LogOut, Moon, Sun, ShieldCheck, CheckCircle2, Camera, Eye, Smartphone, Palette, CreditCard, UserCircle, Trophy, Flame, Medal, Award, PlusCircle, LayoutGrid, Bookmark } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/components/theme-provider";
-import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
+import { useState } from "react";
 
 export default function Profile() {
-  const { theme, setTheme } = useTheme();
-  const [showEarnings, setShowEarnings] = useState(true);
-  const [activeTab, setActiveTab] = useState("posts");
+  const [activeTab, setActiveTab] = useState("ativos");
 
   const stats = [
-    { label: "Publicações", value: "34" },
-    { label: "Desafios", value: "12" },
     { label: "Seguidores", value: "1.2k" },
+    { label: "Seguindo", value: "245" },
+    { label: "Desafios", value: "12" },
   ];
 
   return (
@@ -26,12 +19,11 @@ export default function Profile() {
       <header className="px-6 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-50 border-b border-border/50">
         <h1 className="text-xl font-bold flex items-center gap-2">alex_costa <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
-            <PlusCircle size={22} />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
-            <Settings size={22} />
-          </Button>
+          <Link href="/settings">
+            <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
+              <Settings size={22} />
+            </Button>
+          </Link>
         </div>
       </header>
 
@@ -48,7 +40,7 @@ export default function Profile() {
           </div>
           <div className="flex-1 grid grid-cols-3 gap-2 text-center">
             {stats.map((stat, i) => (
-              <div key={i} className="flex flex-col">
+              <div key={i} className="flex flex-col cursor-pointer hover:opacity-70 transition-opacity">
                 <span className="font-bold text-lg">{stat.value}</span>
                 <span className="text-[10px] text-muted-foreground">{stat.label}</span>
               </div>
@@ -90,54 +82,75 @@ export default function Profile() {
         {/* Tabs */}
         <div className="flex border-t border-border/50 pt-1">
           <button 
-            onClick={() => setActiveTab("posts")} 
-            className={`flex-1 py-3 flex justify-center items-center gap-2 border-b-2 transition-all ${activeTab === 'posts' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
+            onClick={() => setActiveTab("ativos")} 
+            className={`flex-1 py-3 flex justify-center items-center gap-2 border-b-2 transition-all ${activeTab === 'ativos' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
           >
-            <LayoutGrid size={20} />
+            <Zap size={18} />
+            <span className="text-xs font-bold">Ativos</span>
           </button>
           <button 
-            onClick={() => setActiveTab("saved")} 
-            className={`flex-1 py-3 flex justify-center items-center gap-2 border-b-2 transition-all ${activeTab === 'saved' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
+            onClick={() => setActiveTab("concluidos")} 
+            className={`flex-1 py-3 flex justify-center items-center gap-2 border-b-2 transition-all ${activeTab === 'concluidos' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
           >
-            <Bookmark size={20} />
+            <History size={18} />
+            <span className="text-xs font-bold">Concluídos</span>
           </button>
         </div>
 
-        {/* Grid Content */}
-        <div className="grid grid-cols-3 gap-1">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="aspect-square bg-muted/30 relative group cursor-pointer overflow-hidden">
-              <img 
-                src={`https://source.unsplash.com/random/400x400?fitness,workout&sig=${i}`} 
-                alt="Workout" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <CheckCircle2 className="text-white" size={24} />
+        {/* Challenges List */}
+        {activeTab === "ativos" && (
+          <div className="space-y-4 px-2">
+            {[
+              { title: "Projeto Verão 2024", progress: "15/30 dias", isPublic: true, users: 45, prize: "R$ 6.200" },
+              { title: "Maratona de Leitura", progress: "5/10 livros", isPublic: false, users: 4, prize: "R$ 400" }
+            ].map((challenge, i) => (
+              <div key={i} className="p-4 rounded-2xl border border-border/50 bg-card flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-sm">{challenge.title}</h4>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
+                      {challenge.isPublic ? "Público" : "Privado"} • {challenge.users} participantes
+                    </p>
+                  </div>
+                  <Badge variant="default" className="text-[9px] bg-primary/10 text-primary border-none">
+                    ATIVO
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Activity size={14} className="text-accent" />
+                    <span>Progresso: {challenge.progress}</span>
+                  </div>
+                  <div className="font-bold text-primary">Pote: {challenge.prize}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Private Settings Refinement */}
-        <div className="space-y-4 pt-6 border-t border-border/50">
-          <h3 className="font-bold text-sm px-2">Ajustes da Conta</h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><Palette size={18} className="text-primary" /> <span className="text-sm font-bold">Tema Visual</span></div>
-              <div className="flex bg-muted p-1 rounded-xl gap-1">
-                <button onClick={() => setTheme("light")} className={`p-2 rounded-lg transition-all ${theme === 'light' ? 'bg-background shadow-md text-primary scale-110' : 'opacity-50 hover:opacity-100'}`}><Sun size={14} /></button>
-                <button onClick={() => setTheme("dark")} className={`p-2 rounded-lg transition-all ${theme === 'dark' ? 'bg-background shadow-md text-primary scale-110' : 'opacity-50 hover:opacity-100'}`}><Moon size={14} /></button>
-                <button onClick={() => setTheme("system")} className={`p-2 rounded-lg transition-all ${theme === 'system' ? 'bg-background shadow-md text-primary scale-110' : 'opacity-50 hover:opacity-100'}`}><Smartphone size={14} /></button>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><CreditCard size={18} className="text-primary" /> <span className="text-sm font-bold">Chave Pix</span></div>
-              <Button variant="link" size="sm" className="text-primary text-[10px] h-auto p-0 font-bold uppercase tracking-widest border-b border-primary/30 rounded-none">Configurar</Button>
-            </div>
+            ))}
           </div>
-        </div>
+        )}
+
+        {activeTab === "concluidos" && (
+          <div className="space-y-4 px-2">
+            {[
+              { title: "Desafio 5h da manhã", result: "Vencedor 🥇", isPublic: false, prize: "+ R$ 150" },
+              { title: "10k em 30 dias", result: "Desistiu ❌", isPublic: true, prize: "- R$ 50" },
+              { title: "Sem Açúcar", result: "Vencedor 🥈", isPublic: true, prize: "+ R$ 80" }
+            ].map((challenge, i) => (
+              <div key={i} className="p-4 rounded-2xl border border-border/50 bg-muted/20 flex flex-col gap-3 opacity-80">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-sm">{challenge.title}</h4>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {challenge.result}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className={`text-[9px] ${challenge.prize.startsWith('+') ? 'text-primary bg-primary/10' : 'text-destructive bg-destructive/10'}`}>
+                    {challenge.prize}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

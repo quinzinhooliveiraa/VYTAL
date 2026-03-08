@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -153,43 +153,60 @@ const HowItWorks = ({ onNext }: { onNext: () => void }) => (
   </motion.div>
 );
 
-const Personalization = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-6"
-  >
-    <div className="space-y-2">
-      <h2 className="text-3xl font-display font-bold">Conte sobre você</h2>
-      <p className="text-muted-foreground">Isso ajuda a personalizar sua experiência.</p>
-    </div>
-    <div className="space-y-4 pt-4">
+const Personalization = ({ onNext }: { onNext: () => void }) => {
+  const [level, setLevel] = useState(50);
+  
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+      className="space-y-6"
+    >
       <div className="space-y-2">
-        <Label>Nome Real</Label>
-        <Input placeholder="Como seus amigos te chamam?" className="h-14 rounded-xl" />
-        <p className="text-[10px] text-muted-foreground">Usamos nomes reais para manter a comunidade autêntica e confiável.</p>
+        <h2 className="text-3xl font-display font-bold">Inteligência do App</h2>
+        <p className="text-muted-foreground text-sm">Nosso algoritmo precisa conhecer você para recomendar desafios e calcular probabilidades de sucesso.</p>
       </div>
-      <div className="space-y-2">
-        <Label>Objetivo Principal</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {["Perder Peso", "Ganhar Músculo", "Saúde Mental", "Consistência"].map(o => (
-            <Button key={o} variant="outline" className="h-12 rounded-xl text-xs">{o}</Button>
-          ))}
+      
+      <div className="space-y-5 pt-4 bg-card border border-border p-5 rounded-3xl shadow-sm">
+        <div className="space-y-2">
+          <Label className="text-xs font-bold text-primary uppercase tracking-widest">Identidade</Label>
+          <Input placeholder="Seu nome real completo" className="h-12 rounded-xl" />
+          <p className="text-[10px] text-muted-foreground">Usamos nomes reais para manter a comunidade autêntica e inibir fraudes.</p>
+        </div>
+        
+        <div className="space-y-2">
+          <Label className="text-xs font-bold text-primary uppercase tracking-widest">Nível de Atividade Atual</Label>
+          <div className="pt-4 pb-2">
+            <input 
+              type="range" 
+              min="0" max="100" 
+              value={level} 
+              onChange={(e) => setLevel(parseInt(e.target.value))}
+              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+          </div>
+          <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
+            <span>Sedentário</span>
+            <span className="text-primary">{level < 30 ? "Iniciante" : level < 70 ? "Intermediário" : "Avançado"}</span>
+            <span>Atleta</span>
+          </div>
+        </div>
+
+        <div className="space-y-2 pt-2 border-t border-border">
+          <Label className="text-xs font-bold text-primary uppercase tracking-widest">Foco Principal do Algoritmo</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {["Perda de Peso", "Hipertrofia", "Cardio/Endurance", "Hábito/Disciplina"].map(o => (
+              <Button key={o} variant="outline" className="h-10 rounded-xl text-[10px] font-bold border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary">{o}</Button>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="space-y-2">
-        <Label>Treinos por semana</Label>
-        <div className="flex justify-between gap-2">
-          {[3, 4, 5, 7].map(n => (
-            <Button key={n} variant="outline" className="flex-1 h-12 rounded-xl">{n}x</Button>
-          ))}
-        </div>
-      </div>
-    </div>
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl mt-4" onClick={onNext}>
-      Salvar Perfil
-    </Button>
-  </motion.div>
-);
+      
+      <Button className="w-full h-16 text-lg font-bold rounded-2xl mt-4 bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={onNext}>
+        Otimizar Algoritmo <Zap size={18} className="ml-2" />
+      </Button>
+    </motion.div>
+  );
+};
 
 const Notifications = ({ onNext }: { onNext: () => void }) => (
   <motion.div 
@@ -251,7 +268,10 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
       <p className="text-muted-foreground text-lg">Sua jornada para a consistência começa agora.</p>
     </div>
     <div className="w-full space-y-3 pt-8">
-      <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={onComplete}>
+      <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={() => {
+        localStorage.setItem("fitstake-onboarding-done", "true");
+        onComplete();
+      }}>
         Explorar Desafios
       </Button>
       <div className="bg-card border border-border rounded-2xl p-4 text-left">
@@ -261,14 +281,22 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
           </div>
           <div>
             <p className="font-bold text-sm">Treinar com amigos é 3x mais eficaz</p>
-            <p className="text-xs text-muted-foreground">Convide alguém e ambos ganham R$ 10 de bônus no primeiro desafio.</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">Envie seu link. Se seu amigo criar uma conta através dele, ambos ganham R$ 10 de bônus no primeiro desafio.</p>
           </div>
         </div>
         <Button variant="outline" className="w-full h-12 font-bold rounded-xl border-primary text-primary hover:bg-primary/5" onClick={() => {
-          // Mock copy to clipboard
-          alert("Link copiado! Seu amigo precisa baixar o app e criar a conta pelo seu link para vocês ganharem o bônus.");
+          const shareData = {
+            title: 'Convite FitStake',
+            text: 'Crie sua conta no FitStake com meu link e ganhe R$ 10 de bônus no seu primeiro desafio!',
+            url: 'https://fitstake.app/invite/alex_costa'
+          };
+          if (navigator.share) {
+            navigator.share(shareData).catch(console.error);
+          } else {
+            alert("Link copiado! Seu amigo precisa baixar o app e criar a conta pelo seu link para vocês ganharem o bônus.");
+          }
         }}>
-          Copiar Link de Convite
+          Compartilhar Link de Convite
         </Button>
       </div>
     </div>

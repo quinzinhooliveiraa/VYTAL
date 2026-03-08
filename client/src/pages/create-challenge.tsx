@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2, Plus } from "lucide-react";
@@ -60,7 +60,7 @@ export default function CreateChallenge() {
   // Validações
   const isStep1Valid = challengeName.trim() && startDate && durationDays;
   const isStep2Valid = numMembers && parseInt(numMembers) >= 2;
-  const isStep3Valid = scoringSystem && validationType && (validationType !== "combinacao" || combinationSpec.trim());
+  const isStep3Valid = scoringSystem && validationType && (validationType !== "combinacao" || combinationSpec.trim()) && (scoringSystem !== "corrida" || parseInt(combinationSpec) > 0);
   const isStep4Valid = entryValue && parseInt(entryValue) >= 10;
 
   const numParticipants = parseInt(numMembers) || 1;
@@ -72,6 +72,22 @@ export default function CreateChallenge() {
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
+
+  // Autoshare when reaching step 5
+  useEffect(() => {
+    if (step === 5) {
+      setTimeout(() => {
+        const shareData = {
+          title: challengeName,
+          text: `Entra no meu desafio "${challengeName}" no FitStake!`,
+          url: 'https://challenge.app/join/abc123xyz'
+        };
+        if (navigator.share) {
+          navigator.share(shareData).catch(console.error);
+        }
+      }, 800); // slight delay to allow animation to play
+    }
+  }, [step, challengeName]);
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
@@ -319,12 +335,26 @@ export default function CreateChallenge() {
                     ))}
                 </div>
 
-                {validationType === "combinacao" && (
+                {validationType === "combinacao" && scoringSystem !== "corrida" && (
                   <div className="mt-4 p-3 bg-accent/10 border border-accent/20 rounded-xl animate-in zoom-in-95">
                     <Label className="text-sm font-bold text-accent mb-2 block">Especifique a Combinação</Label>
                     <p className="text-[10px] text-muted-foreground mb-2">Ex: Foto + Tempo, Distância + Repetições, etc</p>
                     <Input 
                       placeholder="Ex: Foto + Tempo de Treino" 
+                      value={combinationSpec}
+                      onChange={(e) => setCombinationSpec(e.target.value)}
+                      className="h-10 rounded-xl px-3 text-sm"
+                    />
+                  </div>
+                )}
+
+                {scoringSystem === "corrida" && (
+                  <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl animate-in zoom-in-95">
+                    <Label className="text-sm font-bold text-primary mb-2 block">Meta da Corrida</Label>
+                    <p className="text-[10px] text-muted-foreground mb-2">Qual o objetivo final para vencer? (Ex: 100 para 100km)</p>
+                    <Input 
+                      type="number"
+                      placeholder="Valor da meta" 
                       value={combinationSpec}
                       onChange={(e) => setCombinationSpec(e.target.value)}
                       className="h-10 rounded-xl px-3 text-sm"
@@ -366,16 +396,16 @@ export default function CreateChallenge() {
             </div>
 
             <div className="space-y-3">
-              <button
+              <div
                 onClick={() => setShowTopThreeExplain(!showTopThreeExplain)}
-                className="w-full flex items-center justify-between p-4 bg-muted/50 rounded-2xl hover:bg-muted/70 transition-colors"
+                className="w-full flex items-center justify-between p-4 bg-muted/50 rounded-2xl hover:bg-muted/70 transition-colors cursor-pointer"
               >
                 <div className="text-left">
                   <p className="text-xs font-bold">Distribuir entre TOP 3</p>
                   <p className="text-[10px] text-muted-foreground">Recomendado</p>
                 </div>
                 <Switch checked={splitPrize} onCheckedChange={setSplitPrize} onClick={(e) => e.stopPropagation()} />
-              </button>
+              </div>
 
               {splitPrize && (
                 <div className="space-y-3 p-4 bg-muted/30 rounded-2xl animate-in zoom-in-95">
@@ -485,16 +515,24 @@ export default function CreateChallenge() {
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Link de Convite</p>
                 <div className="flex gap-2">
-                  <div className="flex-1 p-4 bg-muted/50 rounded-2xl border border-border/50 font-mono text-sm truncate">
-                    challenge.app/join/abc123xyz
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-14 w-14 rounded-2xl"
-                    onClick={() => copyLink()}
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-14 rounded-2xl border-primary text-primary hover:bg-primary/5 font-bold flex gap-2"
+                    onClick={() => {
+                      const shareData = {
+                        title: challengeName,
+                        text: `Entre no meu desafio ${challengeName} no FitStake!`,
+                        url: 'https://challenge.app/join/abc123xyz'
+                      };
+                      if (navigator.share) {
+                        navigator.share(shareData).catch(console.error);
+                      } else {
+                        copyLink();
+                      }
+                    }}
                   >
-                    <Copy size={20} />
+                    <Share2 size={20} />
+                    Compartilhar
                   </Button>
                 </div>
                 {linkCopied && <p className="text-xs text-primary font-semibold">✓ Copiado!</p>}

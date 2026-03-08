@@ -4,16 +4,46 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("ativos");
   const [isEditing, setIsEditing] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const { user } = useAuth();
   
-  const [profileName, setProfileName] = useState(localStorage.getItem("fitstake-user-name") || "Seu Nome");
-  const [bio, setBio] = useState(localStorage.getItem("fitstake-user-bio") || "Em busca da consistência diária. 🏃‍♂️💨\nCriador do #ProjetoVerão2024\n📍 São Paulo, SP");
-  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("fitstake-user-avatar") || "https://ui-avatars.com/api/?name=S+N&background=0D8BFF&color=fff");
+  const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "https://ui-avatars.com/api/?name=S+N&background=0D8BFF&color=fff");
+
+  const { data: followersData } = useQuery({
+    queryKey: ["/api/follows/followers"],
+    queryFn: async () => {
+      const res = await fetch("/api/follows/followers", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const { data: followingData } = useQuery({
+    queryKey: ["/api/follows/following"],
+    queryFn: async () => {
+      const res = await fetch("/api/follows/following", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", "/api/users/me", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -22,24 +52,23 @@ export default function Profile() {
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setAvatarUrl(base64String);
-        localStorage.setItem("fitstake-user-avatar", base64String);
+        updateProfileMutation.mutate({ avatar: base64String });
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSaveProfile = () => {
-    localStorage.setItem("fitstake-user-name", profileName);
-    localStorage.setItem("fitstake-user-bio", bio);
+    updateProfileMutation.mutate({ name: profileName, bio });
     setIsEditing(false);
   };
 
-  const showEarnings = localStorage.getItem("fitstake-public-earnings") !== "false";
+  const showEarnings = user?.publicEarnings !== false;
 
   const stats = [
-    { label: "Seguidores", value: "1.2k" },
-    { label: "Seguindo", value: "245" },
-    { label: "Fotos", value: "156" },
+    { label: "Seguidores", value: String(followersData?.length || 0) },
+    { label: "Seguindo", value: String(followingData?.length || 0) },
+    { label: "Fotos", value: "0" },
   ];
 
   return (

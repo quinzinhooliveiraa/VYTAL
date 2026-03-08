@@ -1,15 +1,48 @@
 import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Wallet() {
   const [showEarnings, setShowEarnings] = useState(true);
+  const [depositAmount, setDepositAmount] = useState("");
 
-  const transactions = [
-    { id: 1, type: "deposit", amount: "+ R$ 100,00", date: "Hoje, 10:24", status: "Concluído" },
-    { id: 2, type: "stake", amount: "- R$ 50,00", date: "Hoje, 10:30", status: "Projeto Verão", challenge: true },
-    { id: 3, type: "win", amount: "+ R$ 82,50", date: "12 Out, 2023", status: "Prêmio: Corrida 5k", challenge: true },
-  ];
+  const { data: balanceData } = useQuery({
+    queryKey: ["/api/wallet/balance"],
+    queryFn: async () => {
+      const res = await fetch("/api/wallet/balance", { credentials: "include" });
+      return res.ok ? res.json() : { balance: 0 };
+    },
+  });
+
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["/api/wallet/transactions"],
+    queryFn: async () => {
+      const res = await fetch("/api/wallet/transactions", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const depositMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const res = await apiRequest("POST", "/api/wallet/deposit", { amount });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+      setDepositAmount("");
+    },
+  });
+
+  const balance = Number(balanceData?.balance || 0);
+  const formattedBalance = balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  };
 
   return (
     <div className="p-6 pb-32 space-y-8">
@@ -17,7 +50,6 @@ export default function Wallet() {
         <h1 className="text-2xl font-display font-bold">Minha Carteira</h1>
       </header>
 
-      {/* Balance Card */}
       <div className="bg-foreground text-background dark:bg-zinc-900 dark:text-white rounded-[2rem] p-6 relative overflow-hidden shadow-xl">
         <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/20 blur-[50px] rounded-full" />
         <div className="flex justify-between items-start mb-2">
@@ -26,12 +58,21 @@ export default function Wallet() {
             {showEarnings ? <Eye size={18} /> : <EyeOff size={18} />}
           </button>
         </div>
-        <h2 className="text-4xl font-display font-bold mb-6">
-          {showEarnings ? "R$ 132,50" : "••••••"}
+        <h2 className="text-4xl font-display font-bold mb-6" data-testid="text-balance">
+          {showEarnings ? formattedBalance : "••••••"}
         </h2>
 
         <div className="flex gap-3">
-          <Button className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 border-none shadow-lg shadow-primary/20">
+          <Button 
+            className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 border-none shadow-lg shadow-primary/20"
+            onClick={() => {
+              const amount = prompt("Valor do depósito (R$):");
+              if (amount && Number(amount) > 0) {
+                depositMutation.mutate(Number(amount));
+              }
+            }}
+            data-testid="button-deposit"
+          >
             <ArrowDownLeft className="mr-2" size={18} />
             Depositar
           </Button>
@@ -42,7 +83,6 @@ export default function Wallet() {
         </div>
       </div>
 
-      {/* Pix Quick Deposit */}
       <div className="glass-card rounded-3xl p-5 border-dashed border-primary/30 bg-card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display font-semibold text-sm">Depósito Rápido via Pix</h3>
@@ -50,8 +90,8 @@ export default function Wallet() {
         </div>
         
         <div className="bg-muted rounded-xl p-4 flex items-center justify-between border border-border">
-          <p className="font-mono text-[10px] text-muted-foreground truncate mr-4">00020126360014BR.GOV.BCB.PIX0114+5511999999999520400005303986540410.005802BR5913Alex Costa6009Sao Paulo62070503***6304FC6E</p>
-          <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-primary hover:bg-primary/10">
+          <p className="font-mono text-[10px] text-muted-foreground truncate mr-4">00020126360014BR.GOV.BCB.PIX0114+5511999999999520400005303986540410.005802BR5913FitStake6009Sao Paulo62070503***6304FC6E</p>
+          <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-primary hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("00020126360014BR.GOV.BCB.PIX0114+5511999999999520400005303986")}>
             <Copy size={16} />
           </Button>
         </div>
@@ -62,28 +102,33 @@ export default function Wallet() {
         <p>Lembre-se: A plataforma retém <strong>10%</strong> apenas sobre o prêmio final dos desafios. Depósitos e saques são isentos de taxas.</p>
       </div>
 
-      {/* History */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm flex items-center gap-2"><History size={18} /> Histórico Completo</h3>
         </div>
 
         <div className="space-y-3">
-          {transactions.map(tx => (
+          {transactions.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <History size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Nenhuma transação ainda</p>
+            </div>
+          )}
+          {transactions.map((tx: any) => (
             <div key={tx.id} className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-sm">
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  tx.type === 'deposit' || tx.type === 'win' ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground'
+                  tx.type === 'deposit' || tx.type === 'prize' || tx.type === 'refund' ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground'
                 }`}>
-                  {tx.type === 'deposit' || tx.type === 'win' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                  {tx.type === 'deposit' || tx.type === 'prize' || tx.type === 'refund' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
                 </div>
                 <div>
-                  <p className="font-bold text-sm">{tx.challenge ? tx.status : tx.type === 'deposit' ? 'Depósito Pix' : 'Saque Pix'}</p>
-                  <p className="text-[10px] text-muted-foreground font-medium">{tx.date}</p>
+                  <p className="font-bold text-sm">{tx.description || tx.type}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">{formatDate(tx.createdAt)}</p>
                 </div>
               </div>
-              <p className={`font-display font-bold ${tx.type === 'deposit' || tx.type === 'win' ? 'text-primary' : 'text-foreground'}`}>
-                {tx.amount}
+              <p className={`font-display font-bold ${tx.type === 'deposit' || tx.type === 'prize' || tx.type === 'refund' ? 'text-primary' : 'text-foreground'}`}>
+                {tx.type === 'deposit' || tx.type === 'prize' || tx.type === 'refund' ? '+' : '-'} R$ {Number(tx.amount).toFixed(2).replace('.', ',')}
               </p>
             </div>
           ))}

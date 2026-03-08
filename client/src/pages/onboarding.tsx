@@ -191,7 +191,15 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
   const [goals, setGoals] = useState<string[]>([]);
 
   const handleNext = () => {
-    if (name.trim()) localStorage.setItem("fitstake-user-name", name.trim());
+    if (name.trim()) {
+      localStorage.setItem("fitstake-user-name", name.trim());
+      fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: name.trim(), goals }),
+      }).catch(() => {});
+    }
     localStorage.setItem("fitstake-user-goals", JSON.stringify(goals));
     onNext();
   };

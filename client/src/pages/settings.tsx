@@ -4,10 +4,12 @@ import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const [, setLocation] = useLocation();
+  const { logout } = useAuth();
   const [showEarnings, setShowEarnings] = useState(localStorage.getItem("fitstake-public-earnings") !== "false");
 
   return (
@@ -125,8 +127,7 @@ export default function Settings() {
         <Button 
           variant="ghost" 
           onClick={() => {
-            localStorage.clear();
-            window.location.href = '/';
+            logout.mutate();
           }}
           className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 h-16 rounded-[1.5rem] font-bold text-sm border border-destructive/20 bg-destructive/5 mt-8"
         >

@@ -3,6 +3,8 @@ import { Link, useLocation } from "wouter";
 import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Map, Clock, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 
 const ACTIVE_CHALLENGES = [
   {
@@ -31,10 +33,20 @@ const ACTIVE_CHALLENGES = [
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
-  const userName = localStorage.getItem("fitstake-user-name") || "Seu Nome";
-  const initials = userName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
-  const avatarUrl = localStorage.getItem("fitstake-user-avatar");
+  const { data: walletData } = useQuery({
+    queryKey: ["/api/wallet/balance"],
+    queryFn: async () => {
+      const res = await fetch("/api/wallet/balance", { credentials: "include" });
+      if (!res.ok) return { balance: 0 };
+      return res.json();
+    },
+  });
+
+  const userName = user?.name || "Seu Nome";
+  const initials = userName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
+  const avatarUrl = user?.avatar || localStorage.getItem("fitstake-user-avatar");
 
   const totalInvested = "R$ 150,00";
   const totalEarned = "R$ 420,00";

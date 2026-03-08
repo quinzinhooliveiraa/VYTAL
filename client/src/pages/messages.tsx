@@ -1,87 +1,103 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, Send, Phone, Video, Info, MoreVertical, Mic, Reply, X } from "lucide-react";
+import { ChevronLeft, Send, Phone, Video, MoreVertical, Mic, Reply, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Messages() {
   const [, setLocation] = useLocation();
   const { username } = useParams();
+  const { user: currentUser } = useAuth();
   
   const [message, setMessage] = useState("");
-  const [replyingTo, setReplyingTo] = useState<{id: number, text: string, sender: string} | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{id: string, text: string, sender: string} | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState([
-    { id: 1, text: "E aí, bora fechar aquele desafio de 30 dias?", sender: "them", time: "10:30", replyTo: null },
-    { id: 2, text: "Opa! Bora sim. Vou criar e te mando o link.", sender: "me", time: "10:35", replyTo: null },
-    { id: 3, text: "Fechado. R$ 50 a entrada?", sender: "them", time: "10:36", replyTo: null },
-    { id: 4, text: "Isso aí. Sem choro se perder hein! 😂", sender: "me", time: "10:40", replyTo: { id: 3, text: "Fechado. R$ 50 a entrada?", sender: "them" } },
-  ]);
+  const { data: targetUser } = useQuery({
+    queryKey: ["/api/users", username],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${username}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!username,
+  });
 
-  const targetUser = {
-    username: username || "usuario",
-    name: username ? username.charAt(0).toUpperCase() + username.slice(1).replace('_', ' ') : "Usuário",
-    avatar: `https://i.pravatar.cc/150?u=${username || '1'}`,
-    online: true
-  };
+  const { data: messagesData = [], refetch: refetchMessages } = useQuery({
+    queryKey: ["/api/messages", username],
+    queryFn: async () => {
+      const res = await fetch(`/api/messages/${username}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!username,
+    refetchInterval: 3000,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async (data: { receiverUsername: string; text: string; replyToId?: string }) => {
+      const res = await apiRequest("POST", "/api/messages", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchMessages();
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+    },
+  });
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messagesData]);
 
   const handleSend = () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !username) return;
     
-    setMessages([...messages, {
-      id: Date.now(),
+    sendMutation.mutate({
+      receiverUsername: username,
       text: message,
-      sender: "me",
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      replyTo: replyingTo
-    }]);
+      replyToId: replyingTo?.id || undefined,
+    });
     
     setMessage("");
     setReplyingTo(null);
-    
-    // Simulate reply
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        text: "Massa! Vou entrar lá agora.",
-        sender: "them",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        replyTo: null
-      }]);
-    }, 2000);
+  };
+
+  const displayName = targetUser?.name || username || "Usuário";
+  const avatarUrl = targetUser?.avatar || `https://i.pravatar.cc/150?u=${username || '1'}`;
+  const isOnline = targetUser?.online || false;
+
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background relative">
-      {/* Header */}
       <header className="px-4 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="rounded-full -ml-2" onClick={() => window.history.back()}>
             <ChevronLeft size={24} />
           </Button>
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setLocation(`/user/${targetUser.username}`)}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setLocation(`/user/${username}`)}>
             <div className="relative">
               <Avatar className="w-10 h-10 border border-border">
-                <AvatarImage src={targetUser.avatar} />
-                <AvatarFallback>{targetUser.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={avatarUrl} />
+                <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
               </Avatar>
-              {targetUser.online && (
+              {isOnline && (
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
               )}
             </div>
             <div>
-              <h2 className="font-bold text-sm leading-tight">{targetUser.name}</h2>
-              <p className="text-[10px] text-muted-foreground">{targetUser.online ? "Online agora" : "Offline"}</p>
+              <h2 className="font-bold text-sm leading-tight">{displayName}</h2>
+              <p className="text-[10px] text-muted-foreground">{isOnline ? "Online agora" : "Offline"}</p>
             </div>
           </div>
         </div>
@@ -92,61 +108,62 @@ export default function Messages() {
         </div>
       </header>
 
-      {/* Messages Area */}
       <ScrollArea className="flex-1 p-4 bg-muted/20" ref={scrollRef}>
         <div className="space-y-6 pb-4">
           <div className="text-center">
             <span className="text-[10px] font-bold text-muted-foreground bg-muted px-3 py-1 rounded-full uppercase tracking-widest">
-              Hoje
+              Mensagens
             </span>
           </div>
 
-          {messages.map((msg, i) => (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              key={msg.id} 
-              className={`flex flex-col group ${msg.sender === "me" ? "items-end" : "items-start"}`}
-            >
-              <div className={`flex items-center gap-2 ${msg.sender === "me" ? "flex-row-reverse" : "flex-row"}`}>
-                <div className="flex flex-col items-end">
-                  <div 
-                    className={`max-w-[280px] sm:max-w-[320px] shadow-sm flex flex-col ${
-                      msg.sender === "me" 
-                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" 
-                        : "bg-card border border-border text-foreground rounded-2xl rounded-tl-sm"
-                    }`}
-                  >
-                    {msg.replyTo && (
-                      <div className={`mx-2 mt-2 p-2 rounded-lg text-xs border-l-2 ${msg.sender === "me" ? "bg-primary-foreground/10 border-primary-foreground/50" : "bg-muted border-primary"}`}>
-                        <p className="font-bold text-[10px] mb-0.5 opacity-80">{msg.replyTo.sender === "me" ? "Você" : targetUser.name}</p>
-                        <p className="line-clamp-1 opacity-90">{msg.replyTo.text}</p>
+          {messagesData.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-sm">Nenhuma mensagem ainda. Diga olá!</p>
+            </div>
+          )}
+
+          {messagesData.map((msg: any) => {
+            const isMe = msg.senderId === currentUser?.id;
+            return (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={msg.id} 
+                className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}
+              >
+                <div className={`flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                  <div className="flex flex-col items-end">
+                    <div 
+                      className={`max-w-[280px] sm:max-w-[320px] shadow-sm flex flex-col ${
+                        isMe 
+                          ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" 
+                          : "bg-card border border-border text-foreground rounded-2xl rounded-tl-sm"
+                      }`}
+                    >
+                      <div className="px-4 py-2.5 text-sm">
+                        {msg.text}
                       </div>
-                    )}
-                    <div className="px-4 py-2.5 text-sm">
-                      {msg.text}
                     </div>
                   </div>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    onClick={() => setReplyingTo({ id: msg.id, text: msg.text, sender: isMe ? "me" : "them" })}
+                  >
+                    <Reply size={16} className="text-muted-foreground" />
+                  </Button>
                 </div>
-                
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                  onClick={() => setReplyingTo({ id: msg.id, text: msg.text, sender: msg.sender })}
-                >
-                  <Reply size={16} className="text-muted-foreground" />
-                </Button>
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                {msg.time}
-              </span>
-            </motion.div>
-          ))}
+                <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                  {msg.createdAt ? formatTime(msg.createdAt) : ""}
+                </span>
+              </motion.div>
+            );
+          })}
         </div>
       </ScrollArea>
 
-      {/* Input Area */}
       <div className="p-4 bg-background border-t border-border mt-auto">
         <AnimatePresence>
           {replyingTo && (
@@ -158,7 +175,7 @@ export default function Messages() {
             >
               <div className="flex-1 min-w-0 pr-4">
                 <p className="text-xs font-bold text-primary mb-0.5">
-                  Respondendo a {replyingTo.sender === "me" ? "Você" : targetUser.name}
+                  Respondendo a {replyingTo.sender === "me" ? "Você" : displayName}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
               </div>
@@ -177,6 +194,7 @@ export default function Messages() {
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Digite uma mensagem..."
               className="border-none bg-transparent h-12 px-4 shadow-none focus-visible:ring-0"
+              data-testid="input-message"
             />
           </div>
           {message.trim() ? (
@@ -184,6 +202,8 @@ export default function Messages() {
               size="icon" 
               className="w-12 h-12 rounded-full shrink-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
               onClick={handleSend}
+              disabled={sendMutation.isPending}
+              data-testid="button-send"
             >
               <Send size={20} className="translate-x-0.5" />
             </Button>
@@ -192,7 +212,8 @@ export default function Messages() {
               size="icon" 
               variant="secondary"
               className="w-12 h-12 rounded-full shrink-0"
-              onClick={() => alert("Gravar áudio")}
+              onClick={() => alert("Gravar áudio (em breve)")}
+              data-testid="button-audio"
             >
               <Mic size={20} />
             </Button>

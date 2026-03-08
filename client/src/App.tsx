@@ -1,15 +1,13 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import NotFound from "@/pages/not-found";
 
-// Layouts
 import { MobileLayout } from "@/components/layout";
 
-// Pages
 import Login from "@/pages/login";
 import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
@@ -29,31 +27,50 @@ import ChatHub from "@/pages/chat-hub";
 
 function Router() {
   const [location] = useLocation();
-  // Check if user has logged in
-  const isLoggedIn = localStorage.getItem("fitstake-user-email") !== null;
-  const hasSeenOnboarding = localStorage.getItem("fitstake-onboarding-done") === "true";
   
-  // If they are on root, redirect to login
-  if (location === "/") {
-    window.location.href = "/login";
-    return null;
-  }
-  
-  // Handle auth routing and onboarding flow
-  if (location === "/login") {
-    if (isLoggedIn && hasSeenOnboarding) {
-       window.location.href = "/dashboard";
-       return null;
-    }
-    return <Route path="/login" component={Login} />;
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
-  if (location === "/onboarding") {
-    if (hasSeenOnboarding) {
-       window.location.href = "/dashboard";
-       return null;
-    }
-    return <Route path="/onboarding" component={Onboarding} />;
+  const isAuthenticated = !!user;
+  const hasSeenOnboarding = localStorage.getItem("fitstake-onboarding-done") === "true";
+
+  if (location === "/") {
+    if (isAuthenticated && hasSeenOnboarding) return <Redirect to="/dashboard" />;
+    return <Redirect to="/login" />;
+  }
+
+  if (location === "/login" && isAuthenticated && hasSeenOnboarding) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  if (location === "/login" || location === "/onboarding") {
+    return (
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/onboarding" component={Onboarding} />
+      </Switch>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
   }
 
   return (

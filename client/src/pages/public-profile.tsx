@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useParams, Link } from "wouter";
-import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, ArrowUpRight, Flame, MapPin } from "lucide-react";
+import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, ArrowUpRight, Flame, MapPin, Swords, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -76,6 +76,17 @@ export default function PublicProfile() {
     { name: "Carol Lima", username: "carollima", avatar: "https://i.pravatar.cc/150?u=5" },
   ];
 
+  const activeChallenges = [
+    { id: 1, title: "Projeto Verão 2024", type: "Academia", daysLeft: 12, participants: 4 },
+    { id: 2, title: "100km no Mês", type: "Corrida", daysLeft: 5, participants: 12 },
+  ];
+
+  const medals = [
+    { id: 1, name: "Consistente", desc: "30 dias de check-in", icon: "🔥", color: "text-orange-500", bg: "bg-orange-500/10" },
+    { id: 2, name: "Campeão", desc: "Venceu 5 desafios", icon: "🏆", color: "text-yellow-500", bg: "bg-yellow-500/10" },
+    { id: 3, name: "Justo", desc: "100 Moderações", icon: "⚖️", color: "text-blue-500", bg: "bg-blue-500/10" },
+  ];
+
   return (
     <div className="pb-32">
       {/* Profile Header */}
@@ -96,7 +107,7 @@ export default function PublicProfile() {
 
       <div className="px-6 pt-20 space-y-6">
         {/* Name and Bio */}
-        <div className="space-y-1">
+        <div className="space-y-4">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-display font-bold">{user.name}</h1>
@@ -120,16 +131,36 @@ export default function PublicProfile() {
               </Button>
             ) : (
               <Button 
-                className="rounded-xl h-10 px-6 font-bold"
+                className="rounded-xl h-10 px-6 font-bold shadow-lg shadow-primary/20"
                 onClick={() => setFriendStatus(isPrivate ? "requested" : "friends")}
               >
                 <UserPlus size={18} className="mr-2" /> Seguir
               </Button>
             )}
           </div>
-          <p className="text-muted-foreground text-sm pt-2 leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {isPrivate && friendStatus !== "friends" ? "Este perfil é privado." : user.bio}
           </p>
+
+          {/* Action Buttons */}
+          {(!isPrivate || friendStatus === "friends") && (
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="flex-1 rounded-xl font-bold h-12 border-primary/20 text-primary hover:bg-primary/5"
+                onClick={() => setLocation(`/create?challengeWith=${user.username}`)}
+              >
+                <Swords size={18} className="mr-2" /> Desafiar
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1 rounded-xl font-bold h-12"
+                onClick={() => setLocation(`/messages/${user.username}`)}
+              >
+                <MessageCircle size={18} className="mr-2" /> Mensagem
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Stats Grid */}
@@ -154,8 +185,57 @@ export default function PublicProfile() {
               )}
             </div>
 
+            {/* Medals */}
+            <div className="space-y-4 pt-2">
+              <h3 className="font-display font-bold flex items-center gap-2">
+                <Medal size={18} className="text-primary" /> Medalhas
+              </h3>
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex gap-3 pb-2">
+                  {medals.map(medal => (
+                    <div key={medal.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl min-w-[160px]">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${medal.bg}`}>
+                        {medal.icon}
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs">{medal.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{medal.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="hidden" />
+              </ScrollArea>
+            </div>
+
+            {/* Active Challenges */}
+            <div className="space-y-4 pt-2">
+              <h3 className="font-display font-bold flex items-center gap-2">
+                <Swords size={18} className="text-primary" /> Desafios Ativos
+              </h3>
+              <div className="space-y-3">
+                {activeChallenges.map(challenge => (
+                  <Link key={challenge.id} href={`/challenge/${challenge.id}`}>
+                    <div className="p-4 bg-card border border-border rounded-2xl flex items-center justify-between cursor-pointer hover:border-primary/50 transition-colors">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px]">{challenge.type}</Badge>
+                          <span className="text-[10px] text-muted-foreground font-medium">{challenge.daysLeft} dias restantes</span>
+                        </div>
+                        <p className="font-bold text-sm">{challenge.title}</p>
+                      </div>
+                      <div className="flex items-center gap-1 text-muted-foreground bg-muted px-2 py-1 rounded-lg">
+                        <Users size={12} />
+                        <span className="text-[10px] font-bold">{challenge.participants}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
             {/* Secondary Stats */}
-            <div className="flex justify-around py-2 border-y border-border">
+            <div className="flex justify-around py-4 border-y border-border">
               <div className="text-center">
                 <p className="text-lg font-bold">{user.stats.completed}</p>
                 <p className="text-[10px] text-muted-foreground uppercase font-medium">Completos</p>
@@ -164,7 +244,7 @@ export default function PublicProfile() {
                 <p className="text-lg font-bold">{user.stats.moderations}</p>
                 <p className="text-[10px] text-muted-foreground uppercase font-medium">Moderações</p>
               </div>
-              <div className="text-center">
+              <div className="text-center cursor-pointer hover:opacity-80" onClick={() => setLocation("/friends")}>
                 <p className="text-lg font-bold">{friends.length}</p>
                 <p className="text-[10px] text-muted-foreground uppercase font-medium">Amigos</p>
               </div>
@@ -211,7 +291,7 @@ export default function PublicProfile() {
         )}
 
         {/* Suggestions */}
-        <div className="space-y-4 pt-4">
+        <div className="space-y-4 pt-4 pb-8">
           <h3 className="font-display font-bold">Sugestões para você</h3>
           <div className="space-y-3">
             {suggested.map((sug) => (

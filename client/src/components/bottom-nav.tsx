@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Compass, PlusSquare, Wallet, User } from "lucide-react";
+import { Home, Compass, PlusSquare, Wallet, User, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ export function BottomNav() {
     { href: "/dashboard", icon: Home, label: "Início" },
     { href: "/explore", icon: Compass, label: "Explorar" },
     { href: "/create", icon: PlusSquare, label: "Criar" },
-    { href: "/wallet", icon: Wallet, label: "Carteira" },
+    { href: "/communities", icon: Users, label: "Comunidades" },
     { href: "/profile", icon: User, label: "Perfil" },
   ];
 

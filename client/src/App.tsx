@@ -21,8 +21,10 @@ import Profile from "@/pages/profile";
 import PublicProfile from "@/pages/public-profile";
 import Friends from "@/pages/friends";
 import Wallet from "@/pages/wallet";
-
 import Settings from "@/pages/settings";
+import Messages from "@/pages/messages";
+import Communities from "@/pages/communities";
+import CreateCommunity from "@/pages/create-community";
 
 function Router() {
   const [location] = useLocation();
@@ -66,6 +68,9 @@ function Router() {
         <Route path="/settings" component={Settings} />
         <Route path="/user/:username" component={PublicProfile} />
         <Route path="/friends" component={Friends} />
+        <Route path="/messages/:username" component={Messages} />
+        <Route path="/communities" component={Communities} />
+        <Route path="/create-community" component={CreateCommunity} />
         <Route component={NotFound} />
       </Switch>
     </MobileLayout>

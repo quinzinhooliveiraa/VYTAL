@@ -146,21 +146,32 @@ export default function ChallengeDetails() {
                 <div className="space-y-4">
                   {chatMessages.map(msg => (
                     <div key={msg.id} className={`flex gap-3 ${msg.user.includes('Você') ? 'flex-row-reverse' : ''}`}>
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={msg.avatar} />
-                        <AvatarFallback>{msg.user.charAt(0)}</AvatarFallback>
-                      </Avatar>
+                      <Link href={msg.user.includes('Você') ? '/profile' : `/user/${msg.user.split(' ')[0].toLowerCase().replace('.', '')}`}>
+                        <Avatar className="w-8 h-8 cursor-pointer hover:opacity-80 transition-opacity">
+                          <AvatarImage src={msg.avatar} />
+                          <AvatarFallback>{msg.user.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className={`flex flex-col ${msg.user.includes('Você') ? 'items-end' : ''}`}>
                         <div className="flex items-baseline gap-2 mb-1">
-                          <span className="text-[10px] font-bold text-muted-foreground">{msg.user}</span>
+                          <Link href={msg.user.includes('Você') ? '/profile' : `/user/${msg.user.split(' ')[0].toLowerCase().replace('.', '')}`}>
+                            <span className="text-[10px] font-bold text-muted-foreground cursor-pointer hover:text-primary">{msg.user}</span>
+                          </Link>
                           <span className="text-[8px] text-muted-foreground/60">{msg.time}</span>
                         </div>
-                        <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm relative ${
                           msg.user.includes('Você') 
                             ? 'bg-primary text-primary-foreground rounded-tr-sm' 
                             : 'bg-muted rounded-tl-sm'
                         }`}>
                           {msg.text}
+                          {/* Mock Notification badge if not from me */}
+                          {!msg.user.includes('Você') && msg.id === 2 && (
+                             <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                               <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500 border border-background"></span>
+                             </span>
+                          )}
                         </div>
                       </div>
                     </div>

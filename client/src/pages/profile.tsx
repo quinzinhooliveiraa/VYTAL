@@ -7,6 +7,24 @@ import { useState } from "react";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("ativos");
+  const [isEditing, setIsEditing] = useState(false);
+  const [showFollowers, setShowFollowers] = useState(false);
+  
+  const [profileName, setProfileName] = useState(localStorage.getItem("fitstake-user-name") || "Alex Costa");
+  const [bio, setBio] = useState("Em busca da consistência diária. 🏃‍♂️💨\nCriador do #ProjetoVerão2024\n📍 São Paulo, SP");
+  const [avatarUrl, setAvatarUrl] = useState("https://i.pravatar.cc/150?u=alex_costa");
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSaveProfile = () => {
+    localStorage.setItem("fitstake-user-name", profileName);
+    setIsEditing(false);
+  };
 
   const stats = [
     { label: "Seguidores", value: "1.2k" },
@@ -30,17 +48,21 @@ export default function Profile() {
       <div className="px-4 space-y-6 pt-4">
         {/* Profile Info - Insta Vibe */}
         <div className="flex items-center gap-6 px-2">
-          <div className="relative">
-            <div className="w-22 h-22 rounded-full border-2 border-background p-0.5 bg-gradient-to-tr from-yellow-400 via-primary to-accent">
+          <div className="relative" onClick={() => document.getElementById('avatar-upload')?.click()}>
+            <input type="file" id="avatar-upload" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+            <div className="w-22 h-22 rounded-full border-2 border-background p-0.5 bg-gradient-to-tr from-yellow-400 via-primary to-accent relative group cursor-pointer">
               <Avatar className="w-20 h-20 border-2 border-background">
-                <AvatarImage src="https://i.pravatar.cc/150?u=alex_costa" className="object-cover" />
-                <AvatarFallback>AC</AvatarFallback>
+                <AvatarImage src={avatarUrl} className="object-cover" />
+                <AvatarFallback>{profileName.substring(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
+              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={20} className="text-white" />
+              </div>
             </div>
           </div>
           <div className="flex-1 grid grid-cols-3 gap-2 text-center">
             {stats.map((stat, i) => (
-              <div key={i} className="flex flex-col cursor-pointer hover:opacity-70 transition-opacity">
+              <div key={i} className="flex flex-col cursor-pointer hover:opacity-70 transition-opacity" onClick={() => stat.label === "Seguidores" && setShowFollowers(true)}>
                 <span className="font-bold text-lg">{stat.value}</span>
                 <span className="text-[10px] text-muted-foreground">{stat.label}</span>
               </div>
@@ -49,17 +71,33 @@ export default function Profile() {
         </div>
 
         <div className="px-2 space-y-1">
-          <h2 className="font-bold">Alex Costa</h2>
+          <h2 className="font-bold">{profileName}</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-            Em busca da consistência diária. 🏃‍♂️💨
-            Criador do #ProjetoVerão2024
-            📍 São Paulo, SP
+            {bio}
           </p>
           <div className="flex gap-2 pt-2">
             <Link href="/wallet" className="flex-1">
               <Button className="w-full bg-primary/10 text-primary hover:bg-primary/20 font-bold h-9 text-xs">Minha Carteira</Button>
             </Link>
-            <Button variant="outline" className="flex-1 font-bold h-9 text-xs">Editar Perfil</Button>
+            <Button variant="outline" className="flex-1 font-bold h-9 text-xs" onClick={() => setIsEditing(true)}>Editar Perfil</Button>
+          </div>
+        </div>
+
+        {/* Check-in Metrics Highlight */}
+        <div className="px-2">
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                <CheckCircle2 size={20} />
+              </div>
+              <div>
+                <p className="font-bold text-sm">Taxa de Sucesso</p>
+                <p className="text-[10px] text-muted-foreground">Últimos 30 dias de check-ins</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-display font-black text-primary">94%</p>
+            </div>
           </div>
         </div>
 
@@ -152,6 +190,68 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 p-6 flex flex-col justify-end animate-in fade-in">
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe space-y-6 w-full max-w-md mx-auto translate-y-0 animate-in slide-in-from-bottom-full">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">Editar Perfil</h3>
+              <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)}>
+                <Settings size={20} />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Nome</label>
+                <input 
+                  value={profileName} 
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl h-12 px-4 focus:border-primary outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Bio</label>
+                <textarea 
+                  value={bio} 
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl p-4 focus:border-primary outline-none min-h-[100px] resize-none"
+                />
+              </div>
+              <Button className="w-full h-14 rounded-xl font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={handleSaveProfile}>
+                Salvar Alterações
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Followers Modal */}
+      {showFollowers && (
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowers(false)}>
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[60vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4">Seguidores (1.2k)</h3>
+            <div className="space-y-4">
+              {Array.from({length: 10}).map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={`https://i.pravatar.cc/150?img=${i+10}`} />
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-sm">usuário_{i+1}</p>
+                      <p className="text-xs text-muted-foreground">Treinando há {i+1} meses</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold rounded-lg border-border">Remover</Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

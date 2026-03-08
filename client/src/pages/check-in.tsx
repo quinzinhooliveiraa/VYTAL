@@ -17,14 +17,41 @@ export default function CheckIn() {
   const [modality, setModality] = useState("academia"); 
   const [validationType, setValidationType] = useState("tempo");
 
-  const handleCapture = () => {
-    if (validationType === 'tempo' && checkinStep === 1) {
-      setStartPhoto("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80");
-      setCheckinStep(2);
-      setCaptured(false);
+  const [userLocation, setUserLocation] = useState<string>("Buscando localização...");
+  const [photoUrl, setPhotoUrl] = useState<string>("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80");
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation(`Lat: ${position.coords.latitude.toFixed(2)}, Lng: ${position.coords.longitude.toFixed(2)}`);
+        },
+        () => {
+          setUserLocation("Localização não autorizada");
+        }
+      );
     } else {
-      setCaptured(true);
+      setUserLocation("GPS não suportado");
     }
+  }, []);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      if (validationType === 'tempo' && checkinStep === 1) {
+        setStartPhoto(url);
+        setCheckinStep(2);
+        setCaptured(false);
+      } else {
+        setPhotoUrl(url);
+        setCaptured(true);
+      }
+    }
+  };
+
+  const handleCapture = () => {
+    document.getElementById('camera-input')?.click();
   };
 
   const handleSubmit = () => {
@@ -70,7 +97,7 @@ export default function CheckIn() {
         ) : (
           <div className="absolute inset-0">
             <img 
-              src={modality === 'corrida' ? "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&q=80" : "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80"} 
+              src={photoUrl} 
               alt="Captured" 
               className="w-full h-full object-cover opacity-90" 
             />
@@ -82,9 +109,11 @@ export default function CheckIn() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
             
             <div className="absolute bottom-6 left-6 text-shadow-sm">
-              <p className="text-3xl font-display font-bold tracking-tighter">08:42 AM</p>
+              <p className="text-3xl font-display font-bold tracking-tighter">
+                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
               <div className="flex items-center gap-1 text-sm opacity-80 font-medium">
-                <MapPin size={12} /> {modality === 'corrida' ? 'Parque Ibirapuera' : 'Smart Fit Centro'}
+                <MapPin size={12} /> {userLocation}
               </div>
             </div>
           </div>
@@ -97,6 +126,14 @@ export default function CheckIn() {
             <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
               <RefreshCcw size={20} />
             </button>
+            <input 
+              id="camera-input"
+              type="file" 
+              accept="image/*" 
+              capture="environment" 
+              className="hidden" 
+              onChange={handleFileUpload} 
+            />
             <button 
               className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 relative group"
               onClick={handleCapture}

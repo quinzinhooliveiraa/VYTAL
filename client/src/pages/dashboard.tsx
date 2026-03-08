@@ -21,6 +21,9 @@ const ACTIVE_CHALLENGES = [
 export default function Dashboard() {
   const [, setLocation] = useLocation();
 
+  const userName = localStorage.getItem("fitstake-user-name") || "Alex Costa";
+  const initials = userName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+
   const totalInvested = "R$ 150,00";
   const totalEarned = "R$ 420,00";
   const availableBalance = "R$ 132,50";
@@ -41,7 +44,7 @@ export default function Dashboard() {
       <header className="flex justify-between items-center pt-4">
         <div className="space-y-1">
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Bem-vindo de volta</p>
-          <h1 className="text-3xl font-display font-bold">Alex Costa</h1>
+          <h1 className="text-3xl font-display font-bold">{userName}</h1>
         </div>
         <Link href="/profile">
           <motion.div 
@@ -49,7 +52,7 @@ export default function Dashboard() {
             whileTap={{ scale: 0.95 }}
             className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-bold text-xl cursor-pointer shadow-lg shadow-black/10"
           >
-            AC
+            {initials}
           </motion.div>
         </Link>
       </header>

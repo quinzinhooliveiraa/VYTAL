@@ -155,6 +155,12 @@ const HowItWorks = ({ onNext }: { onNext: () => void }) => (
 
 const Personalization = ({ onNext }: { onNext: () => void }) => {
   const [level, setLevel] = useState(50);
+  const [name, setName] = useState(localStorage.getItem("fitstake-user-name") || "");
+
+  const handleNext = () => {
+    if (name.trim()) localStorage.setItem("fitstake-user-name", name.trim());
+    onNext();
+  };
   
   return (
     <motion.div 
@@ -169,7 +175,12 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
       <div className="space-y-5 pt-4 bg-card border border-border p-5 rounded-3xl shadow-sm">
         <div className="space-y-2">
           <Label className="text-xs font-bold text-primary uppercase tracking-widest">Identidade</Label>
-          <Input placeholder="Seu nome real completo" className="h-12 rounded-xl" />
+          <Input 
+            placeholder="Seu nome real completo" 
+            className="h-12 rounded-xl" 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
           <p className="text-[10px] text-muted-foreground">Usamos nomes reais para manter a comunidade autêntica e inibir fraudes.</p>
         </div>
         
@@ -201,7 +212,7 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
         </div>
       </div>
       
-      <Button className="w-full h-16 text-lg font-bold rounded-2xl mt-4 bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={onNext}>
+      <Button className="w-full h-16 text-lg font-bold rounded-2xl mt-4 bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={handleNext}>
         Otimizar Algoritmo <Zap size={18} className="ml-2" />
       </Button>
     </motion.div>
@@ -255,53 +266,66 @@ const Auth = ({ onNext }: { onNext: () => void }) => (
   </motion.div>
 );
 
-const Final = ({ onComplete }: { onComplete: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-8 flex flex-col items-center text-center justify-center h-full"
-  >
-    <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-4 border border-green-500/20">
-      <CheckCircle2 size={48} />
-    </div>
-    <div className="space-y-2">
-      <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
-      <p className="text-muted-foreground text-lg">Sua jornada para a consistência começa agora.</p>
-    </div>
-    <div className="w-full space-y-3 pt-8">
-      <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={() => {
-        localStorage.setItem("fitstake-onboarding-done", "true");
-        onComplete();
-      }}>
-        Explorar Desafios
-      </Button>
-      <div className="bg-card border border-border rounded-2xl p-4 text-left">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/10 rounded-lg text-primary">
-            <Users size={20} />
-          </div>
-          <div>
-            <p className="font-bold text-sm">Treinar com amigos é 3x mais eficaz</p>
-            <p className="text-[10px] text-muted-foreground leading-tight">Envie seu link. Se seu amigo criar uma conta através dele, ambos ganham R$ 10 de bônus no primeiro desafio.</p>
-          </div>
-        </div>
-        <Button variant="outline" className="w-full h-12 font-bold rounded-xl border-primary text-primary hover:bg-primary/5" onClick={() => {
-          const shareData = {
-            title: 'Convite FitStake',
-            text: 'Crie sua conta no FitStake com meu link e ganhe R$ 10 de bônus no seu primeiro desafio!',
-            url: 'https://fitstake.app/invite/alex_costa'
-          };
-          if (navigator.share) {
-            navigator.share(shareData).catch(console.error);
-          } else {
-            alert("Link copiado! Seu amigo precisa baixar o app e criar a conta pelo seu link para vocês ganharem o bônus.");
-          }
-        }}>
-          Compartilhar Link de Convite
-        </Button>
+const Final = ({ onComplete }: { onComplete: () => void }) => {
+  useEffect(() => {
+    const shareData = {
+      title: 'Convite FitStake',
+      text: 'Crie sua conta no FitStake com meu link e ganhe R$ 10 de bônus no seu primeiro desafio!',
+      url: 'https://fitstake.app/invite/alex_costa'
+    };
+    if (navigator.share) {
+      setTimeout(() => navigator.share(shareData).catch(console.error), 800);
+    }
+  }, []);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+      className="space-y-8 flex flex-col items-center text-center justify-center h-full"
+    >
+      <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-4 border border-green-500/20">
+        <CheckCircle2 size={48} />
       </div>
-    </div>
-  </motion.div>
-);
+      <div className="space-y-2">
+        <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
+        <p className="text-muted-foreground text-lg">Sua jornada para a consistência começa agora.</p>
+      </div>
+      <div className="w-full space-y-3 pt-8">
+        <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={() => {
+          localStorage.setItem("fitstake-onboarding-done", "true");
+          onComplete();
+        }}>
+          Explorar Desafios
+        </Button>
+        <div className="bg-card border border-border rounded-2xl p-4 text-left">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+              <Users size={20} />
+            </div>
+            <div>
+              <p className="font-bold text-sm">Treinar com amigos é 3x mais eficaz</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">Envie seu link. Se seu amigo criar uma conta através dele, ambos ganham R$ 10 de bônus no primeiro desafio.</p>
+            </div>
+          </div>
+          <Button variant="outline" className="w-full h-12 font-bold rounded-xl border-primary text-primary hover:bg-primary/5" onClick={() => {
+            const shareData = {
+              title: 'Convite FitStake',
+              text: 'Crie sua conta no FitStake com meu link e ganhe R$ 10 de bônus no seu primeiro desafio!',
+              url: 'https://fitstake.app/invite/alex_costa'
+            };
+            if (navigator.share) {
+              navigator.share(shareData).catch(console.error);
+            } else {
+              alert("Link copiado! Seu amigo precisa baixar o app e criar a conta pelo seu link para vocês ganharem o bônus.");
+            }
+          }}>
+            Compartilhar Link de Convite
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 // --- Main Container ---
 

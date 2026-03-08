@@ -164,8 +164,9 @@ const Personalization = ({ onNext }: { onNext: () => void }) => (
     </div>
     <div className="space-y-4 pt-4">
       <div className="space-y-2">
-        <Label>Nome</Label>
-        <Input placeholder="Seu nome" className="h-14 rounded-xl" />
+        <Label>Nome Real</Label>
+        <Input placeholder="Como seus amigos te chamam?" className="h-14 rounded-xl" />
+        <p className="text-[10px] text-muted-foreground">Usamos nomes reais para manter a comunidade autêntica e confiável.</p>
       </div>
       <div className="space-y-2">
         <Label>Objetivo Principal</Label>
@@ -253,9 +254,23 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
       <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={onComplete}>
         Explorar Desafios
       </Button>
-      <Button variant="outline" className="w-full h-16 text-lg font-bold rounded-2xl border-border" onClick={onComplete}>
-        Convidar Amigo
-      </Button>
+      <div className="bg-card border border-border rounded-2xl p-4 text-left">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <Users size={20} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">Treinar com amigos é 3x mais eficaz</p>
+            <p className="text-xs text-muted-foreground">Convide alguém e ambos ganham R$ 10 de bônus no primeiro desafio.</p>
+          </div>
+        </div>
+        <Button variant="outline" className="w-full h-12 font-bold rounded-xl border-primary text-primary hover:bg-primary/5" onClick={() => {
+          // Mock copy to clipboard
+          alert("Link copiado! Seu amigo precisa baixar o app e criar a conta pelo seu link para vocês ganharem o bônus.");
+        }}>
+          Copiar Link de Convite
+        </Button>
+      </div>
     </div>
   </motion.div>
 );

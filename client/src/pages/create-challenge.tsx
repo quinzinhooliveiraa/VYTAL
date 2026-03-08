@@ -248,6 +248,13 @@ export default function CreateChallenge() {
                   methods: ["foto"]
                 },
                 { 
+                  id: "corrida", 
+                  title: "Modo Corrida", 
+                  icon: Zap, 
+                  description: "O primeiro a atingir a meta total (ex: 100km, 50 treinos) vence e leva tudo.",
+                  methods: ["distancia", "repeticoes", "tempo"]
+                },
+                { 
                   id: "ranking", 
                   title: "Ranking de Performance", 
                   icon: Trophy, 
@@ -294,6 +301,7 @@ export default function CreateChallenge() {
                     .filter(type => {
                       const recommendedMethods = {
                         checkin: ["foto"],
+                        corrida: ["distancia", "repeticoes", "tempo"],
                         ranking: ["distancia", "repeticoes", "tempo", "combinacao"],
                         survival: ["foto", "tempo"]
                       };

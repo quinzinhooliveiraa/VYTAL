@@ -48,8 +48,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 4%;
 
-  /* Brand Primary: Verde Profundo e Rico */
-  --primary: 160 65% 18%;
+  /* Brand Primary: Verde Natural e Elegante */
+  --primary: 160 55% 32%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 240 5% 96%;
@@ -58,13 +58,13 @@
   --muted: 240 5% 98%;
   --muted-foreground: 240 4% 46%;
 
-  /* Brand Highlight: Verde Escuro Mais Brilhante */
-  --accent: 160 65% 28%;
+  /* Brand Highlight: Verde Claro para Contraste */
+  --accent: 160 55% 42%;
   --accent-foreground: 0 0% 100%;
 
   --border: 240 6% 90%;
   --input: 240 6% 90%;
-  --ring: 160 65% 18%;
+  --ring: 160 55% 32%;
 
   --radius: 0.5rem;
 }
@@ -81,8 +81,8 @@
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
 
-    /* Verde Primary: Verde Profundo e Rico */
-    --primary: 160 65% 28%;
+    /* Verde Primary: Verde Natural e Elegante */
+    --primary: 160 55% 42%;
     --primary-foreground: 160 100% 5%;
 
     --secondary: 240 10% 10%;
@@ -91,7 +91,7 @@
     --muted: 240 10% 10%;
     --muted-foreground: 240 5% 65%;
 
-    --accent: 160 65% 38%;
+    --accent: 160 55% 52%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -99,7 +99,7 @@
 
     --border: 240 10% 12%;
     --input: 240 10% 12%;
-    --ring: 160 65% 28%;
+    --ring: 160 55% 42%;
   }
 }
 

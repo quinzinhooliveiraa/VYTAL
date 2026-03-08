@@ -48,8 +48,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 4%;
 
-  /* Brand Primary: Verde Folha Escuro */
-  --primary: 135 50% 28%;
+  /* Brand Primary: Vermelho Vibrante que Incentiva Ação */
+  --primary: 0 85% 50%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 240 5% 96%;
@@ -58,13 +58,13 @@
   --muted: 240 5% 98%;
   --muted-foreground: 240 4% 46%;
 
-  /* Brand Highlight: Verde Folha Mais Claro */
-  --accent: 135 50% 38%;
+  /* Brand Highlight: Vermelho Mais Brilhante */
+  --accent: 0 85% 60%;
   --accent-foreground: 0 0% 100%;
 
   --border: 240 6% 90%;
   --input: 240 6% 90%;
-  --ring: 135 50% 28%;
+  --ring: 0 85% 50%;
 
   --radius: 0.5rem;
 }
@@ -81,9 +81,9 @@
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
 
-    /* Verde Primary: Verde Folha Escuro */
-    --primary: 135 50% 38%;
-    --primary-foreground: 135 100% 5%;
+    /* Brand Primary: Vermelho Vibrante que Incentiva Ação */
+    --primary: 0 85% 60%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 240 10% 10%;
     --secondary-foreground: 0 0% 98%;
@@ -91,7 +91,7 @@
     --muted: 240 10% 10%;
     --muted-foreground: 240 5% 65%;
 
-    --accent: 135 50% 48%;
+    --accent: 0 85% 70%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -99,7 +99,7 @@
 
     --border: 240 10% 12%;
     --input: 240 10% 12%;
-    --ring: 135 50% 38%;
+    --ring: 0 85% 60%;
   }
 }
 

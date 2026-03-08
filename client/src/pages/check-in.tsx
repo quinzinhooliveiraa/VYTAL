@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, RefreshCcw, MapPin, CheckCircle, Camera, Timer, Ruler, Repeat, Zap, History } from "lucide-react";
+import { ChevronLeft, RefreshCcw, MapPin, CheckCircle, Camera, Timer, Ruler, Repeat, Zap, History, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,10 @@ export default function CheckIn() {
   const [submitting, setSubmitting] = useState(false);
   const [checkinStep, setCheckinStep] = useState(1); // 1 for start, 2 for end (time based)
   const [startPhoto, setStartPhoto] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [durationMins, setDurationMins] = useState<number>(0);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(localStorage.getItem("fitstake-camera-granted") === "true");
   
   // Mock modality and validation type
   const [modality, setModality] = useState("academia"); 
@@ -47,6 +50,10 @@ export default function CheckIn() {
         videoRef.current.srcObject = stream;
       }
       setCameraActive(true);
+      if (!cameraPermissionGranted) {
+        setCameraPermissionGranted(true);
+        localStorage.setItem("fitstake-camera-granted", "true");
+      }
     } catch (err) {
       console.error("Erro ao acessar câmera:", err);
       alert("Não foi possível acessar a câmera. Verifique as permissões.");
@@ -84,10 +91,16 @@ export default function CheckIn() {
         
         if (validationType === 'tempo' && checkinStep === 1) {
           setStartPhoto(url);
+          setStartTime(Date.now());
           setCheckinStep(2);
           setCaptured(false);
         } else {
           setPhotoUrl(url);
+          if (validationType === 'tempo' && startTime) {
+             const diff = Math.floor((Date.now() - startTime) / 60000);
+             // Mock 45 minutes if clicked instantly for demo purposes
+             setDurationMins(diff < 1 ? 45 : diff);
+          }
           setCaptured(true);
         }
       }
@@ -200,21 +213,41 @@ export default function CheckIn() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
                {validationType === 'distancia' && (
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-white/60 text-[10px] uppercase font-bold">Distância (km)</Label>
-                    <div className="relative">
-                      <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
-                      <Input type="number" step="0.1" placeholder="Ex: 5.0" className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold" />
+                  <div className="space-y-4 col-span-2">
+                    <div className="w-full h-32 bg-zinc-800 rounded-xl overflow-hidden relative border border-white/10">
+                      <div className="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&q=80')] bg-cover bg-center" />
+                      <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur rounded-lg p-2 flex justify-between items-center border border-white/10">
+                         <div className="text-xs font-bold text-white flex items-center gap-1"><MapPin size={12} className="text-primary"/> Rota Rastreada</div>
+                         <div className="text-primary font-bold text-lg">5.2 km</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-white/60 text-[10px] uppercase font-bold">Distância Final (km)</Label>
+                      <div className="relative">
+                        <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
+                        <Input type="number" step="0.1" value="5.2" readOnly className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold text-primary" />
+                      </div>
                     </div>
                   </div>
                )}
                {validationType === 'tempo' && checkinStep === 2 && (
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-white/60 text-[10px] uppercase font-bold">Duração (minutos)</Label>
-                    <div className="relative">
-                      <Timer className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
-                      <Input type="number" placeholder="Ex: 45" className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold" />
+                  <div className="space-y-3 col-span-2">
+                    <div className="space-y-1">
+                      <Label className="text-white/60 text-[10px] uppercase font-bold">Duração (calculada automaticamente)</Label>
+                      <div className="relative">
+                        <Timer className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
+                        <Input type="number" value={durationMins} readOnly className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold text-primary" />
+                      </div>
                     </div>
+                    
+                    {durationMins < 10 && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2">
+                        <ShieldAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-red-200 leading-relaxed">
+                          <strong>Aviso de Moderação:</strong> Tempo de atividade suspeito. Este check-in será enviado para revisão da comunidade e poderá ser invalidado.
+                        </p>
+                      </div>
+                    )}
                   </div>
                )}
             </div>

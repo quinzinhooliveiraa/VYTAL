@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const [, setLocation] = useLocation();
-  const [showEarnings, setShowEarnings] = useState(true);
+  const [showEarnings, setShowEarnings] = useState(localStorage.getItem("fitstake-public-earnings") !== "false");
 
   return (
     <div className="min-h-screen bg-background pb-32 animate-in fade-in duration-300">
@@ -77,7 +77,10 @@ export default function Settings() {
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
               <div className="flex items-center gap-3"><Eye size={18} className="text-foreground" /> <span className="text-sm font-bold">Privacidade de Ganhos</span></div>
-              <Switch checked={showEarnings} onCheckedChange={setShowEarnings} className="data-[state=checked]:bg-primary" />
+              <Switch checked={showEarnings} onCheckedChange={(checked) => {
+                setShowEarnings(checked);
+                localStorage.setItem("fitstake-public-earnings", checked.toString());
+              }} className="data-[state=checked]:bg-primary" />
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
               <div className="flex items-center gap-3"><ShieldCheck size={18} className="text-foreground" /> <span className="text-sm font-bold">Autenticação 2FA</span></div>
@@ -93,6 +96,25 @@ export default function Settings() {
               <div className="flex items-center gap-3"><Database size={18} className="text-foreground" /> <span className="text-sm font-bold">Limpar Cache Local</span></div>
               <Button variant="outline" size="sm" className="h-8">Limpar</Button>
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Significado das Medalhas</h3>
+          <div className="space-y-3 p-4 rounded-2xl bg-card border border-border">
+            {[
+              { name: "Invicto", desc: "Nunca falhou um dia de check-in." },
+              { name: "Maratona", desc: "Completou 5 desafios longos." },
+              { name: "Top 1%", desc: "Entre os usuários mais consistentes." },
+              { name: "Ouro", desc: "Acumulou mais de R$ 1.000 em prêmios." },
+              { name: "Elite", desc: "Venceu desafios no modo Sobrevivência." },
+              { name: "Sênior", desc: "Membro da comunidade há mais de 1 ano." },
+            ].map((m, i) => (
+              <div key={i} className="flex justify-between items-center text-sm border-b border-border/50 last:border-0 pb-3 mb-1 last:pb-0 last:mb-0">
+                <span className="font-bold">{m.name}</span>
+                <span className="text-muted-foreground text-xs text-right w-2/3">{m.desc}</span>
+              </div>
+            ))}
           </div>
         </div>
 

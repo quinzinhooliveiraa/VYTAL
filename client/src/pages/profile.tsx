@@ -1,4 +1,4 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight, XCircle } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight, XCircle, Map, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,10 +34,12 @@ export default function Profile() {
     setIsEditing(false);
   };
 
+  const showEarnings = localStorage.getItem("fitstake-public-earnings") !== "false";
+
   const stats = [
     { label: "Seguidores", value: "1.2k" },
     { label: "Seguindo", value: "245" },
-    { label: "Desafios", value: "12" },
+    { label: "Fotos", value: "156" },
   ];
 
   return (
@@ -91,10 +93,33 @@ export default function Profile() {
             {bio}
           </p>
           <div className="flex gap-2 pt-2">
-            <Link href="/wallet" className="flex-1">
-              <Button className="w-full bg-primary/10 text-primary hover:bg-primary/20 font-bold h-9 text-xs">Minha Carteira</Button>
-            </Link>
-            <Button variant="outline" className="flex-1 font-bold h-9 text-xs" onClick={() => setIsEditing(true)}>Editar Perfil</Button>
+            {showEarnings && (
+              <Link href="/wallet" className="flex-1">
+                <Button className="w-full bg-primary/10 text-primary hover:bg-primary/20 font-bold h-9 text-xs">
+                  Ganhos: R$ 1.250
+                </Button>
+              </Link>
+            )}
+            <Button variant="outline" className={`font-bold h-9 text-xs ${showEarnings ? 'flex-1' : 'w-full'}`} onClick={() => setIsEditing(true)}>Editar Perfil</Button>
+          </div>
+        </div>
+
+        {/* Physical Stats Highlight */}
+        <div className="px-2 grid grid-cols-3 gap-2">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+            <Map size={18} className="text-blue-500 mb-1" />
+            <p className="text-sm font-bold">120 km</p>
+            <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Percorridos</p>
+          </div>
+          <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+            <Flame size={18} className="text-orange-500 mb-1" />
+            <p className="text-sm font-bold">12.5k</p>
+            <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Calorias</p>
+          </div>
+          <div className="bg-primary/10 border border-primary/20 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+            <Clock size={18} className="text-primary mb-1" />
+            <p className="text-sm font-bold">45h</p>
+            <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Tempo Ativo</p>
           </div>
         </div>
 

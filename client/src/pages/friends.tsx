@@ -98,22 +98,24 @@ export default function Friends() {
 
           <TabsContent value="explore" className="space-y-4">
             {suggested.map((sug) => (
-              <div key={sug.username} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={sug.avatar} />
-                    <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-bold text-sm">{sug.name}</p>
-                    <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
-                    <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{sug.bio}"</p>
+              <Link key={sug.username} href={`/user/${sug.username}`}>
+                <div className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={sug.avatar} />
+                      <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-sm">{sug.name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">"{sug.bio}"</p>
+                    </div>
                   </div>
+                  <Button size="sm" className="rounded-xl font-bold bg-primary text-primary-foreground" onClick={(e) => e.preventDefault()}>
+                    <UserPlus size={16} className="mr-1" /> Seguir
+                  </Button>
                 </div>
-                <Button size="sm" className="rounded-xl font-bold bg-primary text-primary-foreground">
-                  <UserPlus size={16} className="mr-1" /> Seguir
-                </Button>
-              </div>
+              </Link>
             ))}
           </TabsContent>
         </Tabs>

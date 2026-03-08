@@ -15,11 +15,46 @@ export default function PublicProfile() {
   const isPrivate = localStorage.getItem(`fitstake-private-${username}`) === "true" || username === "ana_clara";
 
   // Mock user data
+  // Retrieve friends and their bios from the friends page mock data
+  const getMockBio = (uname: string) => {
+    const bios: Record<string, string> = {
+      "anaclara": "Focada no 100km mensal! 🏃‍♀️",
+      "lucasm": "Crossfit todo dia.",
+      "biasantos": "Iniciante na musculação.",
+      "felipegoes": "Maratonista amador.",
+      "carollima": "Yoga & Mindfulness.",
+      "marcos_silva": "Apaixonado por corrida e desafios de alta intensidade. 🏃‍♂️💨",
+      "maria": "Sempre em busca da melhor versão! 🏋️‍♀️",
+      "alex": "Criador de desafios e focado na consistência.",
+      "joão": "Bora pra cima! Mais um dia concluído. 🔥",
+      "ana": "Corredora de fim de semana."
+    };
+    return bios[uname] || "Em busca da consistência diária.";
+  };
+
+  const getMockName = (uname: string) => {
+    const names: Record<string, string> = {
+      "anaclara": "Ana Clara",
+      "lucasm": "Lucas Melo",
+      "biasantos": "Bia Santos",
+      "felipegoes": "Felipe Góes",
+      "carollima": "Carol Lima",
+      "marcos_silva": "Marcos Silva",
+      "maria": "Maria S.",
+      "alex": "Alex C.",
+      "joão": "João P.",
+      "ana": "Ana L."
+    };
+    return names[uname] || uname;
+  };
+
+  const currentUsername = username || "marcos_silva";
+
   const user = {
-    username: username || "marcos_silva",
-    name: "Marcos Silva",
-    bio: "Apaixonado por corrida e desafios de alta intensidade. 🏃‍♂️💨",
-    avatar: `https://i.pravatar.cc/150?u=${username}`,
+    username: currentUsername,
+    name: getMockName(currentUsername),
+    bio: getMockBio(currentUsername),
+    avatar: `https://i.pravatar.cc/150?u=${currentUsername}`,
     stats: {
       completed: 24,
       won: 18,
@@ -180,19 +215,21 @@ export default function PublicProfile() {
           <h3 className="font-display font-bold">Sugestões para você</h3>
           <div className="space-y-3">
             {suggested.map((sug) => (
-              <div key={sug.username} className="flex items-center justify-between p-3 bg-card rounded-2xl border border-border">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={sug.avatar} />
-                    <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-bold">{sug.name}</p>
-                    <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
+              <Link key={sug.username} href={`/user/${sug.username}`}>
+                <div className="flex items-center justify-between p-3 bg-card rounded-2xl border border-border cursor-pointer hover:border-primary/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={sug.avatar} />
+                      <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-bold">{sug.name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{sug.username}</p>
+                    </div>
                   </div>
+                  <Button size="sm" variant="outline" className="rounded-lg h-8 text-xs font-bold border-primary text-primary hover:bg-primary/5" onClick={(e) => { e.preventDefault(); /* Prevent link navigation just to show button state change if wanted, or let it navigate */ }}>Seguir</Button>
                 </div>
-                <Button size="sm" variant="outline" className="rounded-lg h-8 text-xs font-bold border-primary text-primary hover:bg-primary/5">Seguir</Button>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

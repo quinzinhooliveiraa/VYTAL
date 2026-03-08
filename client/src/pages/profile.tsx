@@ -1,4 +1,4 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,20 +9,28 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState("ativos");
   const [isEditing, setIsEditing] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
   
   const [profileName, setProfileName] = useState(localStorage.getItem("fitstake-user-name") || "Alex Costa");
-  const [bio, setBio] = useState("Em busca da consistência diária. 🏃‍♂️💨\nCriador do #ProjetoVerão2024\n📍 São Paulo, SP");
-  const [avatarUrl, setAvatarUrl] = useState("https://i.pravatar.cc/150?u=alex_costa");
+  const [bio, setBio] = useState(localStorage.getItem("fitstake-user-bio") || "Em busca da consistência diária. 🏃‍♂️💨\nCriador do #ProjetoVerão2024\n📍 São Paulo, SP");
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("fitstake-user-avatar") || "https://i.pravatar.cc/150?u=alex_costa");
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setAvatarUrl(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setAvatarUrl(base64String);
+        localStorage.setItem("fitstake-user-avatar", base64String);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSaveProfile = () => {
     localStorage.setItem("fitstake-user-name", profileName);
+    localStorage.setItem("fitstake-user-bio", bio);
     setIsEditing(false);
   };
 
@@ -62,7 +70,14 @@ export default function Profile() {
           </div>
           <div className="flex-1 grid grid-cols-3 gap-2 text-center">
             {stats.map((stat, i) => (
-              <div key={i} className="flex flex-col cursor-pointer hover:opacity-70 transition-opacity" onClick={() => stat.label === "Seguidores" && setShowFollowers(true)}>
+              <div 
+                key={i} 
+                className="flex flex-col cursor-pointer hover:opacity-70 transition-opacity" 
+                onClick={() => {
+                  if (stat.label === "Seguidores") setShowFollowers(true);
+                  if (stat.label === "Seguindo") setShowFollowing(true);
+                }}
+              >
                 <span className="font-bold text-lg">{stat.value}</span>
                 <span className="text-[10px] text-muted-foreground">{stat.label}</span>
               </div>
@@ -104,15 +119,18 @@ export default function Profile() {
         {/* Highlights / Badges */}
         <div className="flex gap-4 px-2 overflow-x-auto no-scrollbar pb-2 pt-2">
           {[
-            { name: "Invicto", icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10" },
-            { name: "Maratona", icon: Medal, color: "text-blue-500", bg: "bg-blue-500/10" },
-            { name: "Top 1%", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+            { name: "Invicto", icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30" },
+            { name: "Maratona", icon: Medal, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30" },
+            { name: "Top 1%", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30" },
+            { name: "Ouro", icon: Award, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/30" },
+            { name: "Elite", icon: Zap, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/30" },
+            { name: "Sênior", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
           ].map((badge, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 shrink-0">
-              <div className={`w-16 h-16 rounded-full border-2 border-border p-0.5 flex items-center justify-center ${badge.bg}`}>
+              <div className={`w-16 h-16 rounded-full border-[3px] p-0.5 flex items-center justify-center shadow-sm ${badge.bg} ${badge.border}`}>
                 <badge.icon className={badge.color} size={24} />
               </div>
-              <span className="text-[10px] text-foreground">{badge.name}</span>
+              <span className="text-[10px] text-foreground font-semibold">{badge.name}</span>
             </div>
           ))}
         </div>
@@ -230,8 +248,33 @@ export default function Profile() {
       {/* Followers Modal */}
       {showFollowers && (
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowers(false)}>
-          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[60vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4">Seguidores (1.2k)</h3>
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[70vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Seguidores (1.2k)</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowFollowers(false)}><XCircle size={24} /></Button>
+            </div>
+            
+            {/* Find Friends / Suggestions (Inside Followers Modal as requested) */}
+            <div className="mb-6">
+              <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Sugestões de Amigos</h4>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="min-w-[120px] p-3 rounded-xl border border-border bg-muted/30 flex flex-col items-center gap-2">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={`https://i.pravatar.cc/150?img=${i+20}`} />
+                      <AvatarFallback>A</AvatarFallback>
+                    </Avatar>
+                    <div className="text-center">
+                      <p className="text-xs font-bold truncate w-full">atleta_{i}</p>
+                      <p className="text-[9px] text-muted-foreground">Comum com alex</p>
+                    </div>
+                    <Button size="sm" className="h-7 w-full text-[10px] font-bold">Seguir</Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Todos Seguidores</h4>
             <div className="space-y-4">
               {Array.from({length: 10}).map((_, i) => (
                 <div key={i} className="flex items-center justify-between">
@@ -246,6 +289,35 @@ export default function Profile() {
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="h-8 text-xs font-bold rounded-lg border-border">Remover</Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Following Modal */}
+      {showFollowing && (
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowing(false)}>
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[70vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
+             <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Seguindo (245)</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowFollowing(false)}><XCircle size={24} /></Button>
+            </div>
+            <div className="space-y-4">
+              {Array.from({length: 10}).map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={`https://i.pravatar.cc/150?img=${i+30}`} />
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-sm">amigo_{i+1}</p>
+                      <p className="text-xs text-muted-foreground">Em 2 desafios com você</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold rounded-lg border-border">Seguindo</Button>
                 </div>
               ))}
             </div>

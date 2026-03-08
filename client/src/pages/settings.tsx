@@ -96,7 +96,14 @@ export default function Settings() {
           </div>
         </div>
 
-        <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 h-16 rounded-[1.5rem] font-bold text-sm border border-destructive/20 bg-destructive/5 mt-8">
+        <Button 
+          variant="ghost" 
+          onClick={() => {
+            localStorage.clear();
+            window.location.href = '/';
+          }}
+          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 h-16 rounded-[1.5rem] font-bold text-sm border border-destructive/20 bg-destructive/5 mt-8"
+        >
           <LogOut className="mr-3" size={20} /> Encerrar Sessão
         </Button>
       </div>

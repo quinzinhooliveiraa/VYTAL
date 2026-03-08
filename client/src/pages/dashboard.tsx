@@ -23,6 +23,7 @@ export default function Dashboard() {
 
   const userName = localStorage.getItem("fitstake-user-name") || "Alex Costa";
   const initials = userName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  const avatarUrl = localStorage.getItem("fitstake-user-avatar");
 
   const totalInvested = "R$ 150,00";
   const totalEarned = "R$ 420,00";
@@ -52,7 +53,7 @@ export default function Dashboard() {
             whileTap={{ scale: 0.95 }}
             className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-bold text-xl cursor-pointer shadow-lg shadow-black/10"
           >
-            {initials}
+            {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : initials}
           </motion.div>
         </Link>
       </header>

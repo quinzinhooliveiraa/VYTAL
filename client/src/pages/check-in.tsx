@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { ChevronLeft, RefreshCcw, MapPin, CheckCircle, Camera, Timer, Ruler, Repeat, Zap, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,16 @@ export default function CheckIn() {
   const [submitting, setSubmitting] = useState(false);
   const [checkinStep, setCheckinStep] = useState(1); // 1 for start, 2 for end (time based)
   const [startPhoto, setStartPhoto] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
   
   // Mock modality and validation type
   const [modality, setModality] = useState("academia"); 
   const [validationType, setValidationType] = useState("tempo");
 
   const [userLocation, setUserLocation] = useState<string>("Buscando localização...");
-  const [photoUrl, setPhotoUrl] = useState<string>("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80");
+  const [photoUrl, setPhotoUrl] = useState<string>("");
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -35,24 +38,60 @@ export default function CheckIn() {
     }
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate that the image came from the camera (basic check by checking if it's a recent file via modified date could be done in a real app)
-      const url = URL.createObjectURL(file);
-      if (validationType === 'tempo' && checkinStep === 1) {
-        setStartPhoto(url);
-        setCheckinStep(2);
-        setCaptured(false);
-      } else {
-        setPhotoUrl(url);
-        setCaptured(true);
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: checkinStep === 1 ? "user" : "environment" } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
       }
+      setCameraActive(true);
+    } catch (err) {
+      console.error("Erro ao acessar câmera:", err);
+      alert("Não foi possível acessar a câmera. Verifique as permissões.");
     }
   };
 
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setCameraActive(false);
+  };
+
+  // Auto-start camera when not captured
+  useEffect(() => {
+    if (!captured) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+  }, [captured, checkinStep]);
+
   const handleCapture = () => {
-    document.getElementById('camera-input')?.click();
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const url = canvas.toDataURL('image/jpeg');
+        
+        if (validationType === 'tempo' && checkinStep === 1) {
+          setStartPhoto(url);
+          setCheckinStep(2);
+          setCaptured(false);
+        } else {
+          setPhotoUrl(url);
+          setCaptured(true);
+        }
+      }
+    }
   };
 
   const handleSubmit = () => {
@@ -76,20 +115,33 @@ export default function CheckIn() {
 
       <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-zinc-900">
         {!captured ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6 text-center">
-            {validationType === 'foto' ? <Camera size={48} className="text-white/20 mb-4" /> : <Zap size={48} className="text-white/20 mb-4" />}
-            <h2 className="text-xl font-display font-bold mb-2">
-              {validationType === 'tempo' ? (checkinStep === 1 ? 'Foto Início' : 'Foto Término') : `Check-in: ${modality}`}
-            </h2>
-            <p className="text-white/60 font-mono uppercase tracking-widest text-[10px]">
-              {validationType === 'tempo' ? 'Apenas câmera ao vivo - Sem galeria' : 
-               validationType === 'distancia' ? 'Foto do painel com km percorridos' :
-               'Validação via Foto'}
-            </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 w-full h-full">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover opacity-80"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 pointer-events-none" />
+            
+            <div className="absolute top-1/4 px-6 text-center w-full pointer-events-none">
+              <h2 className="text-2xl font-display font-bold mb-2 text-white drop-shadow-lg">
+                {validationType === 'tempo' ? (checkinStep === 1 ? 'Tire uma Selfie' : 'Mostre o Local') : `Check-in: ${modality}`}
+              </h2>
+              <p className="text-white font-mono uppercase tracking-widest text-[10px] bg-black/50 inline-block px-3 py-1 rounded-full">
+                {validationType === 'tempo' ? (checkinStep === 1 ? 'Câmera Frontal' : 'Câmera Traseira') : 
+                 validationType === 'distancia' ? 'Foto do painel com km percorridos' :
+                 'Validação via Foto'}
+              </p>
+            </div>
+
             {validationType === 'tempo' && checkinStep === 2 && startPhoto && (
-              <div className="mt-4 p-2 bg-white/5 rounded-xl border border-white/10">
-                <p className="text-[10px] text-primary font-bold mb-2 uppercase">Início capturado às 08:00 AM</p>
-                <div className="w-24 h-32 rounded-lg overflow-hidden border border-white/20 opacity-50">
+              <div className="absolute top-24 left-6 p-1 bg-white/10 rounded-xl border border-white/20 backdrop-blur-md">
+                <p className="text-[8px] text-primary font-bold mb-1 uppercase px-1">Selfie Início</p>
+                <div className="w-20 h-28 rounded-lg overflow-hidden border border-white/20">
                   <img src={startPhoto} alt="Start" className="w-full h-full object-cover" />
                 </div>
               </div>
@@ -103,9 +155,11 @@ export default function CheckIn() {
               className="w-full h-full object-cover opacity-90" 
             />
             
-            <div className="absolute top-24 left-6 w-28 h-40 rounded-xl overflow-hidden border-2 border-white shadow-2xl">
-               <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80" alt="Selfie" className="w-full h-full object-cover" />
-            </div>
+            {(validationType === 'tempo' && startPhoto) && (
+              <div className="absolute top-24 left-6 w-28 h-40 rounded-xl overflow-hidden border-2 border-white shadow-2xl">
+                 <img src={startPhoto} alt="Selfie" className="w-full h-full object-cover" />
+              </div>
+            )}
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
             
@@ -124,17 +178,16 @@ export default function CheckIn() {
       <div className={`bg-black px-6 pb-safe relative z-20 transition-all ${captured ? 'pt-6 pb-8' : 'h-32 flex items-center justify-center'}`}>
         {!captured ? (
           <div className="flex items-center justify-center gap-8 w-full">
-            <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+            <button 
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+              onClick={() => {
+                if (validationType === 'tempo') {
+                  setCheckinStep(prev => prev === 1 ? 2 : 1);
+                }
+              }}
+            >
               <RefreshCcw size={20} />
             </button>
-            <input 
-              id="camera-input"
-              type="file" 
-              accept="image/*" 
-              capture="user" 
-              className="hidden" 
-              onChange={handleFileUpload} 
-            />
             <button 
               className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 relative group"
               onClick={handleCapture}

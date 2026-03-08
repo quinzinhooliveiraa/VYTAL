@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2 } from "lucide-react";
+import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ export default function CreateChallenge() {
   const [splitPercentages, setSplitPercentages] = useState({ 1: 50, 2: 30, 3: 20 });
   const [linkCopied, setLinkCopied] = useState(false);
   const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
+  const [combinationSpec, setCombinationSpec] = useState("");
 
   const modalidades = [
     { id: "corrida", icon: Route, label: "Corrida" },
@@ -59,7 +60,8 @@ export default function CreateChallenge() {
   // Validações
   const isStep1Valid = challengeName.trim() && startDate && durationDays;
   const isStep2Valid = numMembers && parseInt(numMembers) >= 2;
-  const isStep5Valid = entryValue && parseInt(entryValue) >= 10;
+  const isStep3Valid = scoringSystem && validationType && (validationType !== "combinacao" || combinationSpec.trim());
+  const isStep4Valid = entryValue && parseInt(entryValue) >= 10;
 
   const numParticipants = parseInt(numMembers) || 1;
   const entry = parseInt(entryValue) || 0;
@@ -242,7 +244,7 @@ export default function CreateChallenge() {
                   id: "checkin", 
                   title: "Check-in Diário", 
                   icon: Camera, 
-                  description: "Todos que completarem a meta dividem o prêmio igualmente.",
+                  description: "Apenas quem registrar check-in todos os dias (sem faltar) divide o prêmio igualmente.",
                   methods: ["foto"]
                 },
                 { 
@@ -308,13 +310,26 @@ export default function CreateChallenge() {
                       </button>
                     ))}
                 </div>
+
+                {validationType === "combinacao" && (
+                  <div className="mt-4 p-3 bg-accent/10 border border-accent/20 rounded-xl animate-in zoom-in-95">
+                    <Label className="text-sm font-bold text-accent mb-2 block">Especifique a Combinação</Label>
+                    <p className="text-[10px] text-muted-foreground mb-2">Ex: Foto + Tempo, Distância + Repetições, etc</p>
+                    <Input 
+                      placeholder="Ex: Foto + Tempo de Treino" 
+                      value={combinationSpec}
+                      onChange={(e) => setCombinationSpec(e.target.value)}
+                      className="h-10 rounded-xl px-3 text-sm"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
             <Button 
               className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" 
               onClick={() => setStep(4)}
-              disabled={!scoringSystem || !validationType}
+              disabled={!isStep3Valid}
             >
               Próximo
             </Button>
@@ -411,12 +426,31 @@ export default function CreateChallenge() {
                 <p className="text-[10px] font-bold text-muted-foreground mb-1">Pote (após 10%)</p>
                 <p className="text-2xl font-bold text-primary">R$ {prizePool.toFixed(2)}</p>
               </div>
+
+              {splitPrize && (
+                <div className="pt-3 border-t border-border space-y-2">
+                  <p className="text-[10px] font-bold text-muted-foreground mb-2">Distribuição TOP 3 (100% do pote)</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((pos) => {
+                      const percentage = splitPercentages[pos as keyof typeof splitPercentages];
+                      const value = (prizePool * percentage) / 100;
+                      return (
+                        <div key={pos} className="text-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+                          <p className="text-[9px] font-bold text-primary mb-1">{pos === 1 ? "🥇" : pos === 2 ? "🥈" : "🥉"}</p>
+                          <p className="text-xs font-bold">R$ {value.toFixed(2)}</p>
+                          <p className="text-[8px] text-muted-foreground">{percentage}%</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button 
               className="w-full h-14 rounded-2xl text-lg font-semibold mt-4"
-              onClick={() => setStep(6)}
-              disabled={!isStep5Valid}
+              onClick={() => setStep(5)}
+              disabled={!isStep4Valid}
             >
               Criar Desafio
             </Button>

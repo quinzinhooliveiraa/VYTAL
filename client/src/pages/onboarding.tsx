@@ -29,18 +29,9 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
     className="flex flex-col items-center text-center space-y-8"
   >
-    <motion.div 
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: 0.2 }}
-      className="w-32 h-32 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-primary/20"
-    >
-      <img 
-        src="/onboarding-hero-fitness.png" 
-        alt="Pessoa exercitando" 
-        className="w-full h-full object-cover"
-      />
-    </motion.div>
+    <div className="w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-xl shadow-primary/5">
+      <Activity size={48} strokeWidth={2.5} />
+    </div>
     <div className="space-y-4">
       <h1 className="text-4xl font-display font-bold leading-tight">
         Seja pago por ser <span className="text-primary">Consistente.</span>
@@ -68,13 +59,13 @@ const ValueProp = ({ onNext }: { onNext: () => void }) => (
     <div className="bg-card border border-border rounded-3xl p-6 space-y-4">
       <div className="flex justify-between items-end gap-3">
         {[
-          { day: "Seg", value: 45, label: "treino" },
-          { day: "Ter", value: 60, label: "corrida" },
-          { day: "Qua", value: 55, label: "treino" },
-          { day: "Qui", value: 70, label: "crossfit" },
-          { day: "Sex", value: 65, label: "treino" },
-          { day: "Sab", value: 80, label: "yoga" },
-          { day: "Dom", value: 90, label: "treino" }
+          { week: "S1", value: 45, label: "início" },
+          { week: "S2", value: 60, label: "consistência" },
+          { week: "S3", value: 55, label: "comprometido" },
+          { week: "S4", value: 70, label: "forte" },
+          { week: "S5", value: 65, label: "dedicado" },
+          { week: "S6", value: 80, label: "disciplinado" },
+          { week: "S7", value: 90, label: "campeão" }
         ].map((item, i) => (
           <div key={i} className="flex flex-col items-center gap-2 flex-1">
             <motion.div 
@@ -92,12 +83,12 @@ const ValueProp = ({ onNext }: { onNext: () => void }) => (
                 {item.value}%
               </motion.div>
             </motion.div>
-            <p className="text-[9px] font-bold text-muted-foreground">{item.day}</p>
+            <p className="text-[9px] font-bold text-muted-foreground">{item.week}</p>
           </div>
         ))}
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground pt-2 border-t border-border">
-        <span>Semana de Exemplo</span>
+        <span>Progressão de 7 Semanas</span>
         <span className="font-bold text-primary">Média: 67%</span>
       </div>
     </div>
@@ -115,18 +106,9 @@ const SocialProof = ({ onNext }: { onNext: () => void }) => (
     initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
     className="space-y-8 text-center"
   >
-    <motion.div 
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: 0.2 }}
-      className="w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 border-primary/20 mx-auto"
-    >
-      <img 
-        src="/onboarding-hero-community.png" 
-        alt="Comunidade exercitando" 
-        className="w-full h-full object-cover"
-      />
-    </motion.div>
+    <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20">
+      <Users size={40} />
+    </div>
     <div className="space-y-4">
       <h2 className="text-5xl font-display font-bold text-primary">83%</h2>
       <p className="text-xl font-medium px-4">
@@ -260,18 +242,9 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
     initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
     className="space-y-8 flex flex-col items-center text-center justify-center h-full"
   >
-    <motion.div 
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: 0.2 }}
-      className="w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 border-primary/20"
-    >
-      <img 
-        src="/onboarding-hero-success.png" 
-        alt="Celebração de sucesso" 
-        className="w-full h-full object-cover"
-      />
-    </motion.div>
+    <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-4 border border-green-500/20">
+      <CheckCircle2 size={48} />
+    </div>
     <div className="space-y-2">
       <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
       <p className="text-muted-foreground text-lg">Sua jornada para a consistência começa agora.</p>

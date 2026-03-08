@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import { MobileLayout } from "@/components/layout";
 
 // Pages
+import Login from "@/pages/login";
 import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
 import Explore from "@/pages/explore";
@@ -25,24 +26,31 @@ import Settings from "@/pages/settings";
 
 function Router() {
   const [location] = useLocation();
-  // Check if user has seen onboarding (mock logic for demo)
+  // Check if user has logged in
+  const isLoggedIn = localStorage.getItem("fitstake-user-email") !== null;
   const hasSeenOnboarding = localStorage.getItem("fitstake-onboarding-done") === "true";
   
-  // If they are on root, redirect appropriately based on onboarding status
-  const isAuthRoute = location === "/";
-
-  if (isAuthRoute) {
-    if (hasSeenOnboarding) {
-      // Small hack to redirect without rendering a component
-      window.location.href = "/dashboard";
-      return null;
+  // If they are on root, redirect to login
+  if (location === "/") {
+    window.location.href = "/login";
+    return null;
+  }
+  
+  // Handle auth routing and onboarding flow
+  if (location === "/login") {
+    if (isLoggedIn && hasSeenOnboarding) {
+       window.location.href = "/dashboard";
+       return null;
     }
-    return (
-      <Switch>
-        <Route path="/" component={Onboarding} />
-        <Route component={NotFound} />
-      </Switch>
-    );
+    return <Route path="/login" component={Login} />;
+  }
+
+  if (location === "/onboarding") {
+    if (hasSeenOnboarding) {
+       window.location.href = "/dashboard";
+       return null;
+    }
+    return <Route path="/onboarding" component={Onboarding} />;
   }
 
   return (

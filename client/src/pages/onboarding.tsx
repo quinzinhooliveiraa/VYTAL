@@ -287,31 +287,8 @@ const Notifications = ({ onNext }: { onNext: () => void }) => (
   </motion.div>
 );
 
-const Auth = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-8"
-  >
-    <div className="space-y-2 text-center">
-      <h2 className="text-3xl font-display font-bold">Crie sua conta</h2>
-      <p className="text-muted-foreground">Salve seu progresso e histórico.</p>
-    </div>
-    <div className="space-y-3 pt-4">
-      <Button variant="outline" className="w-full h-14 rounded-xl font-bold flex gap-3 border-border">
-        <Apple size={20} fill="currentColor" /> Continuar com Apple
-      </Button>
-      <Button variant="outline" className="w-full h-14 rounded-xl font-bold flex gap-3 border-border">
-        <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="" /> Continuar com Google
-      </Button>
-      <Button variant="outline" className="w-full h-14 rounded-xl font-bold flex gap-3 border-border" onClick={onNext}>
-        <Mail size={20} /> Continuar com Email
-      </Button>
-    </div>
-    <p className="text-[10px] text-center text-muted-foreground px-8 leading-relaxed">
-      Ao continuar, você concorda com nossos Termos de Uso e Política de Privacidade.
-    </p>
-  </motion.div>
-);
+// Remove Auth component since it's in login now
+// Adjust step counts
 
 const Final = ({ onComplete }: { onComplete: () => void }) => {
   useEffect(() => {
@@ -379,7 +356,7 @@ const Final = ({ onComplete }: { onComplete: () => void }) => {
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const totalSteps = 8;
+  const totalSteps = 7; // Changed from 8 to 7 since we removed Auth
 
   const next = () => {
     if (step < totalSteps) setStep(step + 1);
@@ -424,8 +401,7 @@ export default function Onboarding() {
           {step === 4 && <HowItWorks key="4" onNext={next} />}
           {step === 5 && <Personalization key="5" onNext={next} />}
           {step === 6 && <Notifications key="6" onNext={next} />}
-          {step === 7 && <Auth key="7" onNext={next} />}
-          {step === 8 && <Final key="8" onComplete={next} />}
+          {step === 7 && <Final key="7" onComplete={next} />}
         </AnimatePresence>
       </div>
 

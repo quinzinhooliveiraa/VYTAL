@@ -92,17 +92,27 @@ export default function Profile() {
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
             {bio}
           </p>
-          <div className="flex gap-2 pt-2">
-            {showEarnings && (
-              <Link href="/wallet" className="flex-1">
-                <Button className="w-full bg-primary/10 text-primary hover:bg-primary/20 font-bold h-9 text-xs">
-                  Ganhos: R$ 1.250
-                </Button>
-              </Link>
-            )}
-            <Button variant="outline" className={`font-bold h-9 text-xs ${showEarnings ? 'flex-1' : 'w-full'}`} onClick={() => setIsEditing(true)}>Editar Perfil</Button>
+          <div className="flex pt-2">
+            <Button variant="outline" className="w-full font-bold h-9 text-xs" onClick={() => setIsEditing(true)}>Editar Perfil</Button>
           </div>
         </div>
+
+        {/* Earnings Highlight - Competitive element */}
+        {showEarnings && (
+          <div className="px-2">
+            <div className="bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/30 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-primary/5">
+              <div>
+                <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-1 flex items-center gap-1">
+                  <Trophy size={12} /> Ganhos Totais
+                </p>
+                <p className="text-3xl font-display font-black text-primary drop-shadow-sm">R$ 1.250,00</p>
+              </div>
+              <Link href="/wallet">
+                <Button variant="outline" className="border-primary/30 text-primary hover:bg-primary/20 font-bold h-10 text-xs rounded-xl bg-background/50 backdrop-blur-sm">Carteira</Button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Physical Stats Highlight */}
         <div className="px-2 grid grid-cols-3 gap-2">

@@ -205,11 +205,11 @@ export default function CreateChallenge() {
                   className="h-12 rounded-xl px-4" 
                 />
                 <p className="text-[10px] text-muted-foreground">Você + {Math.max(0, parseInt(numMembers || '0') - 1)} outro(s)</p>
-                {parseInt(numMembers || '0') >= 100 && (
+                {parseInt(numMembers || '0') >= 200 && (
                   <div className="p-3 bg-accent/10 border border-accent/20 rounded-xl mt-2 flex items-start gap-2">
                     <ShieldAlert size={16} className="text-accent shrink-0 mt-0.5" />
                     <p className="text-[10px] text-accent leading-relaxed">
-                      Desafios com 100+ participantes exigem <strong>moderação oficial da plataforma</strong>. Uma taxa adicional será cobrada do pote.
+                      Desafios com 200+ participantes: a moderação <strong>não é feita pela plataforma</strong>. A comunidade ou criador deverá moderar os check-ins manualmente.
                     </p>
                   </div>
                 )}

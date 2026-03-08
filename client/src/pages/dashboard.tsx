@@ -29,12 +29,6 @@ export default function Dashboard() {
   const totalEarned = "R$ 420,00";
   const availableBalance = "R$ 132,50";
 
-  const metrics = [
-    { label: "Distância", value: "42.5 km", icon: Map, color: "text-blue-500" },
-    { label: "Tempo", value: "12h 30m", icon: Clock, color: "text-orange-500" },
-    { label: "Atividade", value: "85%", icon: Activity, color: "text-primary" },
-  ];
-
   const moderationAlerts = [
     { id: 1, challenge: "Projeto Verão 2024", pending: 3 }
   ];
@@ -60,7 +54,11 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-3 gap-3">
-        {metrics.map((metric, i) => (
+        {[
+          { label: "Distância", value: "42.5 km", icon: Map, color: "text-blue-500" },
+          { label: "Tempo", value: "12h 30m", icon: Clock, color: "text-orange-500" },
+          { label: "Atividade", value: "85%", icon: Activity, color: "text-primary" },
+        ].map((metric, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, scale: 0.9 }}

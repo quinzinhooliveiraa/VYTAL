@@ -78,6 +78,26 @@ export default function CheckIn() {
     return () => stopCamera();
   }, [captured, checkinStep]);
 
+  const handleFileUploadFallback = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      if (validationType === 'tempo' && checkinStep === 1) {
+        setStartPhoto(url);
+        setStartTime(Date.now());
+        setCheckinStep(2);
+        setCaptured(false);
+      } else {
+        setPhotoUrl(url);
+        if (validationType === 'tempo' && startTime) {
+           const diff = Math.floor((Date.now() - startTime) / 60000);
+           setDurationMins(diff < 1 ? 45 : diff);
+        }
+        setCaptured(true);
+      }
+    }
+  };
+
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -134,8 +154,14 @@ export default function CheckIn() {
               autoPlay 
               playsInline 
               muted 
-              className="w-full h-full object-cover opacity-80"
+              className={`w-full h-full object-cover opacity-80 ${!cameraActive ? 'hidden' : ''}`}
             />
+            {!cameraActive && (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-800 text-white/50">
+                <Camera size={48} className="mb-4 opacity-50" />
+                <p className="text-sm font-medium">Toque para abrir a câmera</p>
+              </div>
+            )}
             <canvas ref={canvasRef} className="hidden" />
             
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 pointer-events-none" />
@@ -201,12 +227,29 @@ export default function CheckIn() {
             >
               <RefreshCcw size={20} />
             </button>
-            <button 
-              className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 relative group"
-              onClick={handleCapture}
-            >
-              <div className="w-full h-full bg-white rounded-full group-active:scale-90 transition-transform" />
-            </button>
+            
+            {cameraActive ? (
+              <button 
+                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 relative group"
+                onClick={handleCapture}
+              >
+                <div className="w-full h-full bg-white rounded-full group-active:scale-90 transition-transform" />
+              </button>
+            ) : (
+              <div className="relative">
+                 <input 
+                   type="file" 
+                   accept="image/*" 
+                   capture={checkinStep === 1 ? "user" : "environment"} 
+                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                   onChange={handleFileUploadFallback} 
+                 />
+                 <button className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 relative group">
+                  <div className="w-full h-full bg-white rounded-full group-active:scale-90 transition-transform" />
+                </button>
+              </div>
+            )}
+            
             <div className="w-12 h-12" />
           </div>
         ) : (

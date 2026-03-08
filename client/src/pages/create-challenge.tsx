@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ChevronLeft, Info, Dumbbell, Route, Target, Link as LinkIcon, CheckCircle2, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, UserCheck, Calendar, Copy, Share2 } from "lucide-react";
+import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -15,37 +14,18 @@ export default function CreateChallenge() {
   const [step, setStep] = useState(1);
   const [modalidade, setModalidade] = useState("academia");
   const [scoringSystem, setScoringSystem] = useState("ranking");
-  const [isPublic, setIsPublic] = useState(true);
   const [validationType, setValidationType] = useState("foto");
-  const [entryValue, setEntryValue] = useState("50");
-  const [customDuration, setCustomDuration] = useState("");
-  const [durationPreset, setDurationPreset] = useState("30");
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [freq, setFreq] = useState("5");
-  const [minParticipants, setMinParticipants] = useState("2");
-  const [invitedUsers, setInvitedUsers] = useState<string[]>([]);
-  const [moderators, setModerators] = useState(["Você (Criador)"]);
-  const [splitPrize, setSplitPrize] = useState(true);
-  const [splitPercentages, setSplitPercentages] = useState({ 1: 50, 2: 30, 3: 20 });
+  const [isPublic, setIsPublic] = useState(true);
   const [challengeName, setChallengeName] = useState("");
   const [challengeDesc, setChallengeDesc] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const duration = durationPreset === "custom" ? customDuration || "0" : durationPreset;
-  const numParticipants = invitedUsers.length + 1;
-  const entry = Number(entryValue);
-  const isEntryInvalid = entry < 10;
-  const rawTotal = entry * numParticipants;
-  const prizePool = rawTotal * 0.9;
-  
-  const isLargeChallenge = numParticipants >= 1000;
-  const needsModerators = isLargeChallenge && moderators.length < 2;
-
-  const copyLink = () => {
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
-  };
+  const [durationDays, setDurationDays] = useState("30");
+  const [numMembers, setNumMembers] = useState("2");
+  const [entryValue, setEntryValue] = useState("50");
+  const [splitPrize, setSplitPrize] = useState(true);
+  const [splitPercentages, setSplitPercentages] = useState({ 1: 50, 2: 30, 3: 20 });
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
 
   const modalidades = [
     { id: "corrida", icon: Route, label: "Corrida" },
@@ -67,6 +47,30 @@ export default function CreateChallenge() {
     { id: "combinacao", icon: Zap, label: "Combinação" }
   ];
 
+  // Calcular data final
+  const calculateEndDate = () => {
+    if (!startDate) return "";
+    const start = new Date(startDate);
+    const end = new Date(start);
+    end.setDate(end.getDate() + parseInt(durationDays));
+    return end.toLocaleDateString('pt-BR');
+  };
+
+  // Validações
+  const isStep1Valid = challengeName.trim() && startDate && durationDays;
+  const isStep2Valid = numMembers && parseInt(numMembers) >= 2;
+  const isStep5Valid = entryValue && parseInt(entryValue) >= 10;
+
+  const numParticipants = parseInt(numMembers) || 1;
+  const entry = parseInt(entryValue) || 0;
+  const rawTotal = entry * numParticipants;
+  const prizePool = rawTotal * 0.9;
+
+  const copyLink = () => {
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
       <header className="px-6 py-6 flex items-center gap-4 sticky top-0 bg-background/80 backdrop-blur-xl z-50 border-b border-border">
@@ -75,7 +79,7 @@ export default function CreateChallenge() {
         </button>
         <h1 className="font-display font-bold text-xl">Criar Desafio</h1>
         <div className="ml-auto text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-          {step < 5 ? `Passo ${step}/4` : `Concluído`}
+          {step < 6 ? `Passo ${step}/5` : `Concluído`}
         </div>
       </header>
 
@@ -117,7 +121,7 @@ export default function CreateChallenge() {
               <div className="space-y-2">
                 <Label>Descrição</Label>
                 <Input 
-                  placeholder="Descreva o objetivo e regras do desafio" 
+                  placeholder="Descreva o objetivo e regras" 
                   value={challengeDesc}
                   onChange={(e) => setChallengeDesc(e.target.value)}
                   className="h-12 rounded-xl px-4" 
@@ -136,36 +140,21 @@ export default function CreateChallenge() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Duração (dias)</Label>
-                  <Select value={durationPreset} onValueChange={setDurationPreset}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7">7 dias</SelectItem>
-                      <SelectItem value="14">14 dias</SelectItem>
-                      <SelectItem value="30">30 dias</SelectItem>
-                      <SelectItem value="90">90 dias</SelectItem>
-                      <SelectItem value="custom">Personalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input 
+                    type="number"
+                    value={durationDays}
+                    onChange={(e) => setDurationDays(e.target.value)}
+                    min="1"
+                    max="365"
+                    className="h-12 rounded-xl px-4" 
+                  />
                 </div>
               </div>
 
-              {durationPreset === "custom" && (
-                <div className="space-y-2">
-                  <Label className="text-xs">Duração Personalizada (dias)</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="Ex: 15" 
-                    value={customDuration}
-                    onChange={(e) => setCustomDuration(e.target.value)}
-                    className="h-12 rounded-xl" 
-                  />
-                </div>
-              )}
-
-              {startDate && (
+              {startDate && durationDays && (
                 <div className="p-4 bg-muted/50 rounded-2xl border border-border/50">
-                  <p className="text-xs text-muted-foreground mb-2">Data Final Estimada:</p>
-                  <p className="text-sm font-bold">{new Date(startDate).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Data Final Estimada:</p>
+                  <p className="text-sm font-bold">{calculateEndDate()}</p>
                 </div>
               )}
             </div>
@@ -173,7 +162,7 @@ export default function CreateChallenge() {
             <Button 
               className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" 
               onClick={() => setStep(2)}
-              disabled={!challengeName || !startDate}
+              disabled={!isStep1Valid}
             >
               Próximo
             </Button>
@@ -183,13 +172,73 @@ export default function CreateChallenge() {
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Participantes e Privacidade</h2>
+              <p className="text-muted-foreground">Quantas pessoas vão participar? Público ou privado?</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Número de Membros (Mínimo: 2)</Label>
+                <Input 
+                  type="number"
+                  value={numMembers}
+                  onChange={(e) => setNumMembers(e.target.value)}
+                  min="2"
+                  className="h-12 rounded-xl px-4" 
+                />
+                <p className="text-[10px] text-muted-foreground">Você + {Math.max(0, parseInt(numMembers || '0') - 1)} outro(s)</p>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-border">
+                <Label>Privacidade</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setIsPublic(true)}
+                    className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${isPublic ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground'}`}
+                  >
+                    <Globe size={24} />
+                    <div className="text-center">
+                      <p className="font-bold text-sm">Público</p>
+                      <p className="text-[10px] opacity-70">Aparece no Explorar</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setIsPublic(false)}
+                    className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${!isPublic ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground'}`}
+                  >
+                    <Lock size={24} />
+                    <div className="text-center">
+                      <p className="font-bold text-sm">Privado</p>
+                      <p className="text-[10px] opacity-70">Apenas via link</p>
+                    </div>
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  💡 {isPublic ? "Qualquer pessoa pode encontrar e entrar no desafio." : "Você recebe um link de convite. Quando alguém entra pelo link, o número de participantes aumenta e os valores são recalculados automaticamente."}
+                </p>
+              </div>
+            </div>
+
+            <Button 
+              className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" 
+              onClick={() => setStep(3)}
+              disabled={!isStep2Valid}
+            >
+              Próximo
+            </Button>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+            <div className="space-y-2">
               <h2 className="text-2xl font-bold">Sistema de Pontuação</h2>
               <p className="text-muted-foreground">Como os vencedores serão definidos?</p>
             </div>
             
             <div className="space-y-3">
               {[
-                { id: "checkin", title: "Check-in Diário", icon: Calendar, description: "Todos que completarem a meta de check-ins dividem o prêmio igualmente." },
+                { id: "checkin", title: "Check-in Diário", icon: Camera, description: "Todos que completarem a meta dividem o prêmio igualmente." },
                 { id: "ranking", title: "Ranking de Performance", icon: Trophy, description: "O prêmio é dividido entre os TOP 3 que mais acumularem pontos." },
                 { id: "survival", title: "Sobrevivência", icon: Flame, description: "O último a sobrar ou quem não falhar nenhum dia leva tudo." }
               ].map((item) => (
@@ -209,172 +258,35 @@ export default function CreateChallenge() {
               ))}
             </div>
 
-            <div className="space-y-4 pt-6 border-t border-border">
-              <div className="space-y-3">
-                <Label>Método de Validação (Recomendado para {modalidades.find(m => m.id === modalidade)?.label})</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {validationTypes.map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => setValidationType(type.id)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
-                    >
-                      <type.icon size={18} />
-                      <span className="text-xs font-semibold text-center">{type.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(3)}>Próximo</Button>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Privacidade e Moderação</h2>
-              <p className="text-muted-foreground">Quem pode participar e quem gerencia o desafio?</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setIsPublic(true)}
-                className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${isPublic ? 'border-primary bg-primary/10 text-primary shadow-lg shadow-primary/5' : 'border-border bg-card text-muted-foreground'}`}
-              >
-                <Globe size={24} />
-                <div className="text-center">
-                  <p className="font-bold text-sm">Público</p>
-                  <p className="text-[10px] opacity-70">Aparece no Explorar</p>
-                </div>
-              </button>
-              <button
-                onClick={() => setIsPublic(false)}
-                className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${!isPublic ? 'border-primary bg-primary/10 text-primary shadow-lg shadow-primary/5' : 'border-border bg-card text-muted-foreground'}`}
-              >
-                <Lock size={24} />
-                <div className="text-center">
-                  <p className="font-bold text-sm">Privado</p>
-                  <p className="text-[10px] opacity-70">Apenas via link</p>
-                </div>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label>Moderadores</Label>
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[9px]">GESTÃO</Badge>
-              </div>
-              <div className="flex gap-2 flex-wrap mb-2">
-                {moderators.map(m => <Badge key={m} variant="secondary" className="rounded-full py-1.5 px-3 bg-muted text-muted-foreground border-none font-bold text-[10px] flex gap-2 items-center">{m} {m === "Você (Criador)" && <UserCheck size={12}/>}</Badge>)}
-              </div>
-              <div className="flex gap-2">
-                <Input placeholder="@usuario" className="h-12 rounded-xl" id="mod-input-new" />
-                <Button variant="outline" className="h-12 rounded-xl px-6" onClick={() => {
-                  const input = document.getElementById('mod-input-new') as HTMLInputElement;
-                  if (input.value) {
-                    setModerators([...moderators, input.value.startsWith('@') ? input.value : `@${input.value}`]);
-                    input.value = "";
-                  }
-                }}>Add</Button>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-xs text-orange-600 flex gap-3">
-              <ShieldAlert size={18} className="shrink-0" />
-              <p className="leading-relaxed">Como criador, você é o moderador padrão e deve validar as provas enviadas pelos participantes.</p>
-            </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(4)}>Próximo</Button>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(4)}>
+              Próximo
+            </Button>
           </div>
         )}
 
         {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Convidar Membros</h2>
-              <p className="text-muted-foreground">Quantas pessoas vão participar?</p>
+              <h2 className="text-2xl font-bold">Método de Validação</h2>
+              <p className="text-muted-foreground">Como os check-ins serão validados?</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {validationTypes.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setValidationType(type.id)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
+                >
+                  <type.icon size={18} />
+                  <span className="text-xs font-semibold text-center">{type.label}</span>
+                </button>
+              ))}
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <Label>Membros do Desafio</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="@usuario" 
-                    className="h-12 rounded-xl" 
-                    id="invite-input-main"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const input = e.currentTarget;
-                        if (input.value.trim()) {
-                          setInvitedUsers([...invitedUsers, input.value.startsWith('@') ? input.value : `@${input.value}`]);
-                          input.value = "";
-                        }
-                      }
-                    }}
-                  />
-                  <Button variant="outline" className="h-12 rounded-xl px-6" onClick={() => {
-                    const input = document.getElementById('invite-input-main') as HTMLInputElement;
-                    if (input.value.trim()) {
-                      setInvitedUsers([...invitedUsers, input.value.startsWith('@') ? input.value : `@${input.value}`]);
-                      input.value = "";
-                    }
-                  }}>Convidar</Button>
-                </div>
-              </div>
-
-              {invitedUsers.length > 0 && (
-                <div className="flex gap-2 flex-wrap p-4 bg-muted/30 rounded-2xl animate-in fade-in zoom-in-95 duration-200">
-                  {invitedUsers.map((user, i) => (
-                    <Badge key={i} className="bg-primary/10 text-primary border-primary/20 py-2 px-3 rounded-full flex gap-2 items-center">
-                      {user}
-                      <button onClick={() => setInvitedUsers(invitedUsers.filter((_, idx) => idx !== i))} className="hover:text-destructive transition-colors ml-1">
-                        <XCircle size={14} />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              <div className="p-4 bg-card border border-border/50 rounded-2xl">
-                <div className="flex justify-between items-center">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-muted-foreground">Total de Participantes</p>
-                    <p className="text-2xl font-bold text-primary">{invitedUsers.length + 1}</p>
-                    <p className="text-[10px] text-muted-foreground">(Você + {invitedUsers.length} convidado{invitedUsers.length !== 1 ? 's' : ''})</p>
-                  </div>
-                  <Users size={40} className="text-primary/20" />
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-4 border-t border-border">
-                <Label>Moderadores Adicionais</Label>
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <Input placeholder="@usuario (opcional)" className="h-12 rounded-xl" id="mod-input-main" />
-                    <Button variant="outline" className="h-12 rounded-xl px-6" onClick={() => {
-                      const input = document.getElementById('mod-input-main') as HTMLInputElement;
-                      if (input.value.trim() && !moderators.includes(input.value)) {
-                        setModerators([...moderators, input.value.startsWith('@') ? input.value : `@${input.value}`]);
-                        input.value = "";
-                      }
-                    }}>Add</Button>
-                  </div>
-                  
-                  <div className="flex gap-2 flex-wrap p-3 bg-muted/20 rounded-2xl">
-                    {moderators.map(m => (
-                      <Badge key={m} className="bg-primary/20 text-primary border-primary/30 rounded-full py-1.5 px-3 font-bold text-[10px]">
-                        {m === "Você (Criador)" ? "👨‍💼 " + m : m}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(5)}>Próximo</Button>
+            <Button className="w-full h-14 rounded-2xl text-lg font-semibold mt-4" onClick={() => setStep(5)}>
+              Próximo
+            </Button>
           </div>
         )}
 
@@ -382,13 +294,10 @@ export default function CreateChallenge() {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-bold">Defina o Valor da Entrada</h2>
-              <p className="text-muted-foreground">Quanto cada pessoa vai investir?</p>
+              <p className="text-muted-foreground">Mínimo: R$ 10</p>
             </div>
 
             <div className="glass-card rounded-3xl p-8 text-center space-y-4">
-              <Label className="uppercase text-[10px] tracking-widest text-muted-foreground">
-                Valor Mínimo: R$ 10
-              </Label>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-2xl font-display text-muted-foreground">R$</span>
                 <input 
@@ -403,21 +312,33 @@ export default function CreateChallenge() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl">
+              <button
+                onClick={() => setShowTopThreeExplain(!showTopThreeExplain)}
+                className="w-full flex items-center justify-between p-4 bg-muted/50 rounded-2xl hover:bg-muted/70 transition-colors"
+              >
                 <div className="text-left">
                   <p className="text-xs font-bold">Distribuir entre TOP 3</p>
                   <p className="text-[10px] text-muted-foreground">Recomendado</p>
                 </div>
-                <Switch checked={splitPrize} onCheckedChange={setSplitPrize} />
-              </div>
+                <Switch checked={splitPrize} onCheckedChange={setSplitPrize} onClick={(e) => e.stopPropagation()} />
+              </button>
 
               {splitPrize && (
                 <div className="space-y-3 p-4 bg-muted/30 rounded-2xl animate-in zoom-in-95">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground text-center">Distribuição TOP 3</p>
+                  {showTopThreeExplain && (
+                    <div className="p-3 bg-accent/10 border border-accent/20 rounded-xl mb-3">
+                      <p className="text-xs font-bold text-accent mb-2">💡 Como Funciona</p>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        O prêmio é dividido entre os 3 melhores colocados. Você define qual percentual cada um recebe. Por exemplo: 1º lugar 50%, 2º lugar 30%, 3º lugar 20%.
+                      </p>
+                    </div>
+                  )}
+                  
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground text-center">Distribuição</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[1, 2, 3].map((pos) => (
                       <div key={pos} className="space-y-1 text-center">
-                        <Label className="text-[9px] font-bold">🥇 {pos}º</Label>
+                        <Label className="text-[9px] font-bold">{pos === 1 ? "🥇" : pos === 2 ? "🥈" : "🥉"} {pos}º</Label>
                         <Input 
                           type="number" 
                           value={splitPercentages[pos as keyof typeof splitPercentages]} 
@@ -448,25 +369,99 @@ export default function CreateChallenge() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground mb-1">Participantes</p>
-                  <p className="text-xl font-bold text-primary">{invitedUsers.length + 1}</p>
+                  <p className="text-xl font-bold text-primary">{numParticipants}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground mb-1">Valor Total</p>
-                  <p className="text-xl font-bold">R$ {(Number(entryValue) * (invitedUsers.length + 1)).toFixed(2)}</p>
+                  <p className="text-xl font-bold">R$ {rawTotal.toFixed(2)}</p>
                 </div>
               </div>
               <div className="pt-3 border-t border-border">
                 <p className="text-[10px] font-bold text-muted-foreground mb-1">Pote (após 10%)</p>
-                <p className="text-2xl font-bold text-primary">R$ {((Number(entryValue) * (invitedUsers.length + 1)) * 0.9).toFixed(2)}</p>
+                <p className="text-2xl font-bold text-primary">R$ {prizePool.toFixed(2)}</p>
               </div>
             </div>
 
             <Button 
               className="w-full h-14 rounded-2xl text-lg font-semibold mt-4"
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setStep(6)}
+              disabled={!isStep5Valid}
             >
               Criar Desafio
             </Button>
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 flex flex-col items-center justify-center py-16">
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", bounce: 0.5 }}
+              className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-6"
+            >
+              <CheckCircle2 size={40} />
+            </motion.div>
+
+            <div className="text-center space-y-2 mb-8">
+              <h2 className="text-3xl font-bold">Desafio Criado!</h2>
+              <p className="text-muted-foreground">{challengeName} foi criado com sucesso.</p>
+            </div>
+
+            <div className="w-full bg-card border border-border/50 rounded-3xl p-6 space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Link de Convite</p>
+                <div className="flex gap-2">
+                  <div className="flex-1 p-4 bg-muted/50 rounded-2xl border border-border/50 font-mono text-sm truncate">
+                    challenge.app/join/abc123xyz
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-14 w-14 rounded-2xl"
+                    onClick={() => copyLink()}
+                  >
+                    <Copy size={20} />
+                  </Button>
+                </div>
+                {linkCopied && <p className="text-xs text-primary font-semibold">✓ Copiado!</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground">Duração</p>
+                  <p className="text-sm font-bold">{durationDays} dias</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground">Entrada</p>
+                  <p className="text-sm font-bold">R$ {entryValue}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground">Privacidade</p>
+                  <p className="text-sm font-bold">{isPublic ? "Público" : "Privado"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground">Participantes</p>
+                  <p className="text-sm font-bold">{numParticipants}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="w-full flex flex-col gap-3 mt-8">
+              <Button 
+                className="w-full h-14 rounded-2xl text-lg font-semibold flex gap-2"
+                onClick={() => copyLink()}
+              >
+                <Share2 size={20} /> Compartilhar com Amigos
+              </Button>
+              <Button 
+                variant="outline"
+                className="w-full h-14 rounded-2xl text-lg font-semibold"
+                onClick={() => setLocation("/dashboard")}
+              >
+                Ir para Dashboard
+              </Button>
+            </div>
           </div>
         )}
       </div>

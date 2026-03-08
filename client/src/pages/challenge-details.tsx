@@ -1,7 +1,8 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, ArrowUpRight, Check } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, ArrowUpRight, Check, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,9 +13,23 @@ export default function ChallengeDetails() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState("progresso");
 
-  // Mock data
-  const isAdmin = true; // In a real app, check if user is in moderators list
-  const isChallengeEnded = false;
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, user: "Maria S.", avatar: "https://i.pravatar.cc/150?u=maria", text: "Bora time! Mais 5km hoje 🏃‍♀️", time: "10:30" },
+    { id: 2, user: "João P.", avatar: "https://i.pravatar.cc/150?u=joao", text: "Aí sim! O treino hoje tá pago aqui também.", time: "11:45" }
+  ]);
+
+  const handleSendMessage = () => {
+    if (!chatMessage.trim()) return;
+    setChatMessages([...chatMessages, {
+      id: Date.now(),
+      user: "Alex C. (Você)",
+      avatar: "https://i.pravatar.cc/150?u=alex",
+      text: chatMessage,
+      time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    }]);
+    setChatMessage("");
+  };
 
   const participants = [
     { id: 1, name: "Maria S.", score: 15, avatar: "https://i.pravatar.cc/150?u=maria", active: true },
@@ -52,9 +67,10 @@ export default function ChallengeDetails() {
 
       <div className="px-6 mt-6 space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 h-12 rounded-xl bg-muted p-1">
+          <TabsList className="grid grid-cols-4 h-12 rounded-xl bg-muted p-1">
             <TabsTrigger value="progresso" className="rounded-lg font-bold">Resumo</TabsTrigger>
             <TabsTrigger value="ranking" className="rounded-lg font-bold">Ranking</TabsTrigger>
+            <TabsTrigger value="chat" className="rounded-lg font-bold">Chat</TabsTrigger>
             {isAdmin && <TabsTrigger value="mod" className="rounded-lg font-bold flex gap-1 items-center text-orange-600 dark:text-orange-400"><ShieldAlert size={14}/> Mod</TabsTrigger>}
           </TabsList>
 
@@ -118,6 +134,48 @@ export default function ChallengeDetails() {
                   </div>
                 ))}
              </div>
+          </TabsContent>
+
+          <TabsContent value="chat" className="mt-4 animate-in fade-in slide-in-from-bottom-2 h-[50vh] flex flex-col">
+            <div className="flex-1 bg-card border border-border rounded-[2rem] p-4 flex flex-col shadow-sm">
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-4">
+                  {chatMessages.map(msg => (
+                    <div key={msg.id} className={`flex gap-3 ${msg.user.includes('Você') ? 'flex-row-reverse' : ''}`}>
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={msg.avatar} />
+                        <AvatarFallback>{msg.user.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className={`flex flex-col ${msg.user.includes('Você') ? 'items-end' : ''}`}>
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="text-[10px] font-bold text-muted-foreground">{msg.user}</span>
+                          <span className="text-[8px] text-muted-foreground/60">{msg.time}</span>
+                        </div>
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                          msg.user.includes('Você') 
+                            ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+                            : 'bg-muted rounded-tl-sm'
+                        }`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              <div className="mt-4 flex gap-2 pt-4 border-t border-border">
+                <Input 
+                  placeholder="Mande uma mensagem pro grupo..." 
+                  className="rounded-full bg-muted/50 border-none"
+                  value={chatMessage}
+                  onChange={e => setChatMessage(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                />
+                <Button size="icon" className="rounded-full shrink-0" onClick={handleSendMessage}>
+                  <Send size={18} />
+                </Button>
+              </div>
+            </div>
           </TabsContent>
 
           {isAdmin && (

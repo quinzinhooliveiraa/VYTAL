@@ -307,7 +307,7 @@ export default function CheckIn() {
                  <input 
                    type="file" 
                    accept="image/*" 
-                   capture={checkinStep === 1 ? "user" : "environment"} 
+                   capture={checkinStep === 1 || checkinStep === 3 ? "user" : "environment"} 
                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                    onChange={handleFileUploadFallback} 
                  />
@@ -322,24 +322,29 @@ export default function CheckIn() {
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
-               {validationType === 'distancia' && (
-                  <div className="space-y-4 col-span-2">
-                    <div className="w-full h-32 bg-zinc-800 rounded-xl overflow-hidden relative border border-white/10">
-                      <div className="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&q=80')] bg-cover bg-center" />
-                      <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur rounded-lg p-2 flex justify-between items-center border border-white/10">
-                         <div className="text-xs font-bold text-white flex items-center gap-1"><MapPin size={12} className="text-primary"/> Rota Rastreada</div>
-                         <div className="text-primary font-bold text-lg">5.2 km</div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-white/60 text-[10px] uppercase font-bold">Distância Final (km)</Label>
-                      <div className="relative">
-                        <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
-                        <Input type="number" step="0.1" value="5.2" readOnly className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold text-primary" />
-                      </div>
-                    </div>
+           {validationType === 'distancia' && (
+              <div className="space-y-4 col-span-2">
+                <div className="w-full h-32 bg-zinc-800 rounded-xl overflow-hidden relative border border-white/10">
+                  <div className="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&q=80')] bg-cover bg-center" />
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur rounded-lg p-2 flex justify-between items-center border border-white/10">
+                     <div className="text-xs font-bold text-white flex items-center gap-1">
+                        <div className="w-4 h-4 rounded bg-[#fc4c02] flex items-center justify-center mr-1">
+                           <span className="text-white font-bold text-[8px]">S</span>
+                        </div>
+                        Strava Sync
+                     </div>
+                     <div className="text-primary font-bold text-lg">5.2 km</div>
                   </div>
-               )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-white/60 text-[10px] uppercase font-bold">Distância Sincronizada (km)</Label>
+                  <div className="relative">
+                    <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={16} />
+                    <Input type="number" step="0.1" value="5.2" readOnly className="h-14 bg-white/10 border-white/20 pl-10 text-xl font-display font-bold text-primary" />
+                  </div>
+                </div>
+              </div>
+           )}
                {validationType === 'tempo' && checkinStep === 2 && (
                   <div className="space-y-3 col-span-2">
                     <div className="space-y-1">

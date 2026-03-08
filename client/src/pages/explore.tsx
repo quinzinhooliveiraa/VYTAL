@@ -172,6 +172,41 @@ export default function Explorar() {
 
       {/* Trending Section - Back to Original Highlight Style */}
       {selectedModality === "Todos" && !search && (
+        <>
+        {/* Suggested for User Based on Onboarding */}
+        <section className="space-y-4 pb-4">
+          <div className="flex items-center gap-2 px-1">
+            <Sparkles className="text-accent" size={20} />
+            <h2 className="text-lg font-bold">Recomendados para você</h2>
+          </div>
+          <p className="text-xs text-muted-foreground px-1 -mt-2">Baseado nos seus objetivos de treino</p>
+          <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 no-scrollbar">
+             {PUBLIC_CHALLENGES.slice(0, 2).map((challenge) => (
+               <Link href={`/challenge/${challenge.id}`} key={`rec-${challenge.id}`}>
+                  <motion.div 
+                    whileTap={{ scale: 0.98 }}
+                    className="relative w-64 h-40 rounded-[2rem] overflow-hidden shrink-0 group cursor-pointer border border-primary/30 shadow-[0_0_15px_rgba(34,197,94,0.15)]"
+                  >
+                    <img src={challenge.image} alt={challenge.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-primary text-primary-foreground border-none font-bold shadow-xl text-[10px] py-0.5">
+                        Recomendado ✨
+                      </Badge>
+                    </div>
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <h3 className="text-white font-display font-bold text-base leading-tight mb-1.5">{challenge.title}</h3>
+                      <div className="flex items-center gap-2 text-white/80 text-[10px] font-medium">
+                        <span className="flex items-center gap-1"><Users size={10} className="text-primary"/> {challenge.participants}</span>
+                        <span className="flex items-center gap-1 text-primary"><Trophy size={10}/> {challenge.prizePool}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+               </Link>
+             ))}
+          </div>
+        </section>
+
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <TrendingUp size={20} className="text-primary" />

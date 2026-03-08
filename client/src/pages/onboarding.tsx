@@ -188,9 +188,11 @@ const HowItWorks = ({ onNext }: { onNext: () => void }) => (
 const Personalization = ({ onNext }: { onNext: () => void }) => {
   const [level, setLevel] = useState(50);
   const [name, setName] = useState(localStorage.getItem("fitstake-user-name") || "");
+  const [goals, setGoals] = useState<string[]>([]);
 
   const handleNext = () => {
     if (name.trim()) localStorage.setItem("fitstake-user-name", name.trim());
+    localStorage.setItem("fitstake-user-goals", JSON.stringify(goals));
     onNext();
   };
   
@@ -238,7 +240,20 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
           <Label className="text-xs font-bold text-primary uppercase tracking-widest">Foco Principal do Algoritmo</Label>
           <div className="grid grid-cols-2 gap-2">
             {["Perda de Peso", "Hipertrofia", "Cardio/Endurance", "Hábito/Disciplina"].map(o => (
-              <Button key={o} variant="outline" className="h-10 rounded-xl text-[10px] font-bold border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary">{o}</Button>
+              <Button 
+                key={o} 
+                variant={goals.includes(o) ? "default" : "outline"} 
+                className={`h-10 rounded-xl text-[10px] font-bold ${goals.includes(o) ? '' : 'border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary'}`}
+                onClick={() => {
+                  if (goals.includes(o)) {
+                    setGoals(goals.filter(g => g !== o));
+                  } else {
+                    setGoals([...goals, o]);
+                  }
+                }}
+              >
+                {o}
+              </Button>
             ))}
           </div>
         </div>

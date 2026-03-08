@@ -13,6 +13,10 @@ export default function ChallengeDetails() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState("progresso");
 
+  // Mock data
+  const isAdmin = true; // In a real app, check if user is in moderators list
+  const isChallengeEnded = false;
+
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState([
     { id: 1, user: "Maria S.", avatar: "https://i.pravatar.cc/150?u=maria", text: "Bora time! Mais 5km hoje 🏃‍♀️", time: "10:30" },

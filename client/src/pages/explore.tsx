@@ -31,6 +31,7 @@ const PUBLIC_CHALLENGES = [
     isNew: false,
     needsApproval: true,
     startDate: "05 Mar",
+    goals: ["Cardio/Endurance", "Hábito/Disciplina"]
   },
   {
     id: 3,
@@ -45,6 +46,7 @@ const PUBLIC_CHALLENGES = [
     isNew: true,
     needsApproval: true,
     startDate: "10 Mar",
+    goals: ["Hipertrofia", "Perda de Peso"]
   },
   {
     id: 4,
@@ -59,6 +61,7 @@ const PUBLIC_CHALLENGES = [
     isNew: true,
     needsApproval: true,
     startDate: "02 Mar",
+    goals: ["Perda de Peso", "Hábito/Disciplina"]
   },
   {
     id: 5,
@@ -73,6 +76,7 @@ const PUBLIC_CHALLENGES = [
     isNew: false,
     needsApproval: true,
     startDate: "15 Mar",
+    goals: ["Cardio/Endurance"]
   }
 ];
 
@@ -84,7 +88,16 @@ export default function Explorar() {
   const [sortBy, setSortBy] = useState("trending");
 
   const userName = localStorage.getItem("fitstake-user-name") || "Atleta";
+  const userGoalsStr = localStorage.getItem("fitstake-user-goals");
+  const userGoals = userGoalsStr ? JSON.parse(userGoalsStr) : [];
   
+  const recommendedChallenges = userGoals.length > 0 
+    ? PUBLIC_CHALLENGES.filter(c => c.goals && c.goals.some(g => userGoals.includes(g)))
+    : PUBLIC_CHALLENGES.slice(0, 2);
+    
+  // If no match found but user has goals, fallback to some challenges
+  const finalRecommended = recommendedChallenges.length > 0 ? recommendedChallenges : PUBLIC_CHALLENGES.slice(0, 2);
+
   const filteredChallenges = PUBLIC_CHALLENGES.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase());
     const matchesModality = selectedModality === "Todos" || c.modality === selectedModality;
@@ -181,7 +194,7 @@ export default function Explorar() {
           </div>
           <p className="text-xs text-muted-foreground px-1 -mt-2">Baseado nos seus objetivos de treino</p>
           <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 no-scrollbar">
-             {PUBLIC_CHALLENGES.slice(0, 2).map((challenge) => (
+             {finalRecommended.map((challenge) => (
                <Link href={`/challenge/${challenge.id}`} key={`rec-${challenge.id}`}>
                   <motion.div 
                     whileTap={{ scale: 0.98 }}
@@ -244,6 +257,7 @@ export default function Explorar() {
             ))}
           </div>
         </section>
+        </>
       )}
 
       {/* List of Challenges */}

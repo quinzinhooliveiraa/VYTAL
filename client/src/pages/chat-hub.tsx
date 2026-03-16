@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Search, Users, MessageCircle, Trophy, ChevronRight, Hash, Inbox, ArrowLeft } from "lucide-react";
+import { Search, MessageCircle, Inbox, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 
 export default function ChatHub() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("direct");
   const [showRequests, setShowRequests] = useState(false);
 
   const { data: conversations = [] } = useQuery({
@@ -21,15 +19,6 @@ export default function ChatHub() {
       return res.json();
     },
     refetchInterval: 5000,
-  });
-
-  const { data: communities = [] } = useQuery({
-    queryKey: ["/api/communities/mine"],
-    queryFn: async () => {
-      const res = await fetch("/api/communities/mine", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
   });
 
   const formatTime = (dateStr: string) => {
@@ -94,7 +83,7 @@ export default function ChatHub() {
     return (
       <div className="min-h-[100dvh] bg-background pb-24">
         <header className="px-6 pt-6 pb-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3">
             <button onClick={() => setShowRequests(false)} className="p-1 -ml-1 rounded-full hover:bg-muted" data-testid="button-back-requests">
               <ArrowLeft size={22} />
             </button>
@@ -128,26 +117,26 @@ export default function ChatHub() {
     <div className="min-h-[100dvh] bg-background pb-24">
       <header className="px-6 pt-6 pb-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-display font-bold">Conversas</h1>
-          {requestCount > 0 && (
-            <button
-              onClick={() => setShowRequests(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors"
-              data-testid="button-open-requests"
-            >
-              <Inbox size={16} className="text-primary" />
-              <span className="text-xs font-bold text-primary">Pedidos</span>
+          <h1 className="text-3xl font-display font-bold">Mensagens</h1>
+          <button
+            onClick={() => setShowRequests(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors relative"
+            data-testid="button-open-requests"
+          >
+            <Inbox size={16} className="text-primary" />
+            <span className="text-xs font-bold text-primary">Pedidos</span>
+            {requestCount > 0 && (
               <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                 {requestCount}
               </span>
-            </button>
-          )}
+            )}
+          </button>
         </div>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <Input 
-            placeholder="Buscar mensagens, grupos..." 
+            placeholder="Buscar conversas..." 
             className="pl-10 h-12 bg-muted/50 border-none rounded-2xl"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -156,65 +145,15 @@ export default function ChatHub() {
         </div>
       </header>
 
-      <div className="px-6 mt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 h-12 rounded-xl bg-muted p-1 mb-6">
-            <TabsTrigger value="direct" className="rounded-lg font-bold" data-testid="tab-messages">Mensagens</TabsTrigger>
-            <TabsTrigger value="communities" className="rounded-lg font-bold" data-testid="tab-communities">Comunidades</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="direct" className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-            {filteredFollower.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Nenhuma conversa ainda</p>
-                <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
-              </div>
-            )}
-            {filteredFollower.map((c: any) => renderConversation(c))}
-          </TabsContent>
-
-          <TabsContent value="communities" className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-primary/20 transition-colors" onClick={() => setLocation('/communities')}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-                  <Search size={20} />
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-primary">Explorar Comunidades</p>
-                  <p className="text-[10px] text-primary/80">Encontre grupos do seu esporte</p>
-                </div>
-              </div>
-              <ChevronRight size={20} className="text-primary" />
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground px-1">Suas Comunidades</h4>
-              {communities.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Hash size={32} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Nenhuma comunidade ainda</p>
-                </div>
-              )}
-              {communities.map((c: any) => (
-                <div key={c.id} className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors" onClick={() => setLocation(`/communities`)}>
-                  <Avatar className="w-14 h-14 border border-border rounded-2xl">
-                    {c.image && <AvatarImage src={c.image} className="object-cover" />}
-                    <AvatarFallback><Hash size={20} /></AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm truncate flex items-center gap-1">
-                      {c.name}
-                    </h3>
-                    <p className="text-xs truncate text-muted-foreground">
-                      {c.description || "Comunidade"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+      <div className="px-6 mt-4 space-y-3">
+        {filteredFollower.length === 0 && (
+          <div className="text-center py-16 text-muted-foreground">
+            <MessageCircle size={48} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-medium">Nenhuma conversa ainda</p>
+            <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
+          </div>
+        )}
+        {filteredFollower.map((c: any) => renderConversation(c))}
       </div>
     </div>
   );

@@ -13,7 +13,8 @@ import { useAuth } from "@/hooks/use-auth";
 export default function Wallet() {
   const { user } = useAuth();
   const [showBalance, setShowBalance] = useState(true);
-  const [depositOpen, setDepositOpen] = useState(false);
+  const fromRecharge = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("recharge") === "1";
+  const [depositOpen, setDepositOpen] = useState(fromRecharge);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [cpfDialogOpen, setCpfDialogOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
@@ -189,6 +190,25 @@ export default function Wallet() {
         <h1 className="text-2xl font-display font-bold">Minha Carteira</h1>
       </header>
 
+      {fromRecharge && (
+        <div className="p-4 rounded-2xl bg-primary/10 border border-primary/30 flex items-center gap-3">
+          <Info size={18} className="text-primary shrink-0" />
+          <div className="text-xs flex-1">
+            <p className="font-bold text-primary">Recarregue para criar seu desafio</p>
+            <p className="text-muted-foreground">Deposite o valor necessário e volte para finalizar a criação.</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-xl border-primary text-primary hover:bg-primary/10 font-bold text-xs"
+            onClick={() => { window.location.href = "/create"; }}
+            data-testid="button-back-to-challenge"
+          >
+            Voltar ao Desafio
+          </Button>
+        </div>
+      )}
+
       <div className="bg-foreground text-background dark:bg-zinc-900 dark:text-white rounded-[2rem] p-6 relative overflow-hidden shadow-xl">
         <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/20 blur-[50px] rounded-full" />
         <div className="flex justify-between items-start mb-2">
@@ -303,13 +323,33 @@ export default function Wallet() {
                       R$ {depositAmount},00 adicionado ao seu saldo
                     </p>
                   </div>
-                  <Button
-                    className="w-full h-12 rounded-xl font-bold mt-4"
-                    onClick={() => { setPixData(null); setPixPaid(false); setDepositOpen(false); setDepositAmount(""); }}
-                    data-testid="button-close-deposit-success"
-                  >
-                    Voltar para carteira
-                  </Button>
+                  {fromRecharge ? (
+                    <div className="space-y-3 mt-4">
+                      <Button
+                        className="w-full h-12 rounded-xl font-bold bg-primary"
+                        onClick={() => { window.location.href = "/create"; }}
+                        data-testid="button-back-to-challenge-success"
+                      >
+                        Continuar Criando o Desafio
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full h-12 rounded-xl font-bold"
+                        onClick={() => { setPixData(null); setPixPaid(false); setDepositOpen(false); setDepositAmount(""); }}
+                        data-testid="button-close-deposit-success"
+                      >
+                        Ficar na Carteira
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full h-12 rounded-xl font-bold mt-4"
+                      onClick={() => { setPixData(null); setPixPaid(false); setDepositOpen(false); setDepositAmount(""); }}
+                      data-testid="button-close-deposit-success"
+                    >
+                      Voltar para carteira
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <>

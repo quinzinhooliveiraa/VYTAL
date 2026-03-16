@@ -11,6 +11,29 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
+const DRAFT_KEY = "vytal-challenge-draft";
+
+function saveDraft(data: Record<string, any>) {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, savedAt: Date.now() }));
+}
+
+function loadDraft(): Record<string, any> | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Date.now() - data.savedAt > 60 * 60 * 1000) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return data;
+  } catch { return null; }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
 export default function CreateChallenge() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
@@ -19,6 +42,7 @@ export default function CreateChallenge() {
   const [modalidade, setModalidadeState] = useState("academia");
   const [scoringSystem, setScoringSystem] = useState("ranking");
   const [validationType, setValidationType] = useState("foto");
+  const [restoredDraft, setRestoredDraft] = useState(false);
 
   const setModalidade = (mod: string) => {
     setModalidadeState(mod);
@@ -51,6 +75,42 @@ export default function CreateChallenge() {
   const [bannerPreview, setBannerPreview] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [uploadingBanner, setUploadingBanner] = useState(false);
+
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      if (draft.modalidade) setModalidadeState(draft.modalidade);
+      if (draft.scoringSystem) setScoringSystem(draft.scoringSystem);
+      if (draft.validationType) setValidationType(draft.validationType);
+      if (draft.challengeName) setChallengeName(draft.challengeName);
+      if (draft.challengeDesc) setChallengeDesc(draft.challengeDesc);
+      if (draft.startDate) setStartDate(draft.startDate);
+      if (draft.durationDays) setDurationDays(draft.durationDays);
+      if (draft.numMembers) setNumMembers(draft.numMembers);
+      if (draft.entryValue) setEntryValue(draft.entryValue);
+      if (draft.splitPrize !== undefined) setSplitPrize(draft.splitPrize);
+      if (draft.splitPercentages) setSplitPercentages(draft.splitPercentages);
+      if (draft.combinationSpec) setCombinationSpec(draft.combinationSpec);
+      if (draft.maxMissedDays) setMaxMissedDays(draft.maxMissedDays);
+      if (draft.bannerUrl) { setBannerUrl(draft.bannerUrl); setBannerPreview(draft.bannerUrl); }
+      if (draft.isPublic !== undefined) setIsPublic(draft.isPublic);
+      if (draft.step) setStep(draft.step);
+      setRestoredDraft(true);
+      clearDraft();
+    }
+  }, []);
+
+  const getCurrentDraft = () => ({
+    modalidade, scoringSystem, validationType,
+    challengeName, challengeDesc, startDate, durationDays,
+    numMembers, entryValue, splitPrize, splitPercentages,
+    combinationSpec, maxMissedDays, bannerUrl, isPublic, step,
+  });
+
+  const handleRechargeAndSave = () => {
+    saveDraft(getCurrentDraft());
+    setLocation("/wallet?recharge=1");
+  };
 
   const { data: walletData } = useQuery({
     queryKey: ["/api/wallet/balance"],
@@ -663,6 +723,22 @@ export default function CreateChallenge() {
 
         {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+            {restoredDraft && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-2xl bg-primary/10 border border-primary/30 flex items-center gap-3"
+              >
+                <CheckCircle2 size={18} className="text-primary shrink-0" />
+                <div className="text-xs flex-1">
+                  <p className="font-bold text-primary">Configurações restauradas!</p>
+                  <p className="text-muted-foreground">Seu desafio está como você deixou. Continue de onde parou.</p>
+                </div>
+                <Button variant="ghost" size="icon" className="w-6 h-6 shrink-0" onClick={() => setRestoredDraft(false)}>
+                  <XCircle size={14} />
+                </Button>
+              </motion.div>
+            )}
             <div className="space-y-2">
               <h2 className="text-2xl font-bold">Defina o Valor da Entrada</h2>
               <p className="text-muted-foreground">Mínimo: R$ 10</p>
@@ -750,10 +826,21 @@ export default function CreateChallenge() {
                   )}
                   {insufficientBalance && (
                     <p className="text-destructive font-semibold mt-1">
-                      Saldo insuficiente! Deposite pelo menos {formatBRL(entry - availableBalance)} a mais.
+                      Saldo insuficiente! Faltam {formatBRL(entry - availableBalance)}.
                     </p>
                   )}
                 </div>
+                {insufficientBalance && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 rounded-xl border-primary text-primary hover:bg-primary/10 font-bold text-xs"
+                    onClick={handleRechargeAndSave}
+                    data-testid="button-recharge-from-challenge"
+                  >
+                    <Wallet size={14} className="mr-1.5" /> Recarregar
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -800,20 +887,33 @@ export default function CreateChallenge() {
               )}
             </div>
 
-            <Button 
-              className="w-full h-14 rounded-2xl text-lg font-semibold mt-4"
-              onClick={() => createChallengeMutation.mutate()}
-              disabled={!isStep4Valid || insufficientBalance || createChallengeMutation.isPending}
-              data-testid="button-create-challenge"
-            >
-              {createChallengeMutation.isPending ? (
-                <><Loader2 className="animate-spin mr-2" size={20} /> Criando...</>
-              ) : insufficientBalance ? (
-                "Saldo Insuficiente"
-              ) : (
-                "Criar Desafio"
-              )}
-            </Button>
+            {insufficientBalance ? (
+              <div className="space-y-3 mt-4">
+                <Button 
+                  className="w-full h-14 rounded-2xl text-lg font-semibold bg-primary"
+                  onClick={handleRechargeAndSave}
+                  data-testid="button-recharge-challenge"
+                >
+                  <Wallet size={20} className="mr-2" /> Recarregar Saldo
+                </Button>
+                <p className="text-[11px] text-center text-muted-foreground">
+                  Suas configurações serão salvas. Após recarregar, volte aqui para continuar.
+                </p>
+              </div>
+            ) : (
+              <Button 
+                className="w-full h-14 rounded-2xl text-lg font-semibold mt-4"
+                onClick={() => { clearDraft(); createChallengeMutation.mutate(); }}
+                disabled={!isStep4Valid || createChallengeMutation.isPending}
+                data-testid="button-create-challenge"
+              >
+                {createChallengeMutation.isPending ? (
+                  <><Loader2 className="animate-spin mr-2" size={20} /> Criando...</>
+                ) : (
+                  "Criar Desafio"
+                )}
+              </Button>
+            )}
           </div>
         )}
 

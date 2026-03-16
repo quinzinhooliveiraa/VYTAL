@@ -72,7 +72,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
       >
         Começar Jornada
       </Button>
-      <p className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-widest">FitStake Accountability System</p>
+      <p className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-widest">VYTAL Accountability System</p>
     </div>
   </motion.div>
 );
@@ -285,11 +285,11 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
 
         <div className="space-y-3">
           <h2 className="text-2xl font-display font-bold">
-            {isInstalled ? "App instalado!" : "Instale o FitStake"}
+            {isInstalled ? "App instalado!" : "Instale o VYTAL"}
           </h2>
           <p className="text-muted-foreground text-sm px-4 leading-relaxed">
             {isInstalled
-              ? "Você já tem o FitStake instalado. Tudo pronto para começar!"
+              ? "Você já tem o VYTAL instalado. Tudo pronto para começar!"
               : "Adicione à tela inicial para a melhor experiência. Acesso rápido, notificações e modo offline."}
           </p>
         </div>
@@ -424,8 +424,8 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
           onClick={() => {
             if (navigator.share) {
               navigator.share({
-                title: "Convite FitStake",
-                text: "Entre no FitStake comigo! Desafios esportivos com dinheiro real.",
+                title: "Convite VYTAL",
+                text: "Entre no VYTAL comigo! Desafios esportivos com dinheiro real.",
                 url: window.location.origin,
               }).catch(() => {});
             }

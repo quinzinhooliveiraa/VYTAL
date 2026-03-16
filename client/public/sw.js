@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitstake-v1';
+const CACHE_NAME = 'vytal-v1';
 const STATIC_ASSETS = [
   '/',
   '/favicon.png',

@@ -131,7 +131,7 @@ export default function CreateChallenge() {
       setTimeout(() => {
         const shareData = {
           title: challengeName,
-          text: `Entra no meu desafio "${challengeName}" no FitStake!`,
+          text: `Entra no meu desafio "${challengeName}" no VYTAL!`,
           url: challengeUrl
         };
         if (navigator.share) {
@@ -616,7 +616,7 @@ export default function CreateChallenge() {
                     onClick={() => {
                       const shareData = {
                         title: challengeName,
-                        text: `Entre no meu desafio ${challengeName} no FitStake!`,
+                        text: `Entre no meu desafio ${challengeName} no VYTAL!`,
                         url: challengeUrl
                       };
                       if (navigator.share) {

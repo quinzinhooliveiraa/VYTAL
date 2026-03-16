@@ -1,4 +1,4 @@
-# FitStake
+# VYTAL
 
 Fitness/sports challenge web app with financial stakes (Pix payments). Users create challenges with monetary entry fees, invite friends, track progress, and win from the prize pool. Platform takes 10% fee.
 

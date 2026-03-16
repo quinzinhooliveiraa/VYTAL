@@ -263,7 +263,7 @@ export default function Partner() {
         </AnimatePresence>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 pb-8 bg-gradient-to-t from-background via-background to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 p-6 pb-24 bg-gradient-to-t from-background via-background to-transparent z-40">
         {isForm ? (
           <Button
             className="w-full h-14 rounded-2xl font-bold text-base shadow-xl shadow-blue-500/20 bg-blue-500 hover:bg-blue-600 text-white"

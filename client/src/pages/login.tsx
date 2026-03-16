@@ -147,11 +147,12 @@ export default function Login() {
 
     if (googleBtnRef.current) {
       googleBtnRef.current.innerHTML = "";
+      const containerWidth = googleBtnRef.current.offsetWidth || 400;
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         type: "standard",
         theme: "outline",
         size: "large",
-        width: 320,
+        width: containerWidth,
         text: "continue_with",
         logo_alignment: "center",
       });
@@ -242,7 +243,7 @@ export default function Login() {
 
         <div className="space-y-3 pt-2">
           {!googleReady && (
-            <div className="w-full h-12 rounded-xl border border-border bg-white dark:bg-muted flex items-center justify-center gap-3 text-sm font-medium text-muted-foreground opacity-50">
+            <div className="w-full h-[48px] rounded-xl border border-border bg-white dark:bg-muted flex items-center justify-center gap-3 text-sm font-medium text-muted-foreground opacity-50">
               <svg width="18" height="18" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -255,7 +256,7 @@ export default function Login() {
 
           <div
             ref={googleBtnRef}
-            className={`w-full rounded-xl overflow-hidden [&>div]:!w-full [&>div>div]:!w-full [&_iframe]:!w-full ${googleReady ? "" : "h-0 overflow-hidden"}`}
+            className={`w-full rounded-xl overflow-hidden [&>div]:!w-full [&>div>div]:!w-full [&_iframe]:!w-full [&_iframe]:!rounded-xl [&_iframe]:!h-[48px] ${googleReady ? "" : "h-0 overflow-hidden"}`}
             data-testid="button-google-login"
           />
 

@@ -1,25 +1,43 @@
 {
   "name": "VYTAL - Desafios Esportivos",
   "short_name": "VYTAL",
-  "description": "Participe de desafios esportivos, aposte via Pix e ganhe a premiação.",
+  "description": "Participe de desafios esportivos com accountability financeira. Deposite via Pix, prove sua atividade e ganhe a premiação.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#16a34a",
   "orientation": "portrait",
   "scope": "/",
+  "id": "/",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/icon-192.svg",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     },
     {
       "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "48x48",
+      "type": "image/png"
     }
   ],
   "categories": ["fitness", "sports", "finance"],

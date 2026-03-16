@@ -549,6 +549,14 @@ export async function registerRoutes(
         userId,
       }).returning();
 
+      const requester = await storage.getUser(userId);
+      pushService.sendToUser(challenge.createdBy, {
+        title: "Pedido de entrada",
+        body: `${requester?.name || "Alguém"} quer participar de "${challenge.title}"`,
+        url: `/challenge/${challengeId}`,
+        tag: `join-req-${challengeId}`,
+      }).catch(() => {});
+
       res.status(201).json(request);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao solicitar entrada" });
@@ -616,6 +624,14 @@ export async function registerRoutes(
       }
 
       await storage.joinChallenge(challengeId, request.userId);
+      
+      pushService.sendToUser(request.userId, {
+        title: "Entrada aprovada!",
+        body: `Você foi aprovado no desafio "${challenge.title}"`,
+        url: `/challenge/${challengeId}`,
+        tag: `join-approved-${challengeId}`,
+      }).catch(() => {});
+
       res.json({ message: "Participante aprovado com sucesso" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -866,6 +882,7 @@ export async function registerRoutes(
       const receiver = await storage.getUserByUsername(receiverUsername);
       if (!receiver) return res.status(404).json({ message: "Usuário não encontrado" });
       
+      const sender = await storage.getUser(senderId);
       const message = await storage.sendMessage({
         senderId,
         receiverId: receiver.id,
@@ -874,6 +891,13 @@ export async function registerRoutes(
         audioUrl: audioUrl || null,
       });
       
+      pushService.sendToUser(receiver.id, {
+        title: sender?.name || "Nova mensagem",
+        body: audioUrl ? "🎤 Mensagem de voz" : (text?.length > 80 ? text.slice(0, 80) + "..." : text),
+        url: `/messages/${sender?.username}`,
+        tag: `msg-${senderId}`,
+      }).catch(() => {});
+
       res.status(201).json(message);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao enviar mensagem" });
@@ -892,16 +916,34 @@ export async function registerRoutes(
       const alreadyFollowing = await storage.isFollowing(userId, target.id);
       if (alreadyFollowing) return res.status(400).json({ message: "Já está seguindo" });
 
+      const currentUser = await storage.getUser(userId);
+
       if (target.isPrivate) {
         const existing = await db.select().from(followRequests)
           .where(and(eq(followRequests.requesterId, userId), eq(followRequests.targetId, target.id), eq(followRequests.status, "pending")));
         if (existing.length > 0) return res.status(400).json({ message: "Solicitação já enviada" });
 
         const [request] = await db.insert(followRequests).values({ requesterId: userId, targetId: target.id }).returning();
+        
+        pushService.sendToUser(target.id, {
+          title: "Solicitação de seguir",
+          body: `${currentUser?.name || "Alguém"} quer te seguir`,
+          url: "/settings",
+          tag: `follow-req-${userId}`,
+        }).catch(() => {});
+
         return res.status(201).json({ ...request, type: "request" });
       }
 
       const follow = await storage.follow(userId, target.id);
+      
+      pushService.sendToUser(target.id, {
+        title: "Novo seguidor",
+        body: `${currentUser?.name || "Alguém"} começou a te seguir`,
+        url: `/profile/${currentUser?.username}`,
+        tag: `follow-${userId}`,
+      }).catch(() => {});
+
       res.status(201).json(follow);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro" });
@@ -961,6 +1003,15 @@ export async function registerRoutes(
 
       await db.update(followRequests).set({ status: "approved", reviewedAt: new Date() }).where(eq(followRequests.id, req.params.id));
       await storage.follow(request.requesterId, request.targetId);
+      
+      const approver = await storage.getUser(request.targetId);
+      pushService.sendToUser(request.requesterId, {
+        title: "Pedido aceito!",
+        body: `${approver?.name || "Alguém"} aceitou seu pedido de seguir`,
+        url: `/profile/${approver?.username}`,
+        tag: `follow-accepted-${request.targetId}`,
+      }).catch(() => {});
+
       res.json({ message: "Aprovado" });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro" });

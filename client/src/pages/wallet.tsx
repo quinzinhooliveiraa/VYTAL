@@ -472,12 +472,37 @@ export default function Wallet() {
                     type="number"
                     placeholder="R$ 0,00"
                     value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || Number(val) <= availableBalance) {
+                        setWithdrawAmount(val);
+                      } else {
+                        setWithdrawAmount(String(Math.floor(availableBalance)));
+                      }
+                    }}
                     className="h-12 rounded-xl text-lg font-bold"
                     min={30}
                     max={availableBalance}
                     data-testid="input-withdraw-amount"
                   />
+                  {Number(withdrawAmount) > availableBalance && (
+                    <p className="text-destructive text-[10px] font-semibold">Valor máximo: {formatBRL(availableBalance)}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {[30, 50, 100, Math.floor(availableBalance)].filter((v, i, a) => v >= 30 && a.indexOf(v) === i).map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setWithdrawAmount(String(v))}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                        Number(withdrawAmount) === v ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border text-muted-foreground hover:bg-muted/80"
+                      }`}
+                      data-testid={`quick-withdraw-${v}`}
+                    >
+                      {v === Math.floor(availableBalance) ? "Tudo" : `R$ ${v}`}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="space-y-2">
@@ -507,10 +532,22 @@ export default function Wallet() {
                   />
                 </div>
 
-                <div className="px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-700 dark:text-yellow-400 flex items-start gap-2">
-                  <Info size={14} className="shrink-0 mt-0.5" />
-                  <p>Taxa de R$ 0,80 por saque. O valor é debitado do seu saldo e enviado via Pix.</p>
-                </div>
+                {Number(withdrawAmount) >= 30 && (
+                  <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Valor solicitado</span>
+                      <span className="font-bold">{formatBRL(Number(withdrawAmount))}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Taxa de saque</span>
+                      <span className="font-bold text-destructive">- R$ 0,80</span>
+                    </div>
+                    <div className="border-t border-border pt-2 flex justify-between text-sm">
+                      <span className="font-bold">Você recebe via Pix</span>
+                      <span className="font-bold text-primary">{formatBRL(Number(withdrawAmount) - 0.80)}</span>
+                    </div>
+                  </div>
+                )}
 
                 <DialogFooter className="flex flex-col gap-2">
                   <Button

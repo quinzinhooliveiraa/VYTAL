@@ -80,7 +80,7 @@ async function sendResetEmail(email: string, code: string): Promise<boolean> {
   const brevoKey = process.env.BREVO_API_KEY;
   if (brevoKey) {
     try {
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@vytal.app";
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || "oliveirasocial74@gmail.com";
       const senderName = process.env.BREVO_SENDER_NAME || "VYTAL";
       const res = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",

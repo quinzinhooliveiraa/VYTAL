@@ -1,9 +1,10 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +25,11 @@ export default function ChallengeDetails() {
   const [quitDialogOpen, setQuitDialogOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editRules, setEditRules] = useState("");
+  const [editPrivate, setEditPrivate] = useState(false);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -81,6 +87,40 @@ export default function ChallengeDetails() {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     },
   });
+
+  const editChallengeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", `/api/challenges/${id}`, data);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Salvo!", description: "Desafio atualizado com sucesso" });
+      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const startEdit = () => {
+    if (!challenge) return;
+    setEditTitle(challenge.title || "");
+    setEditDescription(challenge.description || "");
+    setEditRules(challenge.rules || "");
+    setEditPrivate(challenge.isPrivate || false);
+    setEditMode(true);
+  };
+
+  const saveEdit = () => {
+    editChallengeMutation.mutate({
+      title: editTitle,
+      description: editDescription,
+      rules: editRules,
+      isPrivate: editPrivate,
+    });
+  };
 
   const handleSendMessage = () => {
     if (!chatMessage.trim() || sendMessageMutation.isPending) return;
@@ -300,6 +340,56 @@ export default function ChallengeDetails() {
                   <p className="text-sm font-bold text-orange-600 dark:text-orange-400">Área de Moderação</p>
                   <p className="text-xs text-orange-600/80 dark:text-orange-400/80">Você é o criador deste desafio. Revise as evidências e gerencie os participantes.</p>
                 </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm flex items-center gap-2"><Pencil size={14} /> Editar Desafio</h4>
+                  {!editMode ? (
+                    <Button variant="outline" size="sm" className="h-8 text-xs rounded-xl" onClick={startEdit} data-testid="button-start-edit">
+                      Editar
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditMode(false)}>Cancelar</Button>
+                      <Button size="sm" className="h-8 text-xs rounded-xl" onClick={saveEdit} disabled={editChallengeMutation.isPending} data-testid="button-save-edit">
+                        {editChallengeMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <><Save size={14} className="mr-1" /> Salvar</>}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {editMode ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase">Título</label>
+                      <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="rounded-xl" data-testid="input-edit-title" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase">Descrição</label>
+                      <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 focus:border-primary outline-none min-h-[80px] resize-none text-sm" data-testid="input-edit-description" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase">Regras</label>
+                      <textarea value={editRules} onChange={e => setEditRules(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 focus:border-primary outline-none min-h-[80px] resize-none text-sm" data-testid="input-edit-rules" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        {editPrivate ? <Lock size={16} className="text-orange-500" /> : <Unlock size={16} className="text-primary" />}
+                        <span className="text-sm font-bold">{editPrivate ? "Privado" : "Público"}</span>
+                      </div>
+                      <Switch checked={editPrivate} onCheckedChange={setEditPrivate} className="data-[state=checked]:bg-orange-500" data-testid="switch-edit-private" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      {challenge.isPrivate ? <Lock size={14} /> : <Unlock size={14} />}
+                      <span>{challenge.isPrivate ? "Desafio Privado" : "Desafio Público"}</span>
+                    </div>
+                    {challenge.description && <p className="text-muted-foreground text-xs">{challenge.description}</p>}
+                  </div>
+                )}
               </div>
 
               {isChallengeEnded && (

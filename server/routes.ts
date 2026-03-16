@@ -236,6 +236,30 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/challenges/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challenge = await storage.getChallenge(req.params.id);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode editar" });
+
+      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate"];
+      const updates: any = {};
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "Nenhum campo para atualizar" });
+      }
+
+      const updated = await storage.updateChallenge(req.params.id, updates);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/challenges/:id/quit", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;

@@ -58,7 +58,7 @@ export function ImageCropper({ open, onClose, onCrop, imageFile }: ImageCropperP
     canvas.height = size;
 
     ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#e5e7eb";
     ctx.fillRect(0, 0, size, size);
 
     const imgAspect = img.width / img.height;

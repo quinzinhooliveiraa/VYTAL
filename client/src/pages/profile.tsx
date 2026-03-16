@@ -109,8 +109,13 @@ export default function Profile() {
 
   const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const activeChallenges = myChallenges.filter((c: any) => c.status === "active" || c.status === "pending");
-  const completedChallenges = myChallenges.filter((c: any) => c.status === "completed" || c.status === "finalized");
+  const activeChallenges = myChallenges.filter((c: any) =>
+    c.myParticipation?.isActive !== false &&
+    c.status !== "completed" && c.status !== "finalized"
+  );
+  const completedChallenges = myChallenges.filter((c: any) =>
+    c.status === "completed" || c.status === "finalized" || c.myParticipation?.isActive === false
+  );
 
   const stats = [
     { label: "Seguidores", value: String(followersData?.length || 0) },
@@ -237,30 +242,35 @@ export default function Profile() {
                 <p className="text-xs mt-1">Explore e participe de desafios!</p>
               </div>
             ) : (
-              activeChallenges.map((challenge: any) => (
-                <Link key={challenge.id} href={`/challenge/${challenge.id}`}>
-                  <div className="p-4 rounded-2xl border border-border/50 bg-card flex flex-col gap-3 cursor-pointer hover:border-primary/30 transition-colors" data-testid={`card-challenge-${challenge.id}`}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-sm">{challenge.title}</h4>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
-                          {challenge.participantCount || 0} participantes
-                        </p>
+              activeChallenges.map((challenge: any) => {
+                const count = challenge.activeParticipantCount || challenge.participantCount || 0;
+                const max = challenge.maxParticipants || 50;
+                const waiting = count < 2;
+                return (
+                  <Link key={challenge.id} href={`/challenge/${challenge.id}`}>
+                    <div className="p-4 rounded-2xl border border-border/50 bg-card flex flex-col gap-3 cursor-pointer hover:border-primary/30 transition-colors" data-testid={`card-challenge-${challenge.id}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-sm">{challenge.title}</h4>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
+                            {count}/{max} participantes
+                          </p>
+                        </div>
+                        <Badge variant="default" className={`text-[9px] border-none ${waiting ? 'bg-yellow-500/20 text-yellow-600' : 'bg-primary/10 text-primary'}`}>
+                          {waiting ? "AGUARDANDO" : "ATIVO"}
+                        </Badge>
                       </div>
-                      <Badge variant="default" className="text-[9px] bg-primary/10 text-primary border-none">
-                        ATIVO
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Activity size={14} className="text-accent" />
-                        <span>{challenge.duration} dias</span>
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Activity size={14} className="text-accent" />
+                          <span>{challenge.duration} dias</span>
+                        </div>
+                        <div className="font-bold text-primary">Entrada: {formatBRL(Number(challenge.entryFee))}</div>
                       </div>
-                      <div className="font-bold text-primary">Entrada: {formatBRL(Number(challenge.entryFee))}</div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                );
+              })
             )}
           </div>
         )}

@@ -131,17 +131,38 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  async getUserChallenges(userId: string): Promise<Challenge[]> {
-    const participations = await db.select({ challengeId: challengeParticipants.challengeId })
+  async getUserChallenges(userId: string): Promise<any[]> {
+    const participations = await db.select({
+      challengeId: challengeParticipants.challengeId,
+      isActive: challengeParticipants.isActive,
+    })
       .from(challengeParticipants)
       .where(eq(challengeParticipants.userId, userId));
     
     if (participations.length === 0) return [];
     
     const ids = participations.map(p => p.challengeId);
-    return db.select().from(challenges)
+    const challs = await db.select().from(challenges)
       .where(sql`${challenges.id} = ANY(${ids})`)
       .orderBy(desc(challenges.createdAt));
+
+    const counts = await db.select({
+      challengeId: challengeParticipants.challengeId,
+      count: sql<number>`count(*)::int`,
+      activeCount: sql<number>`count(*) filter (where ${challengeParticipants.isActive} = true)::int`,
+    }).from(challengeParticipants)
+      .where(sql`${challengeParticipants.challengeId} = ANY(${ids})`)
+      .groupBy(challengeParticipants.challengeId);
+
+    const countMap = new Map(counts.map(c => [c.challengeId, c]));
+    const partMap = new Map(participations.map(p => [p.challengeId, p]));
+
+    return challs.map(c => ({
+      ...c,
+      participantCount: countMap.get(c.id)?.count || 0,
+      activeParticipantCount: countMap.get(c.id)?.activeCount || 0,
+      myParticipation: partMap.get(c.id),
+    }));
   }
 
   async createChallenge(challenge: InsertChallenge): Promise<Challenge> {

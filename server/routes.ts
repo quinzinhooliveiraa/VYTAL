@@ -76,7 +76,7 @@ export async function registerRoutes(
       } as any);
 
       (req.session as any).userId = user.id;
-      const { password, ...safeUser } = user;
+      const { password, twoFactorSecret, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar conta" });
@@ -92,12 +92,45 @@ export async function registerRoutes(
       const valid = await bcrypt.compare(data.password, user.password);
       if (!valid) return res.status(401).json({ message: "Email ou senha inválidos" });
 
+      if (user.twoFactorEnabled && user.twoFactorSecret) {
+        const { token } = req.body;
+        if (!token) {
+          return res.status(200).json({ requires2FA: true, userId: user.id });
+        }
+        const { TOTP } = await import("otpauth");
+        const totp = new TOTP({ issuer: "VYTAL", label: user.email, secret: user.twoFactorSecret, algorithm: "SHA1", digits: 6, period: 30 });
+        const valid2FA = totp.validate({ token, window: 1 }) !== null;
+        if (!valid2FA) return res.status(401).json({ message: "Código 2FA inválido" });
+      }
+
       (req.session as any).userId = user.id;
       await storage.updateUser(user.id, { online: true });
-      const { password, ...safeUser } = user;
+      const { password, twoFactorSecret, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao fazer login" });
+    }
+  });
+
+  app.post("/api/auth/verify-2fa", async (req, res) => {
+    try {
+      const { userId, token } = req.body;
+      if (!userId || !token) return res.status(400).json({ message: "Dados incompletos" });
+      const user = await storage.getUser(userId);
+      if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+        return res.status(400).json({ message: "2FA não configurado" });
+      }
+      const { TOTP } = await import("otpauth");
+      const totp = new TOTP({ issuer: "VYTAL", label: user.email, secret: user.twoFactorSecret, algorithm: "SHA1", digits: 6, period: 30 });
+      const valid = totp.validate({ token, window: 1 }) !== null;
+      if (!valid) return res.status(401).json({ message: "Código 2FA inválido" });
+
+      (req.session as any).userId = user.id;
+      await storage.updateUser(user.id, { online: true });
+      const { password, twoFactorSecret, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro na verificação 2FA" });
     }
   });
 
@@ -114,7 +147,7 @@ export async function registerRoutes(
     if (!userId) return res.status(401).json({ message: "Não autenticado" });
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Usuário não encontrado" });
-    const { password, ...safeUser } = user;
+    const { password, twoFactorSecret, ...safeUser } = user;
     res.json(safeUser);
   });
 
@@ -228,7 +261,7 @@ export async function registerRoutes(
   app.get("/api/users/:username", async (req, res) => {
     const user = await storage.getUserByUsername(req.params.username);
     if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
-    const { password, ...safeUser } = user;
+    const { password, twoFactorSecret, ...safeUser } = user;
 
     const userId = (req.session as any)?.userId;
     const isOwn = userId === user.id;
@@ -303,8 +336,72 @@ export async function registerRoutes(
     const { name, bio, avatar, goals, publicEarnings, isPrivate, cpf, phone } = req.body;
     const updated = await storage.updateUser(userId, { name, bio, avatar, goals, publicEarnings, isPrivate, cpf, phone });
     if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
-    const { password, ...safeUser } = updated;
+    const { password, twoFactorSecret, ...safeUser } = updated;
     res.json(safeUser);
+  });
+
+  app.post("/api/auth/2fa/setup", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const { TOTP, Secret } = await import("otpauth");
+      const secret = new Secret({ size: 20 });
+      const totp = new TOTP({ issuer: "VYTAL", label: user.email, secret, algorithm: "SHA1", digits: 6, period: 30 });
+      const otpauthUrl = totp.toString();
+
+      const QRCode = await import("qrcode");
+      const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
+
+      await storage.updateUser(userId, { twoFactorSecret: secret.base32 });
+
+      res.json({ qrCode: qrDataUrl, secret: secret.base32, otpauthUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao configurar 2FA" });
+    }
+  });
+
+  app.post("/api/auth/2fa/verify", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { token } = req.body;
+      if (!token) return res.status(400).json({ message: "Código obrigatório" });
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.twoFactorSecret) return res.status(400).json({ message: "2FA não configurado" });
+
+      const { TOTP } = await import("otpauth");
+      const totp = new TOTP({ issuer: "VYTAL", label: user.email, secret: user.twoFactorSecret, algorithm: "SHA1", digits: 6, period: 30 });
+      const valid = totp.validate({ token, window: 1 }) !== null;
+      if (!valid) return res.status(401).json({ message: "Código inválido. Tente novamente." });
+
+      await storage.updateUser(userId, { twoFactorEnabled: true });
+      res.json({ message: "2FA ativado com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao verificar 2FA" });
+    }
+  });
+
+  app.post("/api/auth/2fa/disable", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { token } = req.body;
+      if (!token) return res.status(400).json({ message: "Código obrigatório" });
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.twoFactorSecret) return res.status(400).json({ message: "2FA não está ativo" });
+
+      const { TOTP } = await import("otpauth");
+      const totp = new TOTP({ issuer: "VYTAL", label: user.email, secret: user.twoFactorSecret, algorithm: "SHA1", digits: 6, period: 30 });
+      const valid = totp.validate({ token, window: 1 }) !== null;
+      if (!valid) return res.status(401).json({ message: "Código inválido" });
+
+      await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null });
+      res.json({ message: "2FA desativado" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao desativar 2FA" });
+    }
   });
 
   // ====== CHALLENGES ======

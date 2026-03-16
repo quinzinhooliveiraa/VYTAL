@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Activity, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Activity, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -15,6 +16,11 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
+
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFAUserId, setTwoFAUserId] = useState("");
+  const [twoFACode, setTwoFACode] = useState("");
+  const [verifying2FA, setVerifying2FA] = useState(false);
   
   const { login, register } = useAuth();
 
@@ -32,7 +38,12 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        await login.mutateAsync({ email, password });
+        const result = await login.mutateAsync({ email, password });
+        if (result.requires2FA) {
+          setRequires2FA(true);
+          setTwoFAUserId(result.userId);
+          return;
+        }
         localStorage.setItem("fitstake-onboarding-done", "true");
         setLocation("/dashboard");
       } else {
@@ -56,9 +67,95 @@ export default function Login() {
     }
   };
 
+  const handleVerify2FA = async () => {
+    if (twoFACode.length !== 6) return;
+    setError("");
+    setVerifying2FA(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/verify-2fa", { userId: twoFAUserId, token: twoFACode });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Código inválido");
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      localStorage.setItem("fitstake-onboarding-done", "true");
+      setLocation("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Código 2FA inválido.");
+    } finally {
+      setVerifying2FA(false);
+    }
+  };
+
   const handleSocialLogin = () => {
     window.location.href = "/api/login";
   };
+
+  if (requires2FA) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col p-6 items-center justify-center bg-background relative">
+        <div className="w-full max-w-md space-y-8 z-0">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-xl shadow-primary/5">
+              <ShieldCheck size={40} strokeWidth={2} />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-center" data-testid="text-2fa-title">
+              Verificação 2FA
+            </h1>
+            <p className="text-muted-foreground text-center text-sm">
+              Digite o código de 6 dígitos do seu app de autenticação.
+            </p>
+          </div>
+
+          <div className="space-y-4 pt-4">
+            <Input
+              value={twoFACode}
+              onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              className="text-center text-3xl font-mono tracking-[0.5em] h-16 rounded-2xl bg-card border-border shadow-sm"
+              maxLength={6}
+              inputMode="numeric"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleVerify2FA()}
+              data-testid="input-2fa-login-code"
+            />
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm"
+              >
+                <AlertCircle size={16} />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            <Button
+              className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+              onClick={handleVerify2FA}
+              disabled={twoFACode.length !== 6 || verifying2FA}
+              data-testid="button-verify-2fa-login"
+            >
+              {verifying2FA ? (
+                <div className="w-6 h-6 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              ) : (
+                "Verificar"
+              )}
+            </Button>
+
+            <button
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => { setRequires2FA(false); setTwoFACode(""); setError(""); }}
+              data-testid="button-back-to-login"
+            >
+              <ArrowLeft size={14} className="inline mr-1" /> Voltar ao login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] flex flex-col p-6 items-center justify-center bg-background relative">

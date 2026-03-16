@@ -18,6 +18,8 @@ export const users = pgTable("users", {
   isPrivate: boolean("is_private").default(false),
   online: boolean("online").default(false),
   isAdmin: boolean("is_admin").default(false),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

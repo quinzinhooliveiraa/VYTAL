@@ -1,7 +1,9 @@
-import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2, Loader2, Copy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,6 +24,58 @@ export default function Settings() {
   const [feedbackType, setFeedbackType] = useState<"feedback" | "suporte" | "ideia">("feedback");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
+
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [show2FADisable, setShow2FADisable] = useState(false);
+  const [twoFAData, setTwoFAData] = useState<{ qrCode: string; secret: string } | null>(null);
+  const [twoFACode, setTwoFACode] = useState("");
+  const [twoFAEnabled, setTwoFAEnabled] = useState(user?.twoFactorEnabled || false);
+
+  const setup2FA = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/2fa/setup");
+      if (!res.ok) throw new Error("Erro");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setTwoFAData(data);
+      setShow2FASetup(true);
+    },
+    onError: () => toast({ title: "Erro", description: "Não foi possível configurar 2FA.", variant: "destructive" }),
+  });
+
+  const verify2FA = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/2fa/verify", { token: twoFACode });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      setTwoFAEnabled(true);
+      setShow2FASetup(false);
+      setTwoFACode("");
+      setTwoFAData(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "2FA Ativado", description: "Sua conta agora tem proteção extra!" });
+    },
+    onError: (err: any) => toast({ title: "Erro", description: err.message || "Código inválido", variant: "destructive" }),
+  });
+
+  const disable2FA = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/2fa/disable", { token: twoFACode });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      setTwoFAEnabled(false);
+      setShow2FADisable(false);
+      setTwoFACode("");
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "2FA Desativado", description: "Autenticação de dois fatores removida." });
+    },
+    onError: (err: any) => toast({ title: "Erro", description: err.message || "Código inválido", variant: "destructive" }),
+  });
 
   const updatePrivacy = useMutation({
     mutationFn: async (data: { isPrivate?: boolean; publicEarnings?: boolean }) => {
@@ -105,8 +159,27 @@ export default function Settings() {
               }} className="data-[state=checked]:bg-primary" data-testid="switch-earnings-privacy" />
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><ShieldCheck size={18} className="text-foreground" /> <span className="text-sm font-bold">Autenticação 2FA</span></div>
-              <Switch data-testid="switch-2fa" />
+              <div className="flex items-center gap-3">
+                <ShieldCheck size={18} className={twoFAEnabled ? "text-primary" : "text-foreground"} />
+                <div>
+                  <span className="text-sm font-bold">Autenticação 2FA</span>
+                  {twoFAEnabled && <p className="text-[10px] text-primary font-medium">Ativado</p>}
+                </div>
+              </div>
+              <Switch
+                checked={twoFAEnabled}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setup2FA.mutate();
+                  } else {
+                    setTwoFACode("");
+                    setShow2FADisable(true);
+                  }
+                }}
+                disabled={setup2FA.isPending}
+                className="data-[state=checked]:bg-primary"
+                data-testid="switch-2fa"
+              />
             </div>
           </div>
         </div>
@@ -238,6 +311,104 @@ export default function Settings() {
           <LogOut className="mr-3" size={20} /> Encerrar Sessão
         </Button>
       </div>
+
+      <Dialog open={show2FASetup} onOpenChange={(open) => { if (!open) { setShow2FASetup(false); setTwoFACode(""); setTwoFAData(null); } }}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck size={20} className="text-primary" /> Ativar 2FA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Escaneie o QR code com o Google Authenticator, Authy ou outro app de autenticação.
+            </p>
+            {twoFAData && (
+              <>
+                <div className="flex justify-center p-4 bg-white rounded-xl">
+                  <img src={twoFAData.qrCode} alt="QR Code 2FA" className="w-48 h-48" data-testid="img-2fa-qr" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Ou copie a chave manualmente:</p>
+                  <div className="flex items-center gap-2 bg-muted rounded-xl p-3">
+                    <code className="text-xs font-mono flex-1 break-all select-all">{twoFAData.secret}</code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-8 h-8 shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(twoFAData.secret);
+                        toast({ title: "Copiado!" });
+                      }}
+                      data-testid="button-copy-2fa-secret"
+                    >
+                      <Copy size={14} />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="space-y-2">
+              <p className="text-sm font-bold">Digite o código de 6 dígitos:</p>
+              <Input
+                value={twoFACode}
+                onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                className="text-center text-2xl font-mono tracking-[0.5em] h-14 rounded-xl"
+                maxLength={6}
+                inputMode="numeric"
+                data-testid="input-2fa-code"
+              />
+            </div>
+            <Button
+              className="w-full h-12 rounded-xl font-bold"
+              onClick={() => verify2FA.mutate()}
+              disabled={twoFACode.length !== 6 || verify2FA.isPending}
+              data-testid="button-verify-2fa"
+            >
+              {verify2FA.isPending ? <Loader2 className="animate-spin mr-2" size={18} /> : <ShieldCheck className="mr-2" size={18} />}
+              Ativar 2FA
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={show2FADisable} onOpenChange={(open) => { if (!open) { setShow2FADisable(false); setTwoFACode(""); } }}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck size={20} className="text-destructive" /> Desativar 2FA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Para desativar a autenticação de dois fatores, digite o código atual do seu app de autenticação.
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-bold">Código de 6 dígitos:</p>
+              <Input
+                value={twoFACode}
+                onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                className="text-center text-2xl font-mono tracking-[0.5em] h-14 rounded-xl"
+                maxLength={6}
+                inputMode="numeric"
+                data-testid="input-2fa-disable-code"
+              />
+            </div>
+            <Button
+              variant="destructive"
+              className="w-full h-12 rounded-xl font-bold"
+              onClick={() => disable2FA.mutate()}
+              disabled={twoFACode.length !== 6 || disable2FA.isPending}
+              data-testid="button-disable-2fa"
+            >
+              {disable2FA.isPending ? <Loader2 className="animate-spin mr-2" size={18} /> : <X className="mr-2" size={18} />}
+              Desativar 2FA
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

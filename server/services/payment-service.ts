@@ -50,48 +50,33 @@ export class PaymentService {
   }
 
   async createPixCharge(amountInCents: number, description: string, externalRef: string, customer: CustomerData): Promise<PixChargeResult> {
-    const data = await this.request("POST", "/billing/create", {
-      frequency: "ONE_TIME",
-      methods: ["PIX"],
-      products: [
-        {
-          externalId: externalRef,
-          name: description,
-          quantity: 1,
-          price: amountInCents,
-        },
-      ],
-      customer: {
-        name: customer.name,
-        email: customer.email,
-        cellphone: customer.cellphone,
-        taxId: customer.taxId,
-      },
-      returnUrl: process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}/wallet`,
-      completionUrl: process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}/wallet`,
+    const data = await this.request("POST", "/pixQrCode/create", {
+      amount: amountInCents,
+      description,
+      externalId: externalRef,
     });
 
-    const billing = data.data || data;
+    const pix = data.data || data;
 
     return {
-      id: billing.id,
-      url: billing.url,
-      qrCode: billing.pix?.qrCode || billing.url,
-      qrCodeBase64: billing.pix?.qrCodeBase64 || "",
+      id: pix.id,
+      url: pix.brCode || "",
+      qrCode: pix.brCode || "",
+      qrCodeBase64: pix.brCodeBase64 || "",
       amount: amountInCents,
-      status: billing.status || "PENDING",
+      status: pix.status || "PENDING",
     };
   }
 
   async getChargeStatus(chargeId: string): Promise<string> {
-    const data = await this.request("GET", "/billing/list");
-    const billings = data.data || [];
-    const billing = billings.find((b: any) => b.id === chargeId);
-    if (!billing) {
-      console.log("[AbacatePay] Billing not found in list:", chargeId);
+    try {
+      const data = await this.request("GET", `/pixQrCode/check?id=${chargeId}`);
+      const pix = data.data || data;
+      return pix.status || "PENDING";
+    } catch (error) {
+      console.log("[AbacatePay] Error checking pixQrCode status:", chargeId, error);
       return "PENDING";
     }
-    return billing.status || "PENDING";
   }
 
   async createPixWithdraw(amountInCents: number, pixKey: string, pixKeyType: string, description: string): Promise<PixWithdrawResult> {

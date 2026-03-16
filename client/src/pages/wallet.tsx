@@ -381,18 +381,22 @@ export default function Wallet() {
                 <>
                   <div className="text-center space-y-1">
                     <p className="font-bold text-lg">R$ {depositAmount},00</p>
-                    <p className="text-sm text-muted-foreground">Escaneie com o app do seu banco</p>
+                    <p className="text-sm text-muted-foreground">Escaneie o QR Code ou copie o código Pix</p>
                   </div>
 
                   <div className="flex justify-center">
                     <div className="bg-white p-4 rounded-2xl">
-                      <QRCodeSVG
-                        value={pixData.url || pixData.qrCode || ""}
-                        size={200}
-                        level="H"
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                      />
+                      {pixData.qrCodeBase64 ? (
+                        <img src={pixData.qrCodeBase64} alt="QR Code Pix" width={200} height={200} className="rounded-lg" />
+                      ) : (
+                        <QRCodeSVG
+                          value={pixData.qrCode || ""}
+                          size={200}
+                          level="H"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -400,7 +404,7 @@ export default function Wallet() {
                     variant="outline"
                     className="w-full h-11 rounded-xl font-semibold gap-2"
                     onClick={() => {
-                      navigator.clipboard.writeText(pixData.url || pixData.qrCode || "");
+                      navigator.clipboard.writeText(pixData.qrCode || "");
                       setCopied(true);
                       setTimeout(() => setCopied(false), 2500);
                     }}
@@ -414,7 +418,7 @@ export default function Wallet() {
                     ) : (
                       <>
                         <Copy size={16} />
-                        Copiar código Pix
+                        Copiar Pix Copia e Cola
                       </>
                     )}
                   </Button>

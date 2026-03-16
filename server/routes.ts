@@ -601,20 +601,25 @@ export async function registerRoutes(
   app.get("/api/admin/stats", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");
-      const { transactions, wallets } = await import("@shared/schema");
-      const { sql, eq } = await import("drizzle-orm");
+      const { transactions, wallets, users: usersTable, challenges: challengesTable } = await import("@shared/schema");
+      const { sql, eq, and } = await import("drizzle-orm");
 
       const [feeResult] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
       }).from(transactions).where(eq(transactions.type, "platform_fee"));
 
-      const [depositResult] = await database.select({
+      const [depositCompleted] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(and(eq(transactions.type, "deposit"), eq(transactions.status, "completed")));
+
+      const [depositAll] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
       }).from(transactions).where(eq(transactions.type, "deposit"));
 
-      const [withdrawResult] = await database.select({
+      const [withdrawAll] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
       }).from(transactions).where(eq(transactions.type, "withdraw_request"));
@@ -624,16 +629,31 @@ export async function registerRoutes(
         totalLocked: sql<string>`COALESCE(SUM(locked_balance), 0)`,
       }).from(wallets);
 
-      const [userCount] = await database.select({
+      const [userCountResult] = await database.select({ count: sql<number>`COUNT(*)` }).from(usersTable);
+      const [challengeCount] = await database.select({ count: sql<number>`COUNT(*)` }).from(challengesTable);
+      const [activeChallenges] = await database.select({ count: sql<number>`COUNT(*)` }).from(challengesTable).where(eq(challengesTable.isActive, true));
+
+      const [challengeEntries] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(sql`type = 'deposit' AND status = 'completed'`);
+      }).from(transactions).where(eq(transactions.type, "challenge_entry"));
+
+      const [challengeWins] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(eq(transactions.type, "challenge_win"));
 
       res.json({
         platformFees: { total: Number(feeResult.total), count: Number(feeResult.count) },
-        deposits: { total: Number(depositResult.total), count: Number(depositResult.count) },
-        withdrawals: { total: Number(withdrawResult.total), count: Number(withdrawResult.count) },
+        depositsCompleted: { total: Number(depositCompleted.total), count: Number(depositCompleted.count) },
+        depositsAll: { total: Number(depositAll.total), count: Number(depositAll.count) },
+        withdrawals: { total: Number(withdrawAll.total), count: Number(withdrawAll.count) },
         usersBalance: { total: Number(walletResult.totalBalance), locked: Number(walletResult.totalLocked) },
-        netRevenue: Number(feeResult.total),
+        challengeEntries: { total: Number(challengeEntries.total), count: Number(challengeEntries.count) },
+        challengeWins: { total: Number(challengeWins.total), count: Number(challengeWins.count) },
+        totalUsers: Number(userCountResult.count),
+        totalChallenges: Number(challengeCount.count),
+        activeChallenges: Number(activeChallenges.count),
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -643,11 +663,152 @@ export async function registerRoutes(
   app.get("/api/admin/transactions", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");
-      const { transactions } = await import("@shared/schema");
-      const { desc } = await import("drizzle-orm");
+      const { transactions, users: usersTable } = await import("@shared/schema");
+      const { desc, eq } = await import("drizzle-orm");
 
-      const allTxs = await database.select().from(transactions).orderBy(desc(transactions.createdAt)).limit(100);
+      const allTxs = await database.select({
+        id: transactions.id,
+        userId: transactions.userId,
+        type: transactions.type,
+        amount: transactions.amount,
+        status: transactions.status,
+        description: transactions.description,
+        metadata: transactions.metadata,
+        createdAt: transactions.createdAt,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+      }).from(transactions)
+        .leftJoin(usersTable, eq(transactions.userId, usersTable.id))
+        .orderBy(desc(transactions.createdAt))
+        .limit(200);
       res.json(allTxs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable, wallets } = await import("@shared/schema");
+      const { desc, eq, sql } = await import("drizzle-orm");
+
+      const allUsers = await database.select({
+        id: usersTable.id,
+        username: usersTable.username,
+        email: usersTable.email,
+        name: usersTable.name,
+        cpf: usersTable.cpf,
+        phone: usersTable.phone,
+        isAdmin: usersTable.isAdmin,
+        online: usersTable.online,
+        createdAt: usersTable.createdAt,
+        balance: sql<string>`COALESCE(w.balance, 0)`.as("balance"),
+        lockedBalance: sql<string>`COALESCE(w.locked_balance, 0)`.as("locked_balance"),
+      }).from(usersTable)
+        .leftJoin(sql`wallets w`, sql`w.user_id = ${usersTable.id}`)
+        .orderBy(desc(usersTable.createdAt));
+
+      res.json(allUsers);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/toggle-admin", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable } = await import("@shared/schema");
+      const { eq, sql } = await import("drizzle-orm");
+
+      const [target] = await database.select().from(usersTable).where(eq(usersTable.id, req.params.id));
+      if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      await database.update(usersTable).set({ isAdmin: !target.isAdmin }).where(eq(usersTable.id, req.params.id));
+      res.json({ success: true, isAdmin: !target.isAdmin });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/block", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      await database.update(usersTable).set({ online: false, isPrivate: true }).where(eq(usersTable.id, req.params.id));
+      res.json({ success: true, message: "Usuário bloqueado" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable, wallets, transactions } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [target] = await database.select().from(usersTable).where(eq(usersTable.id, req.params.id));
+      if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
+      if (target.isAdmin) return res.status(403).json({ message: "Não é possível apagar um admin" });
+
+      await database.delete(transactions).where(eq(transactions.userId, req.params.id));
+      await database.delete(wallets).where(eq(wallets.userId, req.params.id));
+      await database.delete(usersTable).where(eq(usersTable.id, req.params.id));
+      res.json({ success: true, message: "Usuário removido" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/suspicious", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { transactions, users: usersTable } = await import("@shared/schema");
+      const { sql, eq, desc } = await import("drizzle-orm");
+
+      const highVolume = await database.select({
+        userId: transactions.userId,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+        txCount: sql<number>`COUNT(*)`.as("tx_count"),
+        totalAmount: sql<string>`SUM(amount)`.as("total_amount"),
+      }).from(transactions)
+        .leftJoin(usersTable, eq(transactions.userId, usersTable.id))
+        .groupBy(transactions.userId, usersTable.name, usersTable.email)
+        .having(sql`COUNT(*) > 5 OR SUM(amount) > 500`)
+        .orderBy(sql`SUM(amount) DESC`);
+
+      const failedTxs = await database.select({
+        id: transactions.id,
+        userId: transactions.userId,
+        userName: usersTable.name,
+        type: transactions.type,
+        amount: transactions.amount,
+        status: transactions.status,
+        createdAt: transactions.createdAt,
+      }).from(transactions)
+        .leftJoin(usersTable, eq(transactions.userId, usersTable.id))
+        .where(eq(transactions.status, "failed"))
+        .orderBy(desc(transactions.createdAt))
+        .limit(20);
+
+      const rapidDeposits = await database.select({
+        userId: transactions.userId,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+        depositCount: sql<number>`COUNT(*)`.as("deposit_count"),
+        totalDeposited: sql<string>`SUM(amount)`.as("total_deposited"),
+      }).from(transactions)
+        .leftJoin(usersTable, eq(transactions.userId, usersTable.id))
+        .where(sql`type = 'deposit' AND created_at > NOW() - INTERVAL '24 hours'`)
+        .groupBy(transactions.userId, usersTable.name, usersTable.email)
+        .having(sql`COUNT(*) >= 3`)
+        .orderBy(sql`COUNT(*) DESC`);
+
+      res.json({ highVolume, failedTxs, rapidDeposits });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

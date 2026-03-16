@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, Send, Phone, Video, MoreVertical, Mic, Reply, X, Swords, Plus } from "lucide-react";
+import { ChevronLeft, Send, Phone, Video, MoreVertical, Mic, Reply, X, Swords, Plus, Square, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +11,73 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
+function AudioPlayer({ src, isMe }: { src: string; isMe: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onLoaded = () => setDuration(audio.duration || 0);
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onEnded = () => { setPlaying(false); setCurrentTime(0); };
+    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, []);
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setPlaying(!playing);
+  };
+
+  const fmt = (s: number) => {
+    if (!s || !isFinite(s)) return "0:00";
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-3 min-w-[180px]">
+      <audio ref={audioRef} src={src} preload="metadata" />
+      <button
+        onClick={toggle}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+          isMe ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary"
+        }`}
+      >
+        {playing ? <Pause size={16} /> : <Play size={16} className="translate-x-0.5" />}
+      </button>
+      <div className="flex-1 flex flex-col gap-1">
+        <div className={`h-1 rounded-full overflow-hidden ${isMe ? "bg-primary-foreground/20" : "bg-muted"}`}>
+          <div
+            className={`h-full rounded-full transition-all ${isMe ? "bg-primary-foreground" : "bg-primary"}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className={`text-[10px] ${isMe ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+          {playing ? fmt(currentTime) : fmt(duration)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Messages() {
   const [, setLocation] = useLocation();
   const { username } = useParams();
@@ -20,7 +87,13 @@ export default function Messages() {
   const [message, setMessage] = useState("");
   const [replyingTo, setReplyingTo] = useState<{id: string, text: string, sender: string} | null>(null);
   const [showActions, setShowActions] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isSendingAudio, setIsSendingAudio] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: targetUser } = useQuery({
     queryKey: ["/api/users", username],
@@ -44,7 +117,7 @@ export default function Messages() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: async (data: { receiverUsername: string; text: string; replyToId?: string }) => {
+    mutationFn: async (data: { receiverUsername: string; text: string; replyToId?: string; audioUrl?: string }) => {
       const res = await apiRequest("POST", "/api/messages", data);
       return res.json();
     },
@@ -72,6 +145,84 @@ export default function Messages() {
     setMessage("");
     setReplyingTo(null);
   };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (blob.size < 1000) return;
+        await sendAudio(blob);
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch {
+      toast({ title: "Erro", description: "Não foi possível acessar o microfone. Verifique as permissões.", variant: "destructive" });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setRecordingTime(0);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    chunksRef.current = [];
+  };
+
+  const sendAudio = async (blob: Blob) => {
+    if (!username) return;
+    setIsSendingAudio(true);
+    try {
+      const res = await fetch("/api/upload/audio", {
+        method: "POST",
+        body: blob,
+        credentials: "include",
+        headers: { "Content-Type": "application/octet-stream" },
+      });
+      if (!res.ok) throw new Error("Upload falhou");
+      const { url } = await res.json();
+
+      sendMutation.mutate({
+        receiverUsername: username,
+        text: "🎤 Mensagem de voz",
+        audioUrl: url,
+        replyToId: replyingTo?.id || undefined,
+      });
+      setReplyingTo(null);
+    } catch {
+      toast({ title: "Erro", description: "Falha ao enviar áudio", variant: "destructive" });
+    } finally {
+      setIsSendingAudio(false);
+    }
+  };
+
+  const fmtRecTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
   const displayName = targetUser?.name || username || "Usuário";
   const avatarUrl = targetUser?.avatar || "";
@@ -127,6 +278,7 @@ export default function Messages() {
 
           {messagesData.map((msg: any) => {
             const isMe = msg.senderId === currentUser?.id;
+            const hasAudio = !!msg.audioUrl;
             return (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
@@ -144,7 +296,11 @@ export default function Messages() {
                       }`}
                     >
                       <div className="px-4 py-2.5 text-sm">
-                        {msg.text}
+                        {hasAudio ? (
+                          <AudioPlayer src={msg.audioUrl} isMe={isMe} />
+                        ) : (
+                          msg.text
+                        )}
                       </div>
                     </div>
                   </div>
@@ -153,7 +309,7 @@ export default function Messages() {
                     variant="ghost" 
                     size="icon" 
                     className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                    onClick={() => setReplyingTo({ id: msg.id, text: msg.text, sender: isMe ? "me" : "them" })}
+                    onClick={() => setReplyingTo({ id: msg.id, text: hasAudio ? "🎤 Áudio" : msg.text, sender: isMe ? "me" : "them" })}
                   >
                     <Reply size={16} className="text-muted-foreground" />
                   </Button>
@@ -190,7 +346,7 @@ export default function Messages() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {showActions && (
+          {showActions && !isRecording && (
             <motion.div
               initial={{ opacity: 0, height: 0, marginBottom: 0 }}
               animate={{ opacity: 1, height: "auto", marginBottom: 12 }}
@@ -211,48 +367,80 @@ export default function Messages() {
           )}
         </AnimatePresence>
         
-        <div className="flex gap-2 items-end">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="w-10 h-10 rounded-full shrink-0 text-muted-foreground"
-            onClick={() => setShowActions(!showActions)}
-            data-testid="button-actions"
+        {isRecording ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-3"
           >
-            <Plus size={22} className={`transition-transform ${showActions ? 'rotate-45' : ''}`} />
-          </Button>
-          <div className="flex-1 bg-muted rounded-3xl border border-border overflow-hidden">
-            <Input 
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Digite uma mensagem..."
-              className="border-none bg-transparent h-12 px-4 shadow-none focus-visible:ring-0"
-              data-testid="input-message"
-            />
-          </div>
-          {message.trim() ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="w-10 h-10 rounded-full shrink-0 text-destructive"
+              onClick={cancelRecording}
+              data-testid="button-cancel-recording"
+            >
+              <X size={22} />
+            </Button>
+            <div className="flex-1 flex items-center gap-3 bg-destructive/5 border border-destructive/20 rounded-3xl px-4 h-12">
+              <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-sm font-bold text-destructive">{fmtRecTime(recordingTime)}</span>
+              <span className="text-xs text-muted-foreground">Gravando...</span>
+            </div>
             <Button 
               size="icon" 
               className="w-12 h-12 rounded-full shrink-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-              onClick={handleSend}
-              disabled={sendMutation.isPending}
-              data-testid="button-send"
+              onClick={stopRecording}
+              data-testid="button-stop-recording"
             >
               <Send size={20} className="translate-x-0.5" />
             </Button>
-          ) : (
-            <Button 
-              size="icon" 
-              variant="secondary"
-              className="w-12 h-12 rounded-full shrink-0"
-              onClick={() => alert("Gravar áudio (em breve)")}
-              data-testid="button-audio"
+          </motion.div>
+        ) : (
+          <div className="flex gap-2 items-end">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="w-10 h-10 rounded-full shrink-0 text-muted-foreground"
+              onClick={() => setShowActions(!showActions)}
+              data-testid="button-actions"
             >
-              <Mic size={20} />
+              <Plus size={22} className={`transition-transform ${showActions ? 'rotate-45' : ''}`} />
             </Button>
-          )}
-        </div>
+            <div className="flex-1 bg-muted rounded-3xl border border-border overflow-hidden">
+              <Input 
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Digite uma mensagem..."
+                className="border-none bg-transparent h-12 px-4 shadow-none focus-visible:ring-0"
+                data-testid="input-message"
+              />
+            </div>
+            {message.trim() ? (
+              <Button 
+                size="icon" 
+                className="w-12 h-12 rounded-full shrink-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                onClick={handleSend}
+                disabled={sendMutation.isPending}
+                data-testid="button-send"
+              >
+                <Send size={20} className="translate-x-0.5" />
+              </Button>
+            ) : (
+              <Button 
+                size="icon" 
+                variant="secondary"
+                className={`w-12 h-12 rounded-full shrink-0 ${isSendingAudio ? 'opacity-50' : ''}`}
+                onClick={startRecording}
+                disabled={isSendingAudio}
+                data-testid="button-audio"
+              >
+                <Mic size={20} />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

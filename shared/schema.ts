@@ -69,6 +69,7 @@ export const messages = pgTable("messages", {
   senderId: varchar("sender_id").notNull().references(() => users.id),
   receiverId: varchar("receiver_id").notNull().references(() => users.id),
   text: text("text").notNull(),
+  audioUrl: text("audio_url"),
   replyToId: varchar("reply_to_id"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),

@@ -13,6 +13,9 @@ import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
 import { challenges, communities, transactions, challengeJoinRequests, followRequests, users } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
+import path from "path";
+import fs from "fs";
+import { randomUUID } from "crypto";
 import * as oidcClient from "openid-client";
 import memoize from "memoizee";
 import { pushService } from "./services/push-service";
@@ -670,10 +673,29 @@ export async function registerRoutes(
     res.json(msgs);
   });
 
+  app.use("/uploads", (await import("express")).default.static(path.join(process.cwd(), "server/uploads")));
+
+  app.post("/api/upload/audio", requireAuth, async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => chunks.push(chunk));
+      req.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        const filename = `${randomUUID()}.webm`;
+        const uploadDir = path.join(process.cwd(), "server/uploads/audio");
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadDir, filename), buffer);
+        res.json({ url: `/uploads/audio/${filename}` });
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao fazer upload do áudio" });
+    }
+  });
+
   app.post("/api/messages", requireAuth, async (req, res) => {
     try {
       const senderId = (req.session as any).userId;
-      const { receiverUsername, text, replyToId } = req.body;
+      const { receiverUsername, text, replyToId, audioUrl } = req.body;
       
       const receiver = await storage.getUserByUsername(receiverUsername);
       if (!receiver) return res.status(404).json({ message: "Usuário não encontrado" });
@@ -683,6 +705,7 @@ export async function registerRoutes(
         receiverId: receiver.id,
         text,
         replyToId: replyToId || null,
+        audioUrl: audioUrl || null,
       });
       
       res.status(201).json(message);

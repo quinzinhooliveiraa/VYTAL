@@ -11,7 +11,7 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
-import { challenges, communities, transactions, challengeJoinRequests, followRequests, users } from "@shared/schema";
+import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
@@ -799,11 +799,16 @@ export async function registerRoutes(
     const conversations = await storage.getUserConversations(userId);
     const myFollowers = await storage.getFollowers(userId);
     const followerIds = new Set(myFollowers.map(f => f.followerId));
+
+    const allMsgs = await db.select().from(messages)
+      .where(eq(messages.senderId, userId));
+    const repliedToIds = new Set(allMsgs.map(m => m.receiverId));
+
     res.json(conversations.map(c => ({
-      user: { ...c.user, password: undefined },
+      user: { ...c.user, password: undefined, twoFactorSecret: undefined },
       lastMessage: c.lastMessage,
       unreadCount: c.unreadCount,
-      isFollower: followerIds.has(c.user.id),
+      isFollower: followerIds.has(c.user.id) || repliedToIds.has(c.user.id),
     })));
   });
 

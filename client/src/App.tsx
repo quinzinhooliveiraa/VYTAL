@@ -86,6 +86,10 @@ function Router() {
     return <Redirect to="/login" />;
   }
 
+  if (isAuthenticated && !hasSeenOnboarding) {
+    return <Redirect to="/onboarding" />;
+  }
+
   return (
     <MobileLayout>
       <Switch>

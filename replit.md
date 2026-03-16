@@ -2,11 +2,11 @@
 
 Fitness/sports challenge web app with financial stakes (Pix payments). Users create challenges with monetary entry fees, invite friends, track progress, and win from the prize pool. Platform takes 10% fee.
 
-## Onboarding (5 steps)
+## Onboarding (5 steps, mandatory for all authenticated users)
 1. **Legal Terms** — Accept terms of use, privacy policy, financial terms, and image consent
-2. **How It Works** — 4-step overview (bet, check-in, moderation, profit) + 10% fee explanation
-3. **Personalization** — Name input + goal selection (weight loss, hypertrophy, cardio, discipline)
-4. **Notifications + PWA** — Enable push notifications, install PWA (iOS/Android instructions)
+2. **Install PWA + Notifications** — PWA install (highlighted), push notifications, iOS/Android instructions
+3. **How It Works** — 4-step overview (bet, check-in, moderation, profit) + 10% fee explanation
+4. **Personalization** — Name input + goal selection (weight loss, hypertrophy, cardio, discipline)
 5. **Final** — Completion screen with invite friends + explore button
 
 ## PWA

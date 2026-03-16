@@ -312,11 +312,41 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
           <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20">
             <Smartphone size={28} />
           </div>
-          <h2 className="text-2xl font-display font-bold">Configure o app</h2>
-          <p className="text-xs text-muted-foreground">Para a melhor experiência possível.</p>
+          <h2 className="text-2xl font-display font-bold">Instale o VYTAL</h2>
+          <p className="text-xs text-muted-foreground">Para a melhor experiência, instale o app e ative as notificações.</p>
         </div>
 
         <div className="space-y-2.5">
+          {canInstall && !isInstalled && (
+            <button
+              onClick={handleInstall}
+              disabled={installing}
+              className="w-full flex items-center gap-3 p-4 bg-primary/5 border-2 border-primary/30 rounded-2xl text-left hover:border-primary/50 transition-all"
+              data-testid="button-install-pwa"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Download size={20} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold">{installing ? "Instalando..." : "Instalar na tela inicial"}</p>
+                <p className="text-[11px] text-muted-foreground">Acesso instantâneo e performance nativa</p>
+              </div>
+              <ArrowRight size={16} className="text-primary shrink-0" />
+            </button>
+          )}
+
+          {isInstalled && (
+            <div className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/20 rounded-2xl">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                <Check size={20} className="text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-green-600 dark:text-green-400">App instalado!</p>
+                <p className="text-[11px] text-muted-foreground">O VYTAL já está na sua tela inicial.</p>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleNotifications}
             disabled={notifState !== "idle"}
@@ -341,35 +371,6 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
               </p>
             </div>
           </button>
-
-          {canInstall && !isInstalled && (
-            <button
-              onClick={handleInstall}
-              disabled={installing}
-              className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
-              data-testid="button-install-pwa"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Download size={20} className="text-blue-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold">{installing ? "Instalando..." : "Instalar na tela inicial"}</p>
-                <p className="text-[11px] text-muted-foreground">Acesso instantâneo, performance nativa</p>
-              </div>
-            </button>
-          )}
-
-          {isInstalled && (
-            <div className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/20 rounded-2xl">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                <Check size={20} className="text-green-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-green-600 dark:text-green-400">App instalado!</p>
-                <p className="text-[11px] text-muted-foreground">O VYTAL já está na sua tela inicial.</p>
-              </div>
-            </div>
-          )}
 
           {showIosInstructions && (
             <div className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3">
@@ -531,9 +532,9 @@ export default function Onboarding() {
       <div className="flex-1 flex flex-col relative z-10 min-h-0">
         <AnimatePresence mode="wait">
           {step === 1 && <Step1Terms key="1" onNext={next} />}
-          {step === 2 && <Step2HowItWorks key="2" onNext={next} />}
-          {step === 3 && <Step3Personalize key="3" onNext={next} />}
-          {step === 4 && <Step4NotifPwa key="4" onNext={next} />}
+          {step === 2 && <Step4NotifPwa key="2" onNext={next} />}
+          {step === 3 && <Step2HowItWorks key="3" onNext={next} />}
+          {step === 4 && <Step3Personalize key="4" onNext={next} />}
           {step === 5 && <Step5Final key="5" onComplete={next} />}
         </AnimatePresence>
       </div>

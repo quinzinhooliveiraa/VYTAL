@@ -1,15 +1,41 @@
-import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2, Loader2, Copy, X } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2, Loader2, Copy, X, Trophy, Camera, Wallet, Users, Megaphone, Clock, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+const DEFAULT_NOTIF_PREFS = {
+  pushEnabled: true,
+  checkinReminders: true,
+  challengeUpdates: true,
+  challengeResults: true,
+  newMessages: true,
+  friendActivity: true,
+  payments: true,
+  promotions: false,
+  dailyMotivation: true,
+};
+
+type NotifPrefs = typeof DEFAULT_NOTIF_PREFS;
+
+function loadNotifPrefs(): NotifPrefs {
+  try {
+    const stored = localStorage.getItem("vytal-notif-prefs");
+    if (stored) return { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(stored) };
+  } catch {}
+  return { ...DEFAULT_NOTIF_PREFS };
+}
+
+function saveNotifPrefs(prefs: NotifPrefs) {
+  localStorage.setItem("vytal-notif-prefs", JSON.stringify(prefs));
+}
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
@@ -18,8 +44,11 @@ export default function Settings() {
   const { toast } = useToast();
   const [isPrivate, setIsPrivate] = useState(user?.isPrivate || false);
   const [showEarnings, setShowEarnings] = useState(user?.publicEarnings !== false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(localStorage.getItem("fitstake-notifications") !== "false");
   const [showMedals, setShowMedals] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadNotifPrefs);
+  const [pushPermission, setPushPermission] = useState<string>(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
+  );
 
   const [feedbackType, setFeedbackType] = useState<"feedback" | "suporte" | "ideia">("feedback");
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -132,18 +161,90 @@ export default function Settings() {
         </div>
 
         <div className="space-y-4">
+          <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Notificações</h3>
+
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${notifPrefs.pushEnabled && pushPermission === "granted" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {notifPrefs.pushEnabled && pushPermission === "granted" ? <Bell size={18} /> : <BellOff size={18} />}
+                </div>
+                <div>
+                  <span className="text-sm font-bold">Notificações Push</span>
+                  <p className="text-[10px] text-muted-foreground">
+                    {pushPermission === "granted" ? "Ativas no navegador" : pushPermission === "denied" ? "Bloqueadas no navegador" : "Não ativadas ainda"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={notifPrefs.pushEnabled && pushPermission === "granted"}
+                onCheckedChange={async (checked) => {
+                  if (checked && pushPermission !== "granted") {
+                    if (!("Notification" in window)) {
+                      toast({ title: "Indisponível", description: "Seu navegador não suporta notificações push.", variant: "destructive" });
+                      return;
+                    }
+                    const result = await Notification.requestPermission();
+                    setPushPermission(result);
+                    if (result === "granted") {
+                      const { subscribeToPush } = await import("@/lib/push-notifications");
+                      await subscribeToPush();
+                      const updated = { ...notifPrefs, pushEnabled: true };
+                      setNotifPrefs(updated);
+                      saveNotifPrefs(updated);
+                      toast({ title: "Ativado!", description: "Notificações push habilitadas." });
+                    } else {
+                      toast({ title: "Bloqueado", description: "Ative nas configurações do navegador.", variant: "destructive" });
+                    }
+                  } else {
+                    const updated = { ...notifPrefs, pushEnabled: checked };
+                    setNotifPrefs(updated);
+                    saveNotifPrefs(updated);
+                  }
+                }}
+                className="data-[state=checked]:bg-primary"
+                data-testid="switch-push-notifications"
+              />
+            </div>
+
+            {([
+              { key: "checkinReminders" as keyof NotifPrefs, icon: Camera, label: "Lembretes de Check-in", desc: "Aviso quando estiver perto do horário limite", color: "text-yellow-500 bg-yellow-500/10" },
+              { key: "challengeUpdates" as keyof NotifPrefs, icon: Trophy, label: "Atualizações de Desafios", desc: "Novos participantes, progresso e mudanças", color: "text-primary bg-primary/10" },
+              { key: "challengeResults" as keyof NotifPrefs, icon: Flame, label: "Resultados e Prêmios", desc: "Quando desafios terminam e prêmios são distribuídos", color: "text-orange-500 bg-orange-500/10" },
+              { key: "newMessages" as keyof NotifPrefs, icon: MessageSquare, label: "Novas Mensagens", desc: "Mensagens diretas e de grupo", color: "text-blue-500 bg-blue-500/10" },
+              { key: "friendActivity" as keyof NotifPrefs, icon: Users, label: "Atividade de Amigos", desc: "Quando amigos entram em desafios ou completam check-ins", color: "text-purple-500 bg-purple-500/10" },
+              { key: "payments" as keyof NotifPrefs, icon: Wallet, label: "Pagamentos e Carteira", desc: "Depósitos, saques e movimentações financeiras", color: "text-green-500 bg-green-500/10" },
+              { key: "dailyMotivation" as keyof NotifPrefs, icon: Clock, label: "Motivação Diária", desc: "Uma mensagem motivacional todo dia pela manhã", color: "text-pink-500 bg-pink-500/10" },
+              { key: "promotions" as keyof NotifPrefs, icon: Megaphone, label: "Promoções e Novidades", desc: "Novos recursos, eventos especiais e descontos", color: "text-cyan-500 bg-cyan-500/10" },
+            ]).map((item, i, arr) => (
+              <div key={item.key} className={`flex items-center justify-between px-4 py-3 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}>
+                    <item.icon size={15} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{item.label}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={!!notifPrefs[item.key]}
+                  onCheckedChange={(checked) => {
+                    const updated = { ...notifPrefs, [item.key]: checked };
+                    setNotifPrefs(updated);
+                    saveNotifPrefs(updated);
+                  }}
+                  className="data-[state=checked]:bg-primary shrink-0"
+                  data-testid={`switch-notif-${item.key}`}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
           <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Conta e Privacidade</h3>
           <div className="space-y-2">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3">
-                {notificationsEnabled ? <Bell size={18} className="text-primary" /> : <BellOff size={18} className="text-foreground" />}
-                <span className="text-sm font-bold">Notificações</span>
-              </div>
-              <Switch checked={notificationsEnabled} onCheckedChange={(checked) => {
-                setNotificationsEnabled(checked);
-                localStorage.setItem("fitstake-notifications", checked.toString());
-              }} className="data-[state=checked]:bg-primary" data-testid="switch-notifications" />
-            </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
               <div className="flex items-center gap-3"><Eye size={18} className={isPrivate ? "text-primary" : "text-foreground"} /> <span className="text-sm font-bold">Perfil Privado</span></div>
               <Switch checked={isPrivate} onCheckedChange={(checked) => {

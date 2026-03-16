@@ -112,7 +112,7 @@ export default function Wallet() {
   });
 
   const withdrawMutation = useMutation({
-    mutationFn: async (params: { amount: number; pixKey: string; pixKeyType: string }) => {
+    mutationFn: async (params: { amount: number; pixKey: string; pixKeyType: string; testMode?: boolean }) => {
       const res = await fetch("/api/wallet/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,7 +123,7 @@ export default function Wallet() {
       if (!res.ok) throw new Error(data.message || "Erro ao sacar");
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
       setWithdrawSuccess(true);
@@ -512,7 +512,7 @@ export default function Wallet() {
                   <p>Taxa de R$ 0,80 por saque. O valor é debitado do seu saldo e enviado via Pix.</p>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex flex-col gap-2">
                   <Button
                     className="w-full h-12 rounded-xl font-bold"
                     disabled={
@@ -531,6 +531,21 @@ export default function Wallet() {
                       <ArrowUpRight className="mr-2" size={18} />
                     )}
                     Sacar {withdrawAmount ? formatBRL(Number(withdrawAmount)) : ""}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 rounded-xl text-xs border-dashed border-yellow-500/50 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/5"
+                    disabled={
+                      !withdrawAmount ||
+                      Number(withdrawAmount) < 30 ||
+                      Number(withdrawAmount) > availableBalance ||
+                      !pixKey ||
+                      withdrawMutation.isPending
+                    }
+                    onClick={() => withdrawMutation.mutate({ amount: Number(withdrawAmount), pixKey, pixKeyType, testMode: true })}
+                    data-testid="button-test-withdraw"
+                  >
+                    Simular Saque (Teste - sem Pix real)
                   </Button>
                 </DialogFooter>
 

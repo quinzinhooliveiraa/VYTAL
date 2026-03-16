@@ -2,6 +2,16 @@
 
 Fitness/sports challenge web app with financial stakes (Pix payments). Users create challenges with monetary entry fees, invite friends, track progress, and win from the prize pool. Platform takes 10% fee.
 
+## Onboarding (8 steps)
+1. **Legal Terms** — Must accept terms of use, privacy policy, financial terms, and image consent before proceeding
+2. **Welcome** — Animated hero with floating particles, pulse rings, and value proposition
+3. **How It Works** — 5-step visual guide with timeline connector and numbered badges
+4. **Stats** — Animated counter (83% consistency), platform stats with icons
+5. **Personalization** — Name input with validation indicator, goal multi-select with animations
+6. **Install PWA** — 4 benefit cards (instant access, push notifications, offline, performance), iOS instructions with numbered steps
+7. **Notifications** — Real `Notification.requestPermission()` call, 4 feature cards, status feedback (granted/denied/unsupported), test notification on success
+8. **Final** — Completion screen with share invite, floating particles
+
 ## PWA
 - `client/public/manifest.json` — Web App Manifest (standalone, portrait, green theme)
 - `client/public/sw.js` — Service Worker (cache-first for static, network-first with offline fallback)

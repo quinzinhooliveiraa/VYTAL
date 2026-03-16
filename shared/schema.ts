@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   online: boolean("online").default(false),
   isAdmin: boolean("is_admin").default(false),
   role: text("role").default("user"),
+  authProvider: text("auth_provider").default("email"),
   twoFactorSecret: text("two_factor_secret"),
   twoFactorEnabled: boolean("two_factor_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),

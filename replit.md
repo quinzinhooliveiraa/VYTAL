@@ -20,7 +20,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - **Backend**: Express.js + TypeScript
 - **Database**: PostgreSQL with Drizzle ORM (node-postgres driver)
-- **Auth**: bcryptjs + express-session + connect-pg-simple + Replit OIDC (Google/Apple social login)
+- **Auth**: bcryptjs + express-session + connect-pg-simple + Replit OIDC (Google/Apple social login). `authProvider` column tracks registration method (email/google/apple/replit) — prevents duplicate accounts across providers.
 - **Payments**: AbacatePay API (Pix deposits/withdrawals)
 - **Routing**: wouter (frontend)
 - **State**: TanStack React Query

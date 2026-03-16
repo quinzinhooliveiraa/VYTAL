@@ -87,7 +87,8 @@ export default function Login() {
       }
     } catch (err: any) {
       const msg = err.message || "";
-      if (msg.includes("Email já")) setError("Este email já está cadastrado.");
+      if (msg.includes("já está cadastrado via")) setError(msg);
+      else if (msg.includes("Email já")) setError("Este email já está cadastrado.");
       else if (msg.includes("Username já")) setError("Este username já está em uso.");
       else if (msg.includes("inválidos")) setError("Email ou senha incorretos.");
       else setError(isLogin ? "Erro ao fazer login. Verifique seus dados." : "Erro ao criar conta.");
@@ -181,6 +182,18 @@ export default function Login() {
       setSocialLoading(false);
     }
   }, [setLocation]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "email_exists") {
+      const provider = params.get("provider") || "outro método";
+      setError(`Este e-mail já está cadastrado via ${provider}. Faça login usando ${provider}.`);
+      window.history.replaceState({}, "", "/login");
+    } else if (params.get("error") === "auth_failed") {
+      setError("Erro na autenticação. Tente novamente.");
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
 
   useEffect(() => {
     if (!window.google) return;

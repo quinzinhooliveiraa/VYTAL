@@ -84,12 +84,23 @@ export async function registerRoutes(
 
   // ====== AUTH ======
 
+  const providerLabel: Record<string, string> = {
+    email: "e-mail e senha",
+    google: "Google",
+    apple: "Apple",
+    replit: "Replit",
+  };
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       const data = registerSchema.parse(req.body);
 
       const existingEmail = await storage.getUserByEmail(data.email);
-      if (existingEmail) return res.status(400).json({ message: "Email já cadastrado" });
+      if (existingEmail) {
+        const usedProvider = (existingEmail as any).authProvider || "email";
+        const label = providerLabel[usedProvider] || usedProvider;
+        return res.status(400).json({ message: `Este e-mail já está cadastrado via ${label}. Faça login usando ${label}.` });
+      }
 
       const existingUsername = await storage.getUserByUsername(data.username);
       if (existingUsername) return res.status(400).json({ message: "Username já em uso" });
@@ -100,6 +111,7 @@ export async function registerRoutes(
         ...data,
         password: hashedPassword,
         isAdmin,
+        authProvider: "email",
       } as any);
 
       (req.session as any).userId = user.id;
@@ -115,6 +127,12 @@ export async function registerRoutes(
       const data = loginSchema.parse(req.body);
       const user = await storage.getUserByEmail(data.email);
       if (!user) return res.status(401).json({ message: "Email ou senha inválidos" });
+
+      const userProvider = (user as any).authProvider || "email";
+      if (userProvider !== "email") {
+        const label = providerLabel[userProvider] || userProvider;
+        return res.status(400).json({ message: `Esta conta foi criada via ${label}. Faça login usando ${label}.` });
+      }
 
       const valid = await bcrypt.compare(data.password, user.password);
       if (!valid) return res.status(401).json({ message: "Email ou senha inválidos" });
@@ -241,6 +259,11 @@ export async function registerRoutes(
       let appUser = await storage.getUserByEmail(email);
 
       if (appUser) {
+        const existingProvider = (appUser as any).authProvider || "email";
+        if (existingProvider !== "replit") {
+          const label = providerLabel[existingProvider] || existingProvider;
+          return res.redirect(`/login?error=email_exists&provider=${encodeURIComponent(label)}`);
+        }
         (req.session as any).userId = appUser.id;
         await storage.updateUser(appUser.id, { online: true, avatar: appUser.avatar || profileImage });
       } else {
@@ -262,6 +285,7 @@ export async function registerRoutes(
           name: fullName,
           avatar: profileImage,
           isAdmin,
+          authProvider: "replit",
         } as any);
 
         (req.session as any).userId = appUser.id;
@@ -300,6 +324,11 @@ export async function registerRoutes(
       let appUser = await storage.getUserByEmail(email);
 
       if (appUser) {
+        const existingProvider = (appUser as any).authProvider || "email";
+        if (existingProvider !== "google") {
+          const label = providerLabel[existingProvider] || existingProvider;
+          return res.status(400).json({ message: `Este e-mail já está cadastrado via ${label}. Faça login usando ${label}.` });
+        }
         (req.session as any).userId = appUser.id;
         await storage.updateUser(appUser.id, { online: true, avatar: appUser.avatar || profileImage });
         res.json({ user: appUser, isNew: false });
@@ -322,6 +351,7 @@ export async function registerRoutes(
           name: fullName,
           avatar: profileImage,
           isAdmin,
+          authProvider: "google",
         } as any);
 
         (req.session as any).userId = appUser.id;
@@ -361,6 +391,11 @@ export async function registerRoutes(
       let appUser = await storage.getUserByEmail(email);
 
       if (appUser) {
+        const existingProvider = (appUser as any).authProvider || "email";
+        if (existingProvider !== "apple") {
+          const label = providerLabel[existingProvider] || existingProvider;
+          return res.status(400).json({ message: `Este e-mail já está cadastrado via ${label}. Faça login usando ${label}.` });
+        }
         (req.session as any).userId = appUser.id;
         await storage.updateUser(appUser.id, { online: true });
         res.json({ user: appUser, isNew: false });
@@ -383,6 +418,7 @@ export async function registerRoutes(
           name: fullNameStr,
           avatar: "",
           isAdmin,
+          authProvider: "apple",
         } as any);
 
         (req.session as any).userId = appUser.id;

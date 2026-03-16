@@ -17,6 +17,7 @@ const TYPE_ICONS: Record<string, any> = {
   challenge_started: Trophy,
   challenge_completed: Trophy,
   eliminated: Trophy,
+  new_user: UserPlus,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -31,6 +32,7 @@ const TYPE_COLORS: Record<string, string> = {
   challenge_started: "bg-green-500/20 text-green-400",
   challenge_completed: "bg-yellow-500/20 text-yellow-400",
   eliminated: "bg-red-500/20 text-red-400",
+  new_user: "bg-cyan-500/20 text-cyan-400",
 };
 
 function timeAgo(dateStr: string) {

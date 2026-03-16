@@ -52,6 +52,20 @@ const ADMIN_EMAILS = [
   "quinzinhooliveiraa@gmail.com",
 ];
 
+async function notifyAdminsNewUser(userName: string, userEmail: string, provider: string) {
+  try {
+    const adminIds = await storage.getAdminUserIds();
+    for (const adminId of adminIds) {
+      notificationService.notify(adminId, {
+        type: "new_user",
+        title: "Novo usuário cadastrado",
+        body: `${userName} (${userEmail}) se cadastrou via ${provider}.`,
+        actionUrl: "/admin",
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -114,6 +128,7 @@ export async function registerRoutes(
         authProvider: "email",
       } as any);
 
+      notifyAdminsNewUser(data.name || data.username, data.email, "e-mail");
       (req.session as any).userId = user.id;
       const { password, twoFactorSecret, ...safeUser } = user;
       res.status(201).json(safeUser);
@@ -288,6 +303,7 @@ export async function registerRoutes(
           authProvider: "replit",
         } as any);
 
+        notifyAdminsNewUser(fullName, email, "Replit");
         (req.session as any).userId = appUser.id;
         res.redirect("/onboarding");
         return;
@@ -354,6 +370,7 @@ export async function registerRoutes(
           authProvider: "google",
         } as any);
 
+        notifyAdminsNewUser(fullName, email, "Google");
         (req.session as any).userId = appUser.id;
         res.json({ user: appUser, isNew: true });
       }
@@ -421,6 +438,7 @@ export async function registerRoutes(
           authProvider: "apple",
         } as any);
 
+        notifyAdminsNewUser(fullNameStr, email, "Apple");
         (req.session as any).userId = appUser.id;
         res.json({ user: appUser, isNew: true });
       }

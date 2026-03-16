@@ -649,10 +649,13 @@ export async function registerRoutes(
   app.get("/api/messages/conversations", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
     const conversations = await storage.getUserConversations(userId);
+    const myFollowers = await storage.getFollowers(userId);
+    const followerIds = new Set(myFollowers.map(f => f.followerId));
     res.json(conversations.map(c => ({
       user: { ...c.user, password: undefined },
       lastMessage: c.lastMessage,
       unreadCount: c.unreadCount,
+      isFollower: followerIds.has(c.user.id),
     })));
   });
 

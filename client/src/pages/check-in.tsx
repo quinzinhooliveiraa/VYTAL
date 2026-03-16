@@ -161,7 +161,11 @@ export default function CheckIn() {
   const locationReminderRef = useRef<number | null>(null);
 
   const sport = challenge?.sport || "";
-  const isGymType = /academia|gym|muscula|crossfit|yoga|pilates|luta|box|mma|jiu/i.test(sport);
+  const vType = challenge?.validationType || "foto";
+  const isGymType = /academia|gym|muscula|crossfit|yoga|pilates|luta|box|mma|jiu|funcional|hiit/i.test(sport);
+  const tracksDistance = vType === "distancia" || vType === "combinacao";
+  const tracksTime = vType === "tempo" || vType === "combinacao";
+  const showDistanceUI = tracksDistance && !isGymType;
 
   useEffect(() => {
     if (activeCheckIn) {
@@ -218,7 +222,7 @@ export default function CheckIn() {
   }, [phase, checkInStartTime]);
 
   useEffect(() => {
-    if (phase === "in-progress" && currentCheckInId && !indoorMode) {
+    if (phase === "in-progress" && currentCheckInId && showDistanceUI && !indoorMode) {
       locationReminderRef.current = window.setInterval(() => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -248,7 +252,7 @@ export default function CheckIn() {
       }, 30000);
     }
     return () => { if (locationReminderRef.current) clearInterval(locationReminderRef.current); };
-  }, [phase, currentCheckInId, indoorMode]);
+  }, [phase, currentCheckInId, showDistanceUI, indoorMode]);
 
   useEffect(() => {
     return () => {
@@ -375,7 +379,7 @@ export default function CheckIn() {
       );
 
       if (isEnd) {
-        if (indoorMode && !isGymType) {
+        if (indoorMode && showDistanceUI) {
           setPhase("camera-indoor-proof");
           startCamera("environment");
         } else {
@@ -452,7 +456,7 @@ export default function CheckIn() {
       toast({ title: "Complete as fotos de check-out", variant: "destructive" });
       return;
     }
-    if (indoorMode && !isGymType && !indoorProofBlob) {
+    if (indoorMode && showDistanceUI && !indoorProofBlob) {
       toast({ title: "Tire a foto do painel do equipamento", variant: "destructive" });
       return;
     }
@@ -664,14 +668,14 @@ export default function CheckIn() {
             </div>
           </div>
 
-          {gpsError && !indoorMode && (
+          {gpsError && showDistanceUI && !indoorMode && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2 max-w-xs">
               <AlertTriangle size={16} className="text-red-400 shrink-0" />
               <p className="text-xs text-red-300">{gpsError}</p>
             </div>
           )}
 
-          {!isGymType && (
+          {showDistanceUI && (
             <button
               onClick={() => setIndoorMode(!indoorMode)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl border max-w-xs w-full transition-all ${indoorMode ? "bg-orange-500/15 border-orange-500/40" : "bg-white/5 border-white/10"}`}
@@ -688,7 +692,7 @@ export default function CheckIn() {
           )}
 
           <div className="w-full max-w-xs space-y-2">
-            <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider text-center">Como funciona</p>
+            <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider text-center">Como funciona — {challenge?.sport || "Exercício"}</p>
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
               <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">1</div>
               <div>
@@ -699,15 +703,25 @@ export default function CheckIn() {
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
               <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">2</div>
               <div>
-                <p className="text-sm font-medium">Faça seu exercício</p>
-                <p className="text-[11px] text-white/50">Pode fechar o app — o tempo conta no servidor</p>
+                <p className="text-sm font-medium">
+                  {showDistanceUI ? "Faça seu exercício — GPS rastreia distância" : "Faça seu exercício — tempo registrado"}
+                </p>
+                <p className="text-[11px] text-white/50">
+                  {showDistanceUI
+                    ? indoorMode ? "Indoor: informe a distância do equipamento no final" : "Distância e pace calculados pelo GPS"
+                    : "Pode fechar o app — o tempo conta no servidor"}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
               <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">3</div>
               <div>
                 <p className="text-sm font-medium">Volte e faça o check-out com fotos</p>
-                <p className="text-[11px] text-white/50">Selfie + ambiente novamente para confirmar</p>
+                <p className="text-[11px] text-white/50">
+                  {showDistanceUI && indoorMode
+                    ? "Selfie + ambiente + foto do painel do equipamento"
+                    : "Selfie + ambiente novamente para confirmar"}
+                </p>
               </div>
             </div>
           </div>
@@ -715,7 +729,7 @@ export default function CheckIn() {
           <Button
             className="w-full max-w-xs h-14 rounded-2xl font-bold text-lg bg-primary text-primary-foreground shadow-[0_0_30px_rgba(34,197,94,0.3)]"
             onClick={handleStartCapture}
-            disabled={!!gpsError && !indoorMode}
+            disabled={!!gpsError && showDistanceUI && !indoorMode}
             data-testid="button-start-checkin"
           >
             <Camera className="mr-2" size={20} /> Iniciar Check-in
@@ -753,15 +767,15 @@ export default function CheckIn() {
               <p className="text-[10px] text-white/30 mt-1">O tempo conta mesmo com o app fechado</p>
             </div>
 
-            <div className={`grid gap-4 w-full max-w-sm ${!isGymType && !indoorMode ? "grid-cols-3" : "grid-cols-2"}`}>
-              {!isGymType && !indoorMode && (
+            <div className={`grid gap-4 w-full max-w-sm ${showDistanceUI && !indoorMode ? "grid-cols-3" : "grid-cols-2"}`}>
+              {showDistanceUI && !indoorMode && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
                   <Ruler size={18} className="text-blue-400 mx-auto mb-2" />
                   <p className="text-2xl font-bold" data-testid="text-distance">{distanceKm.toFixed(2)}</p>
                   <p className="text-[10px] text-white/50 uppercase">km</p>
                 </div>
               )}
-              {!isGymType && indoorMode && (
+              {showDistanceUI && indoorMode && (
                 <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30 text-center">
                   <Ruler size={18} className="text-orange-400 mx-auto mb-2" />
                   <p className="text-xs text-orange-300 font-medium">Indoor</p>
@@ -773,7 +787,7 @@ export default function CheckIn() {
                 <p className="text-2xl font-bold" data-testid="text-calories">{calories}</p>
                 <p className="text-[10px] text-white/50 uppercase">kcal</p>
               </div>
-              {!isGymType && !indoorMode && (
+              {showDistanceUI && !indoorMode && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
                   <Navigation size={18} className="text-green-400 mx-auto mb-2" />
                   <p className="text-2xl font-bold">{distanceKm > 0.01 ? formatPace(durationMins, distanceKm) : "--"}</p>
@@ -869,7 +883,7 @@ export default function CheckIn() {
                   <p className="text-[10px] text-white/50 uppercase">Calorias</p>
                 </div>
               </div>
-              {!isGymType && !indoorMode && (
+              {showDistanceUI && !indoorMode && (
                 <>
                   <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">
                     <Ruler size={20} className="text-blue-400 shrink-0" />
@@ -887,7 +901,7 @@ export default function CheckIn() {
                   </div>
                 </>
               )}
-              {!isGymType && indoorMode && (
+              {showDistanceUI && indoorMode && (
                 <div className="col-span-2 space-y-3">
                   {indoorProofPreview && (
                     <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30">

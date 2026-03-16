@@ -441,7 +441,9 @@ export default function ChallengeDetails() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
                 <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : hasStarted ? `${daysLeft} dias restantes` : "Ainda não começou"}</span></div>
                 <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{activeParticipants.length} participantes ativos</span></div>
-                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação: {challenge.validationType || "foto"}</span></div>
+                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação: {
+                  { foto: "Check-in Duplo (Foto)", tempo: "Tempo (Início/Fim)", distancia: "Distância (GPS)", repeticoes: "Repetições", combinacao: "Combinação" }[challenge.validationType] || challenge.validationType || "Foto"
+                }</span></div>
                 {challenge.description && (
                   <div className="flex items-start gap-3"><Info size={16} className="text-primary shrink-0 mt-0.5" /> <span>{challenge.description}</span></div>
                 )}

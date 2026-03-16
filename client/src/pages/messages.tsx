@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, Send, Phone, Video, MoreVertical, Mic, Reply, X } from "lucide-react";
+import { ChevronLeft, Send, Phone, Video, MoreVertical, Mic, Reply, X, Swords, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ export default function Messages() {
   
   const [message, setMessage] = useState("");
   const [replyingTo, setReplyingTo] = useState<{id: string, text: string, sender: string} | null>(null);
+  const [showActions, setShowActions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: targetUser } = useQuery({
@@ -185,8 +186,39 @@ export default function Messages() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {showActions && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: "auto", marginBottom: 12 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-xl h-11 font-bold text-xs border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={() => { setShowActions(false); setLocation(`/create?challengeWith=${username}`); }}
+                  data-testid="button-create-challenge-chat"
+                >
+                  <Swords size={16} className="mr-1.5" /> Criar Desafio
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="flex gap-2 items-end">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="w-10 h-10 rounded-full shrink-0 text-muted-foreground"
+            onClick={() => setShowActions(!showActions)}
+            data-testid="button-actions"
+          >
+            <Plus size={22} className={`transition-transform ${showActions ? 'rotate-45' : ''}`} />
+          </Button>
           <div className="flex-1 bg-muted rounded-3xl border border-border overflow-hidden">
             <Input 
               value={message}

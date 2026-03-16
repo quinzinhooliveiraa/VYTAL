@@ -216,27 +216,35 @@ export default function ChallengeDetails() {
     ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() + (challenge.duration || 30) * 86400000 - Date.now()) / 86400000))
     : 0;
 
-  const sportImages: Record<string, string> = {
-    corrida: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&q=80",
-    academia: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80",
-    ciclismo: "https://images.unsplash.com/photo-1541625602330-2277a4c4bb98?w=800&q=80",
-    natacao: "https://images.unsplash.com/photo-1519315901367-f34ff9154487?w=800&q=80",
-    funcional: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&q=80",
+  const hasBanner = challenge.banner && challenge.banner.length > 10;
+
+  const sportGradients: Record<string, string> = {
+    corrida: "from-green-600/30 via-emerald-500/20 to-primary/10",
+    academia: "from-blue-600/30 via-indigo-500/20 to-primary/10",
+    ciclismo: "from-yellow-600/30 via-orange-500/20 to-primary/10",
+    natacao: "from-cyan-600/30 via-blue-500/20 to-primary/10",
+    funcional: "from-red-600/30 via-orange-500/20 to-primary/10",
   };
-  const heroImage = sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
+  const sportGradient = sportGradients[challenge.sport?.toLowerCase()] || "from-primary/30 via-primary/10 to-background";
 
   const tabCount = isCreator ? 4 : isParticipant ? 3 : 2;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background pb-24">
-      <div className="h-64 relative">
-        <img src={heroImage} alt={challenge.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+      <div className="h-52 relative">
+        {hasBanner ? (
+          <>
+            <img src={challenge.banner} alt={challenge.title} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+          </>
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${sportGradient}`} />
+        )}
         <header className="absolute top-0 left-0 right-0 px-6 py-6 flex items-center justify-between z-10">
-          <button onClick={() => setLocation("/dashboard")} className="p-2 -ml-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white" data-testid="button-back">
+          <button onClick={() => setLocation("/dashboard")} className={`p-2 -ml-2 rounded-full backdrop-blur-md border ${hasBanner ? 'bg-black/40 border-white/10 text-white' : 'bg-background/60 border-border text-foreground'}`} data-testid="button-back">
             <ChevronLeft size={24} />
           </button>
-          <button className="p-2 -mr-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white" data-testid="button-share">
+          <button className={`p-2 -mr-2 rounded-full backdrop-blur-md border ${hasBanner ? 'bg-black/40 border-white/10 text-white' : 'bg-background/60 border-border text-foreground'}`} data-testid="button-share">
             <Share2 size={20} />
           </button>
         </header>
@@ -247,7 +255,7 @@ export default function ChallengeDetails() {
             {challenge.isPrivate && <Badge className="bg-yellow-600 text-white border-none flex gap-1 items-center px-2 py-0.5"><Lock size={10} /> Privado</Badge>}
             {isCreator && <Badge className="bg-orange-500 text-white border-none flex gap-1 items-center px-2 py-0.5"><ShieldAlert size={10} /> Criador</Badge>}
           </div>
-          <h1 className="text-3xl font-display font-bold text-white drop-shadow-md">{challenge.title}</h1>
+          <h1 className={`text-3xl font-display font-bold drop-shadow-md ${hasBanner ? 'text-white' : 'text-foreground'}`}>{challenge.title}</h1>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Search, MessageCircle, Inbox, ArrowLeft } from "lucide-react";
+import { Search, MessageCircle, Inbox, ArrowLeft, Trophy, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,15 @@ export default function ChatHub() {
       return res.json();
     },
     refetchInterval: 5000,
+  });
+
+  const { data: myChallenges = [] } = useQuery({
+    queryKey: ["/api/challenges/mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/challenges/mine", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
 
   const formatTime = (dateStr: string) => {
@@ -49,6 +58,12 @@ export default function ChatHub() {
 
   const filteredRequests = requestConversations.filter((c: any) =>
     search === "" || c.otherUser?.name?.toLowerCase().includes(search.toLowerCase()) || c.otherUser?.username?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const activeChallenges = myChallenges.filter((c: any) => c.isActive || c.status === "active");
+
+  const filteredChallenges = activeChallenges.filter((c: any) =>
+    search === "" || c.title?.toLowerCase().includes(search.toLowerCase())
   );
 
   const renderConversation = (chat: any, isRequest?: boolean) => (
@@ -145,15 +160,56 @@ export default function ChatHub() {
         </div>
       </header>
 
-      <div className="px-6 mt-4 space-y-3">
-        {filteredFollower.length === 0 && (
-          <div className="text-center py-16 text-muted-foreground">
-            <MessageCircle size={48} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">Nenhuma conversa ainda</p>
-            <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
+      <div className="px-6 mt-4 space-y-6">
+        {filteredChallenges.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+              <Trophy size={12} /> Chats de Desafios
+            </h4>
+            <div className="space-y-2">
+              {filteredChallenges.map((challenge: any) => (
+                <div
+                  key={challenge.id}
+                  className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors"
+                  onClick={() => setLocation(`/challenges/${challenge.id}`)}
+                  data-testid={`challenge-chat-${challenge.id}`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Trophy size={22} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-sm truncate">{challenge.title}</h3>
+                    <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                      <Users size={10} />
+                      {challenge.sport} · {challenge.status === "active" ? "Ativo" : challenge.status}
+                    </p>
+                  </div>
+                  <Badge className="bg-primary/10 text-primary text-[9px] font-bold border-none shrink-0">
+                    Grupo
+                  </Badge>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-        {filteredFollower.map((c: any) => renderConversation(c))}
+
+        <div className="space-y-2">
+          {filteredChallenges.length > 0 && (
+            <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+              <MessageCircle size={12} /> Conversas Diretas
+            </h4>
+          )}
+          <div className="space-y-3">
+            {filteredFollower.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <MessageCircle size={48} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">Nenhuma conversa ainda</p>
+                <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
+              </div>
+            )}
+            {filteredFollower.map((c: any) => renderConversation(c))}
+          </div>
+        </div>
       </div>
     </div>
   );

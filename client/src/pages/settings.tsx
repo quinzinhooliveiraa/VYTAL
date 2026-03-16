@@ -1,4 +1,4 @@
-import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2, Loader2, Copy, X, Trophy, Camera, Wallet, Users, Megaphone, Clock, Flame } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2, Loader2, Copy, X, Trophy, Camera, Wallet, Users, Megaphone, Clock, Flame, ExternalLink, RotateCcw, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";
@@ -63,6 +63,7 @@ export default function Settings() {
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
   );
 
+  const [showPermissionGuide, setShowPermissionGuide] = useState(false);
   const [feedbackType, setFeedbackType] = useState<"feedback" | "suporte" | "ideia">("feedback");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
@@ -198,7 +199,7 @@ export default function Settings() {
                       return;
                     }
                     if (pushPermission === "denied") {
-                      toast({ title: "Permissão bloqueada", description: "As notificações foram bloqueadas anteriormente. Vá nas configurações do seu navegador para reativar.", variant: "destructive" });
+                      setShowPermissionGuide(true);
                       return;
                     }
                     try {
@@ -581,6 +582,66 @@ export default function Settings() {
             >
               {disable2FA.isPending ? <Loader2 className="animate-spin mr-2" size={18} /> : <X className="mr-2" size={18} />}
               Desativar 2FA
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPermissionGuide} onOpenChange={setShowPermissionGuide}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell size={20} className="text-primary" />
+              Reativar Notificações
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              As notificações foram bloqueadas anteriormente no seu navegador. Para reativá-las, siga os passos abaixo:
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 bg-muted/50 rounded-xl p-3">
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-bold">1</div>
+                <div>
+                  <p className="text-sm font-bold">No celular (Chrome)</p>
+                  <p className="text-xs text-muted-foreground">Toque no ícone de cadeado 🔒 ao lado do endereço do site → Permissões → Notificações → Permitir</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-muted/50 rounded-xl p-3">
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-bold">2</div>
+                <div>
+                  <p className="text-sm font-bold">No computador (Chrome)</p>
+                  <p className="text-xs text-muted-foreground">Clique no ícone de cadeado 🔒 na barra de endereço → Configurações do site → Notificações → Permitir</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-muted/50 rounded-xl p-3">
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-bold">3</div>
+                <div>
+                  <p className="text-sm font-bold">Safari (iPhone)</p>
+                  <p className="text-xs text-muted-foreground">Ajustes do iPhone → VYTAL → Notificações → Ativar</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                Depois de alterar a permissão, recarregue a página e toque no botão de notificações novamente.
+              </p>
+            </div>
+
+            <Button
+              className="w-full rounded-xl h-11 font-bold gap-2"
+              onClick={() => {
+                setShowPermissionGuide(false);
+                window.location.reload();
+              }}
+              data-testid="button-reload-after-permission"
+            >
+              <RotateCcw size={16} />
+              Recarregar página
             </Button>
           </div>
         </DialogContent>

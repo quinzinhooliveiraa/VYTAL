@@ -401,9 +401,11 @@ export default function Admin() {
                 <div key={u.id} className="bg-card border border-border rounded-2xl p-4" data-testid={`user-${u.id}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="text-sm font-bold truncate">{u.name || u.username}</p>
                         {u.isAdmin && <Badge className="text-[8px] px-1.5 py-0 bg-primary/20 text-primary border-none">ADMIN</Badge>}
+                        {(u.role === "organizer" || u.role === "organizer_partner") && <Badge className="text-[8px] px-1.5 py-0 bg-orange-500/20 text-orange-500 border-none">ORGANIZADOR</Badge>}
+                        {(u.role === "partner" || u.role === "organizer_partner") && <Badge className="text-[8px] px-1.5 py-0 bg-cyan-500/20 text-cyan-500 border-none">PARCEIRO</Badge>}
                         {u.id === user?.id && <Badge className="text-[8px] px-1.5 py-0 bg-blue-500/20 text-blue-500 border-none">VOCÊ</Badge>}
                       </div>
                       <p className="text-[11px] text-muted-foreground">{u.email}</p>
@@ -423,6 +425,23 @@ export default function Admin() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
+                      <select
+                        value={u.role || "user"}
+                        onChange={async (e) => {
+                          try {
+                            await apiRequest("POST", `/api/admin/users/${u.id}/set-role`, { role: e.target.value });
+                            queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+                            toast({ title: "Papel atualizado!" });
+                          } catch { toast({ title: "Erro ao atualizar", variant: "destructive" }); }
+                        }}
+                        className="h-8 text-[10px] font-bold rounded-lg bg-card border border-border px-1.5 outline-none cursor-pointer"
+                        data-testid={`select-role-${u.id}`}
+                      >
+                        <option value="user">Usuário</option>
+                        <option value="organizer">Organizador</option>
+                        <option value="partner">Parceiro</option>
+                        <option value="organizer_partner">Org + Parceiro</option>
+                      </select>
                       <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg" onClick={() => setConfirmDialog({ type: "toggle-admin", userId: u.id, userName: u.name })} data-testid={`btn-toggle-admin-${u.id}`}>
                         {u.isAdmin ? <ShieldOff size={14} /> : <Shield size={14} />}
                       </Button>

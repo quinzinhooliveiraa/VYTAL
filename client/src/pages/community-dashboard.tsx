@@ -12,7 +12,9 @@ export default function CommunityDashboard() {
   const { user } = useAuth();
   const [tab, setTab] = useState("overview");
 
-  if (!user?.isAdmin) {
+  const hasAccess = user?.isAdmin || user?.role === "organizer" || user?.role === "organizer_partner";
+
+  if (!hasAccess) {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-4 p-6">
         <Shield size={48} className="text-muted-foreground" />

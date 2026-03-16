@@ -2016,6 +2016,7 @@ export async function registerRoutes(
         cpf: usersTable.cpf,
         phone: usersTable.phone,
         isAdmin: usersTable.isAdmin,
+        role: usersTable.role,
         online: usersTable.online,
         createdAt: usersTable.createdAt,
         balance: sql<string>`COALESCE(w.balance, 0)`.as("balance"),
@@ -2041,6 +2042,23 @@ export async function registerRoutes(
 
       await database.update(usersTable).set({ isAdmin: !target.isAdmin }).where(eq(usersTable.id, req.params.id));
       res.json({ success: true, isAdmin: !target.isAdmin });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/set-role", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const { role } = req.body;
+      const validRoles = ["user", "organizer", "partner", "organizer_partner"];
+      if (!validRoles.includes(role)) return res.status(400).json({ message: "Role inválido" });
+
+      await database.update(usersTable).set({ role }).where(eq(usersTable.id, req.params.id));
+      res.json({ success: true, role });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

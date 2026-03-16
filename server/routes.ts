@@ -46,6 +46,62 @@ import memoize from "memoizee";
 import { OAuth2Client } from "google-auth-library";
 import { pushService } from "./services/push-service";
 import { notificationService } from "./services/notification-service";
+import nodemailer from "nodemailer";
+
+const resetCodes = new Map<string, { code: string; expiresAt: number }>();
+
+function generateResetCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function cleanExpiredCodes() {
+  const now = Date.now();
+  for (const [key, val] of resetCodes) {
+    if (val.expiresAt < now) resetCodes.delete(key);
+  }
+}
+
+async function sendResetEmail(email: string, code: string): Promise<boolean> {
+  try {
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    if (!smtpUser || !smtpPass) {
+      console.error("SMTP credentials not configured");
+      return false;
+    }
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    await transporter.sendMail({
+      from: `"VYTAL" <${smtpUser}>`,
+      to: email,
+      subject: "Código de recuperação de senha - VYTAL",
+      html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 420px; margin: 0 auto; padding: 32px 24px; background: #f9fafb; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #1a7a3a; font-size: 28px; margin: 0;">VYTAL</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Recuperação de senha</p>
+          </div>
+          <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <p style="color: #374151; font-size: 14px; margin: 0 0 16px;">Seu código de verificação é:</p>
+            <div style="text-align: center; background: #f0fdf4; border: 2px dashed #22c55e; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+              <span style="font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #1a7a3a;">${code}</span>
+            </div>
+            <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">Este código expira em <strong>15 minutos</strong>.</p>
+          </div>
+          <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 16px;">Se você não solicitou esta recuperação, ignore este e-mail.</p>
+        </div>
+      `,
+    });
+    return true;
+  } catch (err) {
+    console.error("Error sending reset email:", err);
+    return false;
+  }
+}
 
 const ADMIN_EMAILS = [
   "oliveirasocial74@gmail.com",
@@ -209,6 +265,83 @@ export async function registerRoutes(
     req.session.destroy(() => {
       res.json({ message: "Logout realizado" });
     });
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "E-mail é obrigatório" });
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ message: "Se o e-mail estiver cadastrado, enviaremos um código de recuperação." });
+      }
+
+      const userProvider = (user as any).authProvider || "email";
+      if (userProvider !== "email") {
+        const label = providerLabel[userProvider] || userProvider;
+        return res.status(400).json({ message: `Esta conta foi criada via ${label}. Não é possível redefinir a senha — faça login usando ${label}.` });
+      }
+
+      cleanExpiredCodes();
+      const code = generateResetCode();
+      resetCodes.set(email.toLowerCase(), { code, expiresAt: Date.now() + 15 * 60 * 1000 });
+
+      const sent = await sendResetEmail(email, code);
+      if (!sent) {
+        return res.status(500).json({ message: "Erro ao enviar e-mail. Tente novamente." });
+      }
+
+      res.json({ message: "Se o e-mail estiver cadastrado, enviaremos um código de recuperação." });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro interno. Tente novamente." });
+    }
+  });
+
+  app.post("/api/auth/verify-reset-code", async (req, res) => {
+    try {
+      const { email, code } = req.body;
+      if (!email || !code) return res.status(400).json({ message: "Dados incompletos" });
+
+      const stored = resetCodes.get(email.toLowerCase());
+      if (!stored || stored.expiresAt < Date.now()) {
+        return res.status(400).json({ message: "Código expirado ou inválido. Solicite um novo." });
+      }
+      if (stored.code !== code) {
+        return res.status(400).json({ message: "Código incorreto." });
+      }
+
+      res.json({ valid: true });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro interno." });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { email, code, newPassword } = req.body;
+      if (!email || !code || !newPassword) return res.status(400).json({ message: "Dados incompletos" });
+      if (newPassword.length < 6) return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres." });
+
+      const stored = resetCodes.get(email.toLowerCase());
+      if (!stored || stored.expiresAt < Date.now()) {
+        return res.status(400).json({ message: "Código expirado. Solicite um novo." });
+      }
+      if (stored.code !== code) {
+        return res.status(400).json({ message: "Código incorreto." });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(400).json({ message: "Usuário não encontrado." });
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashedPassword } as any);
+      resetCodes.delete(email.toLowerCase());
+
+      res.json({ message: "Senha redefinida com sucesso!" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao redefinir senha." });
+    }
   });
 
   app.get("/api/auth/me", async (req, res) => {

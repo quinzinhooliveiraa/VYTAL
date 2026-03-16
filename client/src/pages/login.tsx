@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Activity, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Activity, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowLeft, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -46,6 +46,14 @@ export default function Login() {
   const [twoFAUserId, setTwoFAUserId] = useState("");
   const [twoFACode, setTwoFACode] = useState("");
   const [verifying2FA, setVerifying2FA] = useState(false);
+
+  const [forgotMode, setForgotMode] = useState<"off" | "email" | "code" | "newpass" | "done">("off");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState("");
   
   const { login, register } = useAuth();
 
@@ -115,6 +123,92 @@ export default function Login() {
     } finally {
       setVerifying2FA(false);
     }
+  };
+
+  const handleForgotSendCode = async () => {
+    setError("");
+    setForgotMessage("");
+    if (!resetEmail.trim() || !resetEmail.includes("@")) {
+      setError("Insira um e-mail válido.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setForgotMessage("Código enviado! Verifique seu e-mail.");
+      setForgotMode("code");
+    } catch (err: any) {
+      setError(err.message || "Erro ao enviar código.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotVerifyCode = async () => {
+    setError("");
+    if (resetCode.length !== 6) {
+      setError("O código deve ter 6 dígitos.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-reset-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail, code: resetCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setForgotMode("newpass");
+      setError("");
+    } catch (err: any) {
+      setError(err.message || "Código inválido.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotResetPassword = async () => {
+    setError("");
+    if (newPassword.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail, code: resetCode, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setForgotMode("done");
+    } catch (err: any) {
+      setError(err.message || "Erro ao redefinir senha.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const closeForgotMode = () => {
+    setForgotMode("off");
+    setResetEmail("");
+    setResetCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError("");
+    setForgotMessage("");
   };
 
   const handleGoogleCallback = useCallback(async (response: any) => {
@@ -402,7 +496,20 @@ export default function Login() {
             </button>
           </div>
 
-          {error && (
+          {isLogin && (
+            <div className="text-right -mt-2">
+              <button
+                type="button"
+                className="text-xs text-primary font-semibold hover:underline"
+                onClick={() => { setForgotMode("email"); setError(""); setResetEmail(email); }}
+                data-testid="button-forgot-password"
+              >
+                Esqueceu a senha?
+              </button>
+            </div>
+          )}
+
+          {error && forgotMode === "off" && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -437,6 +544,198 @@ export default function Login() {
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {forgotMode !== "off" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) closeForgotMode(); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 60, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 60, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={forgotMode === "email" ? closeForgotMode : () => {
+                    setError("");
+                    if (forgotMode === "code") setForgotMode("email");
+                    else if (forgotMode === "newpass") setForgotMode("code");
+                  }}
+                  className="text-muted-foreground"
+                  data-testid="button-forgot-back"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h3 className="text-lg font-bold font-display">
+                  {forgotMode === "email" && "Recuperar senha"}
+                  {forgotMode === "code" && "Verificar código"}
+                  {forgotMode === "newpass" && "Nova senha"}
+                  {forgotMode === "done" && "Tudo pronto!"}
+                </h3>
+                <div className="w-5" />
+              </div>
+
+              {forgotMode === "email" && (
+                <div className="space-y-4">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
+                    <Mail size={28} className="text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Informe o e-mail da sua conta. Enviaremos um código de 6 dígitos para redefinir sua senha.
+                  </p>
+                  <Input
+                    placeholder="Seu e-mail"
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleForgotSendCode()}
+                    className="h-14 rounded-2xl bg-background border-border px-4"
+                    data-testid="input-forgot-email"
+                  />
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <Button
+                    className="w-full h-14 text-base font-bold rounded-2xl"
+                    onClick={handleForgotSendCode}
+                    disabled={forgotLoading}
+                    data-testid="button-send-reset-code"
+                  >
+                    {forgotLoading ? (
+                      <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    ) : "Enviar código"}
+                  </Button>
+                </div>
+              )}
+
+              {forgotMode === "code" && (
+                <div className="space-y-4">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
+                    <KeyRound size={28} className="text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Digite o código de 6 dígitos enviado para <strong className="text-foreground">{resetEmail}</strong>
+                  </p>
+                  {forgotMessage && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm">
+                      <CheckCircle2 size={16} />
+                      <span>{forgotMessage}</span>
+                    </div>
+                  )}
+                  <Input
+                    placeholder="000000"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))}
+                    onKeyDown={(e) => e.key === "Enter" && handleForgotVerifyCode()}
+                    className="h-16 rounded-2xl bg-background border-border px-4 text-center text-2xl font-bold tracking-[0.5em]"
+                    data-testid="input-reset-code"
+                  />
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <Button
+                    className="w-full h-14 text-base font-bold rounded-2xl"
+                    onClick={handleForgotVerifyCode}
+                    disabled={forgotLoading}
+                    data-testid="button-verify-reset-code"
+                  >
+                    {forgotLoading ? (
+                      <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    ) : "Verificar"}
+                  </Button>
+                  <button
+                    type="button"
+                    className="w-full text-xs text-muted-foreground hover:text-primary text-center"
+                    onClick={() => { setForgotMode("email"); setError(""); setResetCode(""); }}
+                    data-testid="button-resend-code"
+                  >
+                    Não recebeu? Reenviar código
+                  </button>
+                </div>
+              )}
+
+              {forgotMode === "newpass" && (
+                <div className="space-y-4">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
+                    <ShieldCheck size={28} className="text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Escolha sua nova senha. Mínimo de 6 caracteres.
+                  </p>
+                  <Input
+                    placeholder="Nova senha"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-14 rounded-2xl bg-background border-border px-4"
+                    data-testid="input-new-password"
+                  />
+                  <Input
+                    placeholder="Confirmar nova senha"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleForgotResetPassword()}
+                    className="h-14 rounded-2xl bg-background border-border px-4"
+                    data-testid="input-confirm-password"
+                  />
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <Button
+                    className="w-full h-14 text-base font-bold rounded-2xl"
+                    onClick={handleForgotResetPassword}
+                    disabled={forgotLoading}
+                    data-testid="button-reset-password"
+                  >
+                    {forgotLoading ? (
+                      <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    ) : "Redefinir senha"}
+                  </Button>
+                </div>
+              )}
+
+              {forgotMode === "done" && (
+                <div className="space-y-4 text-center">
+                  <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={32} className="text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold">Senha redefinida!</p>
+                    <p className="text-sm text-muted-foreground mt-1">Agora você pode entrar com sua nova senha.</p>
+                  </div>
+                  <Button
+                    className="w-full h-14 text-base font-bold rounded-2xl"
+                    onClick={closeForgotMode}
+                    data-testid="button-back-to-login"
+                  >
+                    Voltar ao login
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

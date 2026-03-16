@@ -418,10 +418,23 @@ export default function CreateChallenge() {
                   icon: Camera, 
                   description: "Disciplina total: faltou 1 dia, está fora.",
                   details: [
-                    "Cada participante precisa fazer check-in (selfie + foto do ambiente) todo dia",
+                    "Selfie + foto do ambiente todo dia para comprovar presença",
                     "Tolerância ZERO: faltou 1 dia = eliminado automaticamente",
                     "Quem completar todos os dias divide o prêmio igualmente",
-                    "Formato mais rigoroso — só os disciplinados sobrevivem"
+                    "Validação: foto dupla (selfie + ambiente) + GPS"
+                  ],
+                  methods: ["foto"]
+                },
+                { 
+                  id: "survival", 
+                  title: "Sobrevivência", 
+                  icon: Flame, 
+                  description: "Flexível: tolera algumas falhas antes de eliminar.",
+                  details: [
+                    "Selfie + foto do ambiente para comprovar presença",
+                    "Você define quantas falhas são permitidas (ex: 2 ou 3 dias)",
+                    "Acumulou mais falhas que o limite = eliminado automaticamente",
+                    "Validação: foto dupla (selfie + ambiente) + GPS"
                   ],
                   methods: ["foto"]
                 },
@@ -432,8 +445,8 @@ export default function CreateChallenge() {
                   description: "O primeiro a bater a meta leva tudo.",
                   details: [
                     "Você define uma meta (ex: 100km, 500 reps, 600 min)",
-                    "Cada check-out acumula o progresso real (km do GPS, reps informadas, ou minutos)",
-                    "O primeiro participante a atingir a meta vence e leva o prêmio",
+                    "Cada check-out acumula progresso real (km do GPS, reps, ou minutos)",
+                    "O primeiro a atingir a meta vence e leva o prêmio",
                     "Se ninguém bater a meta, quem chegou mais perto ganha"
                   ],
                   methods: ["distancia", "repeticoes", "tempo"]
@@ -444,30 +457,20 @@ export default function CreateChallenge() {
                   icon: Trophy, 
                   description: "Os TOP 3 com mais acúmulo dividem o prêmio.",
                   details: [
-                    "Cada check-out acumula dados reais: km percorridos (GPS), repetições informadas, ou minutos treinados",
-                    "No final do prazo, os 3 primeiros do ranking dividem o prêmio (50% / 30% / 20%)",
+                    "Cada check-out acumula dados reais: km (GPS), reps, ou minutos",
+                    "No final do prazo, os TOP 3 dividem o prêmio (50% / 30% / 20%)",
                     "O ranking atualiza em tempo real a cada check-out",
                     "Desistentes perdem a entrada para o prêmio"
                   ],
                   methods: ["distancia", "repeticoes", "tempo", "combinacao"]
-                },
-                { 
-                  id: "survival", 
-                  title: "Sobrevivência", 
-                  icon: Flame, 
-                  description: "Mais flexível: tolera algumas falhas antes de eliminar.",
-                  details: [
-                    "Todos começam ativos e precisam fazer check-in regularmente",
-                    "Você define quantas falhas são permitidas (ex: 2 ou 3 dias)",
-                    "Acumulou mais falhas que o limite = eliminado automaticamente",
-                    "O prêmio vai para os sobreviventes (último leva tudo ou dividem)"
-                  ],
-                  methods: ["foto", "tempo"]
                 }
               ].map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setScoringSystem(item.id)}
+                  onClick={() => {
+                    setScoringSystem(item.id);
+                    if (item.id === "checkin" || item.id === "survival") setValidationType("foto");
+                  }}
                   className={`w-full text-left p-5 rounded-3xl border-2 transition-all ${scoringSystem === item.id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted'}`}
                 >
                   <div className="flex items-center gap-3 mb-2">
@@ -513,7 +516,19 @@ export default function CreateChallenge() {
               </div>
             )}
 
-            {scoringSystem && (
+            {scoringSystem && (scoringSystem === "checkin" || scoringSystem === "survival") && (
+              <div className="p-4 bg-green-500/5 rounded-2xl border border-green-500/20 animate-in zoom-in-95">
+                <div className="flex items-center gap-2 mb-1">
+                  <Camera size={14} className="text-green-500" />
+                  <p className="text-sm font-bold text-green-500">Validação: Foto Dupla + GPS</p>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Selfie + foto do ambiente no check-in e check-out. GPS registra a localização automaticamente.
+                </p>
+              </div>
+            )}
+
+            {scoringSystem && scoringSystem !== "checkin" && scoringSystem !== "survival" && (
               <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 animate-in zoom-in-95">
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-primary">Método de Validação</p>
@@ -527,9 +542,9 @@ export default function CreateChallenge() {
                     .filter(type => {
                       const recommendedMethods: Record<string, string[]> = {
                         checkin: ["foto"],
+                        survival: ["foto"],
                         corrida: ["distancia", "repeticoes", "tempo"],
                         ranking: ["distancia", "repeticoes", "tempo", "combinacao"],
-                        survival: ["foto", "tempo"]
                       };
                       return recommendedMethods[scoringSystem]?.includes(type.id);
                     })
@@ -570,47 +585,6 @@ export default function CreateChallenge() {
                   </div>
                 )}
 
-                {scoringSystem === "survival" && (
-                  <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl animate-in zoom-in-95">
-                    <Label className="text-sm font-bold text-orange-500 mb-2 block">Falhas Permitidas</Label>
-                    <p className="text-[10px] text-muted-foreground mb-2">
-                      Quantos dias o participante pode faltar antes de ser eliminado? (Check-in Diário = 0)
-                    </p>
-                    <div className="flex items-center gap-3">
-                      {["1", "2", "3", "5"].map((v) => (
-                        <button
-                          key={v}
-                          onClick={() => setMaxMissedDays(v)}
-                          className={`flex-1 h-12 rounded-xl border-2 font-bold text-lg transition-all ${
-                            maxMissedDays === v 
-                              ? "border-orange-500 bg-orange-500/20 text-orange-500" 
-                              : "border-border bg-card hover:bg-muted text-foreground"
-                          }`}
-                          data-testid={`button-missed-days-${v}`}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Personalizado:</span>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="30"
-                        value={maxMissedDays}
-                        onChange={(e) => setMaxMissedDays(e.target.value)}
-                        className="h-8 w-20 rounded-lg px-2 text-sm text-center"
-                        data-testid="input-max-missed-days"
-                      />
-                      <span className="text-xs text-muted-foreground">dias</span>
-                    </div>
-                    <p className="text-[10px] text-orange-500/70 mt-2">
-                      Diferente do Check-in Diário (0 falhas), aqui o participante tem margem para faltar até {maxMissedDays} dia{parseInt(maxMissedDays) !== 1 ? "s" : ""}.
-                    </p>
-                  </div>
-                )}
-
                 {scoringSystem === "corrida" && (
                   <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl animate-in zoom-in-95">
                     <Label className="text-sm font-bold text-primary mb-2 block">Meta para Vencer</Label>
@@ -633,6 +607,47 @@ export default function CreateChallenge() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {scoringSystem === "survival" && (
+              <div className="p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20 animate-in zoom-in-95">
+                <Label className="text-sm font-bold text-orange-500 mb-2 block">Falhas Permitidas</Label>
+                <p className="text-[10px] text-muted-foreground mb-2">
+                  Quantos dias o participante pode faltar antes de ser eliminado?
+                </p>
+                <div className="flex items-center gap-3">
+                  {["1", "2", "3", "5"].map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setMaxMissedDays(v)}
+                      className={`flex-1 h-12 rounded-xl border-2 font-bold text-lg transition-all ${
+                        maxMissedDays === v 
+                          ? "border-orange-500 bg-orange-500/20 text-orange-500" 
+                          : "border-border bg-card hover:bg-muted text-foreground"
+                      }`}
+                      data-testid={`button-missed-days-${v}`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Personalizado:</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={maxMissedDays}
+                    onChange={(e) => setMaxMissedDays(e.target.value)}
+                    className="h-8 w-20 rounded-lg px-2 text-sm text-center"
+                    data-testid="input-max-missed-days"
+                  />
+                  <span className="text-xs text-muted-foreground">dias</span>
+                </div>
+                <p className="text-[10px] text-orange-500/70 mt-2">
+                  Diferente do Check-in Diário (0 falhas), aqui o participante tem margem para faltar até {maxMissedDays} dia{parseInt(maxMissedDays) !== 1 ? "s" : ""}.
+                </p>
               </div>
             )}
 

@@ -18,12 +18,6 @@ declare global {
         };
       };
     };
-    AppleID?: {
-      auth: {
-        init: (config: any) => void;
-        signIn: () => Promise<any>;
-      };
-    };
   }
 }
 
@@ -165,61 +159,6 @@ export default function Login() {
     }
   }, [handleGoogleCallback, isLogin]);
 
-  const loadAppleSDK = useCallback((): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (window.AppleID) { resolve(); return; }
-      const script = document.createElement("script");
-      script.src = "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Falha ao carregar SDK da Apple"));
-      document.head.appendChild(script);
-    });
-  }, []);
-
-  const handleAppleSignIn = useCallback(async () => {
-    setSocialLoading(true);
-    setError("");
-    try {
-      await loadAppleSDK();
-      window.AppleID!.auth.init({
-        clientId: "com.vytal.app",
-        scope: "email name",
-        redirectURI: window.location.origin,
-        usePopup: true,
-      });
-      const result = await window.AppleID!.auth.signIn();
-      if (result.authorization?.id_token) {
-        const res = await fetch("/api/auth/apple", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            identityToken: result.authorization.id_token,
-            user: result.user?.email,
-            fullName: result.user?.name
-              ? { givenName: result.user.name.firstName, familyName: result.user.name.lastName }
-              : undefined,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Erro na autenticação");
-
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        localStorage.setItem("fitstake-onboarding-done", "true");
-        const savedRedirect = sessionStorage.getItem("vytal-redirect");
-        sessionStorage.removeItem("vytal-redirect");
-        setLocation(data.isNew ? "/onboarding" : (savedRedirect || "/dashboard"));
-      }
-    } catch (err: any) {
-      const msg = err?.message || err?.error || "";
-      if (msg !== "The user canceled the sign-in flow." && msg !== "popup_closed_by_user") {
-        setError("Erro ao fazer login com Apple. Tente novamente.");
-      }
-    } finally {
-      setSocialLoading(false);
-    }
-  }, [loadAppleSDK, setLocation]);
-
   if (requires2FA) {
     return (
       <div className="min-h-[100dvh] flex flex-col p-6 items-center justify-center bg-background relative">
@@ -320,21 +259,6 @@ export default function Login() {
             data-testid="button-google-login"
           />
 
-          <button
-            onClick={handleAppleSignIn}
-            disabled={socialLoading}
-            className="w-full h-12 rounded-xl border border-border bg-black dark:bg-white flex items-center justify-center gap-3 text-sm font-medium text-white dark:text-black hover:opacity-90 transition-all disabled:opacity-50"
-            data-testid="button-apple-login"
-          >
-            {socialLoading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-            )}
-            Continuar com Apple
-          </button>
         </div>
 
         <div className="flex items-center gap-4 py-2">

@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity, Users, Clock } from "lucide-react";
+import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity, Users, Clock, HelpCircle } from "lucide-react";
 import { NotificationBell } from "@/components/notification-center";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { QuickStartGuide, useQuickStartGuide } from "@/components/quick-start-guide";
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -49,14 +51,27 @@ export default function Dashboard() {
 
   const moderationChallenges = activeChallenges.filter((c: any) => c.createdBy === user?.id);
 
+  const { hasSeen: quickStartSeen, reset: resetQuickStart } = useQuickStartGuide();
+  const [showQuickStart, setShowQuickStart] = useState(false);
+
   return (
     <div className="px-5 pb-28 pt-6 space-y-6 animate-in fade-in duration-500">
+      <QuickStartGuide forceShow={showQuickStart} onClose={() => setShowQuickStart(false)} />
       <header className="flex justify-between items-center">
         <div className="space-y-0.5">
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.2em]">Bem-vindo de volta</p>
           <h1 className="text-2xl font-display font-bold">{userName}</h1>
         </div>
         <div className="flex gap-2 items-center">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { resetQuickStart(); setShowQuickStart(true); }}
+            className="w-11 h-11 rounded-xl border border-border bg-card flex items-center justify-center text-muted-foreground cursor-pointer"
+            data-testid="button-quick-start"
+          >
+            <HelpCircle size={20} />
+          </motion.button>
           <NotificationBell />
           <Link href="/wallet">
             <motion.div

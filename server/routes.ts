@@ -231,9 +231,26 @@ export async function registerRoutes(
     const { password, ...safeUser } = user;
 
     const userId = (req.session as any)?.userId;
+    const isOwn = userId === user.id;
     let isFollowing = false;
     if (userId) {
       isFollowing = await storage.isFollowing(userId, user.id);
+    }
+
+    if (user.isPrivate && !isFollowing && !isOwn) {
+      return res.json({
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        avatar: user.avatar,
+        banner: user.banner,
+        isPrivate: true,
+        isFollowing: false,
+        createdAt: user.createdAt,
+        stats: { challengesCompleted: 0, challengesWon: 0, totalEarned: 0, checkInCount: 0 },
+        followerCount: 0,
+        followingCount: 0,
+      });
     }
 
     const stats = await storage.getUserStats(user.id);
@@ -252,6 +269,15 @@ export async function registerRoutes(
   app.get("/api/users/:username/followers", async (req, res) => {
     const target = await storage.getUserByUsername(req.params.username);
     if (!target) return res.json([]);
+
+    const userId = (req.session as any)?.userId;
+    const isOwn = userId === target.id;
+    if (target.isPrivate && !isOwn) {
+      let isFollowing = false;
+      if (userId) isFollowing = await storage.isFollowing(userId, target.id);
+      if (!isFollowing) return res.json([]);
+    }
+
     const followers = await storage.getFollowers(target.id);
     res.json(followers.map(f => ({ id: f.follower.id, name: f.follower.name, username: f.follower.username, avatar: f.follower.avatar })));
   });
@@ -259,6 +285,15 @@ export async function registerRoutes(
   app.get("/api/users/:username/following", async (req, res) => {
     const target = await storage.getUserByUsername(req.params.username);
     if (!target) return res.json([]);
+
+    const userId = (req.session as any)?.userId;
+    const isOwn = userId === target.id;
+    if (target.isPrivate && !isOwn) {
+      let isFollowing = false;
+      if (userId) isFollowing = await storage.isFollowing(userId, target.id);
+      if (!isFollowing) return res.json([]);
+    }
+
     const following = await storage.getFollowing(target.id);
     res.json(following.map(f => ({ id: f.following.id, name: f.following.name, username: f.following.username, avatar: f.following.avatar })));
   });

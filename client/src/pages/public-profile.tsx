@@ -183,27 +183,44 @@ export default function PublicProfile() {
           )}
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="text-center cursor-pointer" onClick={() => setFollowersOpen(true)} data-testid="stat-followers">
-            <p className="font-display font-bold text-lg">{user.followerCount || 0}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguidores</p>
+        {(!isPrivate || isFollowing) ? (
+          <div className="flex items-center gap-6">
+            <div className="text-center cursor-pointer" onClick={() => setFollowersOpen(true)} data-testid="stat-followers">
+              <p className="font-display font-bold text-lg">{user.followerCount || 0}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguidores</p>
+            </div>
+            <div className="text-center cursor-pointer" onClick={() => setFollowingOpen(true)} data-testid="stat-following">
+              <p className="font-display font-bold text-lg">{user.followingCount || 0}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguindo</p>
+            </div>
+            <div className="text-center" data-testid="stat-challenges">
+              <p className="font-display font-bold text-lg">{stats.challengesCompleted}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Desafios</p>
+            </div>
           </div>
-          <div className="text-center cursor-pointer" onClick={() => setFollowingOpen(true)} data-testid="stat-following">
-            <p className="font-display font-bold text-lg">{user.followingCount || 0}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguindo</p>
+        ) : (
+          <div className="flex items-center gap-6">
+            <div className="text-center" data-testid="stat-followers">
+              <p className="font-display font-bold text-lg">·</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguidores</p>
+            </div>
+            <div className="text-center" data-testid="stat-following">
+              <p className="font-display font-bold text-lg">·</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguindo</p>
+            </div>
+            <div className="text-center" data-testid="stat-challenges">
+              <p className="font-display font-bold text-lg">·</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Desafios</p>
+            </div>
           </div>
-          <div className="text-center" data-testid="stat-challenges">
-            <p className="font-display font-bold text-lg">{stats.challengesCompleted}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Desafios</p>
-          </div>
-        </div>
+        )}
 
         <p className="text-muted-foreground text-sm leading-relaxed">
           {isPrivate && !isFollowing ? "Este perfil é privado." : (user.bio || "Sem bio ainda.")}
         </p>
 
-        {(!isPrivate || isFollowing) && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {(!isPrivate || isFollowing) && (
             <Button
               variant="outline"
               className="flex-1 rounded-xl font-bold h-11 border-primary/20 text-primary hover:bg-primary/5"
@@ -212,16 +229,16 @@ export default function PublicProfile() {
             >
               <Swords size={16} className="mr-1.5" /> Desafiar
             </Button>
-            <Button
-              variant="outline"
-              className="flex-1 rounded-xl font-bold h-11"
-              onClick={() => setLocation(`/messages/${user.username}`)}
-              data-testid="button-message"
-            >
-              <MessageCircle size={16} className="mr-1.5" /> Mensagem
-            </Button>
-          </div>
-        )}
+          )}
+          <Button
+            variant="outline"
+            className="flex-1 rounded-xl font-bold h-11"
+            onClick={() => setLocation(`/messages/${user.username}`)}
+            data-testid="button-message"
+          >
+            <MessageCircle size={16} className="mr-1.5" /> Mensagem
+          </Button>
+        </div>
 
         {(!isPrivate || isFollowing) ? (
           <>

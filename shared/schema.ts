@@ -74,6 +74,10 @@ export const checkIns = pgTable("check_ins", {
   avgPace: text("avg_pace"),
   isIndoor: boolean("is_indoor").default(false),
   approved: boolean("approved").default(false),
+  locationName: text("location_name").default(""),
+  endLocationName: text("end_location_name").default(""),
+  flagged: boolean("flagged").default(false),
+  flagReason: text("flag_reason").default(""),
   checkedOutAt: timestamp("checked_out_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });

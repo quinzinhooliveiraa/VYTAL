@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,16 @@ export default function ChallengeDetails() {
       return res.ok ? res.json() : [];
     },
     enabled: !!id && !!challenge?.isParticipant,
+    refetchInterval: 30000,
+  });
+
+  const { data: flaggedCheckIns = [] } = useQuery({
+    queryKey: [`/api/check-ins/${id}/flagged`],
+    queryFn: async () => {
+      const res = await fetch(`/api/check-ins/${id}/flagged`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id && !!challenge?.isCreator,
     refetchInterval: 30000,
   });
 
@@ -550,13 +560,28 @@ export default function ChallengeDetails() {
 
           {isCreator && (
             <TabsContent value="mod" className="space-y-6 mt-4 animate-in fade-in slide-in-from-bottom-2">
-              <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4 flex gap-3 items-start">
-                <ShieldAlert className="text-orange-500 shrink-0 mt-1" size={18} />
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-orange-600 dark:text-orange-400">Área de Moderação</p>
-                  <p className="text-xs text-orange-600/80 dark:text-orange-400/80">Você é o criador deste desafio. Aprove solicitações e gerencie participantes.</p>
+              {pendingRequests.length === 0 && flaggedCheckIns.length === 0 && !isChallengeEnded && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckCircle2 size={48} className="mx-auto mb-3 opacity-30 text-primary" />
+                  <p className="text-sm font-bold">Tudo em dia!</p>
+                  <p className="text-xs mt-1">Nenhuma atividade precisando de atenção</p>
                 </div>
-              </div>
+              )}
+
+              {isChallengeEnded && (
+                <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center space-y-6">
+                  <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto text-primary">
+                    <Trophy size={40} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-display font-bold">Aprovação Final</h3>
+                    <p className="text-sm text-muted-foreground">O desafio terminou. Confirme os vencedores para distribuir <strong>{formatBRL(prizePool)}</strong>.</p>
+                  </div>
+                  <Button className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-bold shadow-xl shadow-primary/20" data-testid="button-finalize">
+                    <CheckCircle2 className="mr-2" size={20} /> Liberar Pagamentos
+                  </Button>
+                </div>
+              )}
 
               {pendingRequests.length > 0 && (
                 <div className="space-y-4">
@@ -597,6 +622,66 @@ export default function ChallengeDetails() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {flaggedCheckIns.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-bold text-sm uppercase tracking-widest text-red-500 px-1 flex items-center gap-2">
+                    <Flag size={14} /> Check-ins Suspeitos
+                    <span className="ml-auto bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-bold">{flaggedCheckIns.length}</span>
+                  </h4>
+                  {flaggedCheckIns.map((item: any) => {
+                    const c = item.checkIn;
+                    const u = item.user;
+                    return (
+                      <div key={c.id} className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10 border-2 border-red-500/30">
+                            {u.avatar && <AvatarImage src={u.avatar} />}
+                            <AvatarFallback>{(u.name || "?").charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm">{u.name}</p>
+                            <p className="text-[10px] text-muted-foreground">@{u.username} · {new Date(c.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                          </div>
+                          <AlertTriangle size={18} className="text-red-500 shrink-0" />
+                        </div>
+                        <div className="bg-red-500/10 rounded-xl p-3">
+                          <p className="text-xs text-red-600 dark:text-red-400 font-medium flex items-start gap-2">
+                            <MapPin size={14} className="shrink-0 mt-0.5" />
+                            {c.flagReason}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-card rounded-lg p-2 text-center">
+                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Check-in</p>
+                            <p className="text-[11px] font-medium truncate">{c.locationName || "Sem local"}</p>
+                          </div>
+                          <div className="bg-card rounded-lg p-2 text-center">
+                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Check-out</p>
+                            <p className="text-[11px] font-medium truncate">{c.endLocationName || "Sem local"}</p>
+                          </div>
+                        </div>
+                        {(c.photoUrl || c.endPhotoUrl) && (
+                          <div className="flex gap-2">
+                            {c.photoUrl && (
+                              <div className="flex-1">
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto início</p>
+                                <img src={c.photoUrl} alt="Check-in" className="w-full h-20 object-cover rounded-lg border border-border" />
+                              </div>
+                            )}
+                            {c.endPhotoUrl && (
+                              <div className="flex-1">
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto fim</p>
+                                <img src={c.endPhotoUrl} alt="Check-out" className="w-full h-20 object-cover rounded-lg border border-border" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -649,59 +734,6 @@ export default function ChallengeDetails() {
                   </div>
                 )}
               </div>
-
-              {isChallengeEnded && (
-                <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center space-y-6">
-                  <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto text-primary">
-                    <Trophy size={40} />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-display font-bold">Aprovação Final</h3>
-                    <p className="text-sm text-muted-foreground">O desafio terminou. Confirme os vencedores para distribuir <strong>{formatBRL(prizePool)}</strong>.</p>
-                  </div>
-                  <Button className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-bold shadow-xl shadow-primary/20" data-testid="button-finalize">
-                    <CheckCircle2 className="mr-2" size={20} /> Liberar Pagamentos
-                  </Button>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1">Participantes</h4>
-                {participants.map((p: any) => (
-                  <div key={p.userId} className={`bg-card border border-border rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary/50 transition-colors ${!p.isActive ? 'opacity-50' : ''}`} onClick={() => p.user?.username && p.userId !== user?.id && setLocation(`/user/${p.user.username}`)}>
-                    <Avatar className="w-10 h-10 border border-border">
-                      <AvatarImage src={p.user?.avatar} />
-                      <AvatarFallback>{(p.user?.name || "?").charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-bold text-sm">{p.user?.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{p.isActive ? `Score: ${p.score || 0}` : "Desistiu"}</p>
-                    </div>
-                    {!p.isActive && <Badge variant="destructive" className="text-[8px]">Inativo</Badge>}
-                  </div>
-                ))}
-              </div>
-
-              {joinRequests.filter((r: any) => r.status !== "pending").length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1">Histórico de Solicitações</h4>
-                  {joinRequests.filter((r: any) => r.status !== "pending").map((req: any) => (
-                    <div key={req.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3 opacity-60">
-                      <Avatar className="w-10 h-10 border border-border">
-                        <AvatarImage src={req.userAvatar} />
-                        <AvatarFallback>{(req.userName || "?").charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-bold text-sm">{req.userName}</p>
-                        <p className="text-[10px] text-muted-foreground">@{req.userUsername}</p>
-                      </div>
-                      <Badge className={req.status === "approved" ? "bg-green-500/20 text-green-600 border-none" : "bg-red-500/20 text-red-500 border-none"}>
-                        {req.status === "approved" ? "Aprovado" : "Recusado"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
             </TabsContent>
           )}
         </Tabs>

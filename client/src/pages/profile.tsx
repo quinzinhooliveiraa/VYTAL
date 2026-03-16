@@ -1,21 +1,26 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ImageCropper } from "@/components/image-cropper";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("ativos");
   const [isEditing, setIsEditing] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
   const [bio, setBio] = useState(user?.bio || "");
@@ -54,6 +59,28 @@ export default function Profile() {
     queryFn: async () => {
       const res = await fetch("/api/follows/requests", { credentials: "include" });
       return res.ok ? res.json() : [];
+    },
+  });
+
+  const { data: searchResults = [], isFetching: isSearching } = useQuery({
+    queryKey: ["/api/users/search", searchQuery],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: searchQuery.length >= 2,
+  });
+
+  const followMutation = useMutation({
+    mutationFn: async (username: string) => {
+      const res = await apiRequest("POST", `/api/follows/${username}`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follows/following"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/search"] });
+      toast({ title: data.status === "pending" ? "Solicitação enviada" : "Seguindo!" });
     },
   });
 
@@ -158,6 +185,9 @@ export default function Profile() {
       <header className="px-6 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-50 border-b border-border/50">
         <h1 className="text-xl font-bold flex items-center gap-2">{profileName.toLowerCase().replace(' ', '_')} <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
         <div className="flex gap-2">
+          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" onClick={() => { setShowSearch(true); setSearchQuery(""); }} data-testid="button-search-users">
+            <UserPlus size={22} />
+          </Button>
           {user?.isAdmin && (
             <Link href="/admin">
               <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" data-testid="button-admin">
@@ -485,6 +515,82 @@ export default function Profile() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showSearch && (
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[60] flex flex-col justify-end animate-in fade-in" onClick={() => setShowSearch(false)}>
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[80vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Adicionar Pessoas</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowSearch(false)}><XCircle size={24} /></Button>
+            </div>
+
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                placeholder="Buscar por @username ou nome..."
+                className="pl-10 h-12 bg-muted/50 border-none rounded-2xl"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                data-testid="input-search-users"
+              />
+            </div>
+
+            {isSearching && (
+              <div className="flex justify-center py-8">
+                <Loader2 className="animate-spin text-primary" size={24} />
+              </div>
+            )}
+
+            {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Search size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">Nenhum usuário encontrado</p>
+                <p className="text-xs mt-1">Tente outro nome ou username</p>
+              </div>
+            )}
+
+            {searchQuery.length < 2 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <UserPlus size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">Busque por username</p>
+                <p className="text-xs mt-1">Digite pelo menos 2 caracteres</p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {searchResults.filter((u: any) => u.id !== user?.id).map((u: any) => {
+                const isFollowing = followingData?.some((f: any) => f.following?.id === u.id);
+                return (
+                  <div key={u.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl">
+                    <Avatar className="w-12 h-12 border border-border cursor-pointer" onClick={() => { setShowSearch(false); setLocation(`/user/${u.username}`); }}>
+                      {u.avatar && <AvatarImage src={u.avatar} />}
+                      <AvatarFallback className="text-sm font-bold">{(u.name || u.username || "?").charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setShowSearch(false); setLocation(`/user/${u.username}`); }}>
+                      <p className="font-bold text-sm truncate">{u.name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{u.username}</p>
+                    </div>
+                    {isFollowing ? (
+                      <Badge className="bg-muted text-muted-foreground border-none text-[10px]">Seguindo</Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-xl bg-primary text-primary-foreground font-bold text-xs"
+                        onClick={() => followMutation.mutate(u.username)}
+                        disabled={followMutation.isPending}
+                        data-testid={`button-follow-${u.id}`}
+                      >
+                        <UserPlus size={14} className="mr-1" /> Seguir
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

@@ -122,11 +122,29 @@ export default function CheckIn() {
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocationName(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
         setGpsAccuracy(pos.coords.accuracy);
         setGpsError(null);
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&zoom=18&addressdetails=1`, {
+            headers: { "User-Agent": "VYTAL-App/1.0" },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address;
+            if (addr) {
+              const parts = [addr.road, addr.suburb, addr.city || addr.town || addr.village].filter(Boolean);
+              setLocationName(parts.join(", ") || data.display_name || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+            } else {
+              setLocationName(data.display_name || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+            }
+          } else {
+            setLocationName(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+          }
+        } catch {
+          setLocationName(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+        }
       },
       () => {
         setGpsError("Ative a localização para fazer check-in");

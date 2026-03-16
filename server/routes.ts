@@ -12,7 +12,32 @@ import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
 import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
+
+async function reverseGeocode(lat: string | null, lng: string | null): Promise<string> {
+  if (!lat || !lng) return "";
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+      headers: { "User-Agent": "VYTAL-App/1.0" },
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    const addr = data.address;
+    if (!addr) return data.display_name || "";
+    const parts = [addr.road, addr.suburb, addr.city || addr.town || addr.village].filter(Boolean);
+    return parts.join(", ") || data.display_name || "";
+  } catch {
+    return "";
+  }
+}
+
+function haversineDistanceServer(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
@@ -255,7 +280,7 @@ export async function registerRoutes(
     const query = req.query.q as string;
     if (!query) return res.json([]);
     const results = await storage.searchUsers(query);
-    res.json(results.map(({ password, ...u }) => u));
+    res.json(results.map(({ password, twoFactorSecret, ...u }) => u));
   });
 
   app.get("/api/users/:username", async (req, res) => {
@@ -802,6 +827,8 @@ export async function registerRoutes(
         .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.userId, userId), eq(checkIns.status, "active")));
       if (existing.length > 0) return res.status(400).json({ message: "Você já tem um check-in ativo", checkIn: existing[0] });
 
+      const locName = await reverseGeocode(latitude, longitude);
+
       const [checkIn] = await db.insert(checkIns).values({
         challengeId,
         userId,
@@ -811,6 +838,7 @@ export async function registerRoutes(
         latitude: latitude || null,
         longitude: longitude || null,
         isIndoor: isIndoor || false,
+        locationName: locName,
       }).returning();
 
       res.status(201).json(checkIn);
@@ -834,16 +862,34 @@ export async function registerRoutes(
       const startTime = new Date(checkIn.createdAt!);
       const durationMins = Math.max(1, Math.round((now.getTime() - startTime.getTime()) / 60000));
 
+      const endLocName = await reverseGeocode(endLatitude, endLongitude);
+
+      let flagged = false;
+      let flagReason = "";
+      if (!checkIn.isIndoor && checkIn.latitude && checkIn.longitude && endLatitude && endLongitude) {
+        const dist = haversineDistanceServer(
+          parseFloat(checkIn.latitude), parseFloat(checkIn.longitude),
+          parseFloat(endLatitude), parseFloat(endLongitude)
+        );
+        if (dist > 2) {
+          flagged = true;
+          flagReason = `Localização diferente: check-in em "${checkIn.locationName || "desconhecido"}" e check-out em "${endLocName || "desconhecido"}" (${dist.toFixed(1)}km de distância)`;
+        }
+      }
+
       const [updated] = await db.update(checkIns).set({
         status: "completed",
         endPhotoUrl: endPhotoUrl || "",
         endBackPhotoUrl: endBackPhotoUrl || "",
         endLatitude: endLatitude || null,
         endLongitude: endLongitude || null,
+        endLocationName: endLocName,
         distanceKm: distanceKm || null,
         durationMins,
         caloriesBurned: caloriesBurned || null,
         avgPace: avgPace || null,
+        flagged,
+        flagReason,
         checkedOutAt: now,
       }).where(eq(checkIns.id, checkInId)).returning();
 
@@ -919,6 +965,27 @@ export async function registerRoutes(
       res.status(201).json(checkIn);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao fazer check-in" });
+    }
+  });
+
+  app.get("/api/check-ins/:challengeId/flagged", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.challengeId;
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge || challenge.createdBy !== userId) {
+        return res.status(403).json({ message: "Sem permissão" });
+      }
+      const flaggedCheckIns = await db.select({
+        checkIn: checkIns,
+        user: { id: users.id, name: users.name, username: users.username, avatar: users.avatar },
+      }).from(checkIns)
+        .innerJoin(users, eq(checkIns.userId, users.id))
+        .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.flagged, true)))
+        .orderBy(desc(checkIns.createdAt));
+      res.json(flaggedCheckIns);
+    } catch (error: any) {
+      res.json([]);
     }
   });
 

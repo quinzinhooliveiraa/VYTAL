@@ -10,6 +10,7 @@ export default function ChatHub() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [showRequests, setShowRequests] = useState(false);
+  const [activeTab, setActiveTab] = useState<"diretas" | "desafios">("diretas");
 
   const { data: conversations = [] } = useQuery({
     queryKey: ["/api/messages/conversations"],
@@ -49,7 +50,6 @@ export default function ChatHub() {
 
   const followerConversations = normalizedConversations.filter((c: any) => c.isFollower);
   const requestConversations = normalizedConversations.filter((c: any) => !c.isFollower);
-
   const requestCount = requestConversations.length;
 
   const filteredFollower = followerConversations.filter((c: any) =>
@@ -148,7 +148,7 @@ export default function ChatHub() {
           </button>
         </div>
 
-        <div className="relative">
+        <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <Input 
             placeholder="Buscar conversas..." 
@@ -158,58 +158,86 @@ export default function ChatHub() {
             data-testid="input-search-chats"
           />
         </div>
+
+        <div className="flex border-b border-border -mx-6 px-6">
+          <button
+            onClick={() => setActiveTab("diretas")}
+            className={`flex-1 py-3 flex justify-center items-center gap-2 border-b-2 transition-all text-sm font-bold ${activeTab === "diretas" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
+            data-testid="tab-diretas"
+          >
+            <MessageCircle size={16} />
+            Diretas
+            {followerConversations.length > 0 && (
+              <Badge className="bg-muted text-muted-foreground border-none text-[9px] h-5 min-w-5 px-1">{followerConversations.length}</Badge>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("desafios")}
+            className={`flex-1 py-3 flex justify-center items-center gap-2 border-b-2 transition-all text-sm font-bold ${activeTab === "desafios" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
+            data-testid="tab-desafios"
+          >
+            <Trophy size={16} />
+            Desafios
+            {activeChallenges.length > 0 && (
+              <Badge className="bg-primary/10 text-primary border-none text-[9px] h-5 min-w-5 px-1">{activeChallenges.length}</Badge>
+            )}
+          </button>
+        </div>
       </header>
 
-      <div className="px-6 mt-4 space-y-6">
-        {filteredChallenges.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
-              <Trophy size={12} /> Chats de Desafios
-            </h4>
-            <div className="space-y-2">
-              {filteredChallenges.map((challenge: any) => (
-                <div
-                  key={challenge.id}
-                  className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors"
-                  onClick={() => setLocation(`/challenges/${challenge.id}`)}
-                  data-testid={`challenge-chat-${challenge.id}`}
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                    <Trophy size={22} className="text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm truncate">{challenge.title}</h3>
-                    <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                      <Users size={10} />
-                      {challenge.sport} · {challenge.status === "active" ? "Ativo" : challenge.status}
-                    </p>
-                  </div>
-                  <Badge className="bg-primary/10 text-primary text-[9px] font-bold border-none shrink-0">
-                    Grupo
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {filteredChallenges.length > 0 && (
-            <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
-              <MessageCircle size={12} /> Conversas Diretas
-            </h4>
-          )}
-          <div className="space-y-3">
-            {filteredFollower.length === 0 && (
+      <div className="px-6 mt-4 space-y-3">
+        {activeTab === "diretas" && (
+          <>
+            {filteredFollower.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <MessageCircle size={48} className="mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-medium">Nenhuma conversa ainda</p>
                 <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
               </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredFollower.map((c: any) => renderConversation(c))}
+              </div>
             )}
-            {filteredFollower.map((c: any) => renderConversation(c))}
-          </div>
-        </div>
+          </>
+        )}
+
+        {activeTab === "desafios" && (
+          <>
+            {filteredChallenges.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Trophy size={48} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">Nenhum chat de desafio</p>
+                <p className="text-xs mt-1">Participe de um desafio para ver o chat do grupo</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredChallenges.map((challenge: any) => (
+                  <div
+                    key={challenge.id}
+                    className="flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors"
+                    onClick={() => setLocation(`/challenges/${challenge.id}`)}
+                    data-testid={`challenge-chat-${challenge.id}`}
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <Trophy size={22} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-sm truncate">{challenge.title}</h3>
+                      <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                        <Users size={10} />
+                        {challenge.activeParticipantCount || challenge.participantCount || 0} participantes · {challenge.sport}
+                      </p>
+                    </div>
+                    <Badge className={`text-[9px] font-bold border-none shrink-0 ${challenge.status === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {challenge.status === "active" ? "Ativo" : challenge.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

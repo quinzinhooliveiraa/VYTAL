@@ -1,10 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { registerSchema, loginSchema, insertChallengeSchema, insertMessageSchema, insertCommunitySchema, insertCheckInSchema } from "@shared/schema";
+import { registerSchema, loginSchema, insertChallengeSchema, insertMessageSchema, insertCommunitySchema, insertCheckInSchema, DEPOSIT_MINIMUM, WITHDRAW_MINIMUM, TRANSACTION_TYPES, TRANSACTION_STATUS } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
+import { walletService } from "./services/wallet-service";
+import { transactionService } from "./services/transaction-service";
+import { paymentService } from "./services/payment-service";
+import { webhookService } from "./services/webhook-service";
+import { challengeFinanceService } from "./services/challenge-finance-service";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -181,31 +186,47 @@ export async function registerRoutes(
   });
 
   app.post("/api/challenges/:id/join", requireAuth, async (req, res) => {
-    const userId = (req.session as any).userId;
-    const challengeId = req.params.id;
-    
-    const existing = await storage.getParticipant(challengeId, userId);
-    if (existing) return res.status(400).json({ message: "Você já está neste desafio" });
-    
-    const challenge = await storage.getChallenge(challengeId);
-    if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
-    
-    if (Number(challenge.entryFee) > 0) {
-      const balance = await storage.getWalletBalance(userId);
-      if (balance < Number(challenge.entryFee)) {
-        return res.status(400).json({ message: "Saldo insuficiente" });
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+      
+      const existing = await storage.getParticipant(challengeId, userId);
+      if (existing) return res.status(400).json({ message: "Você já está neste desafio" });
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      
+      const entryFee = Number(challenge.entryFee);
+      if (entryFee > 0) {
+        await challengeFinanceService.processEntryFee(userId, challengeId, entryFee, challenge.title);
       }
-      await storage.createTransaction({
-        userId,
-        type: "entry_fee",
-        amount: challenge.entryFee,
-        description: `Entrada: ${challenge.title}`,
-        challengeId,
-      });
+      
+      const participant = await storage.joinChallenge(challengeId, userId);
+      res.status(201).json(participant);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao entrar no desafio" });
     }
-    
-    const participant = await storage.joinChallenge(challengeId, userId);
-    res.status(201).json(participant);
+  });
+
+  app.post("/api/challenges/:id/finalize", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode finalizar" });
+      
+      const { winnerUserIds } = req.body;
+      if (!Array.isArray(winnerUserIds) || winnerUserIds.length === 0) {
+        return res.status(400).json({ message: "Informe os vencedores" });
+      }
+      
+      const result = await challengeFinanceService.finalizeChallenge(challengeId, winnerUserIds);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao finalizar desafio" });
+    }
   });
 
   // ====== CHECK-INS ======
@@ -366,29 +387,218 @@ export async function registerRoutes(
   // ====== WALLET ======
 
   app.get("/api/wallet/balance", requireAuth, async (req, res) => {
-    const userId = (req.session as any).userId;
-    const balance = await storage.getWalletBalance(userId);
-    res.json({ balance });
+    try {
+      const userId = (req.session as any).userId;
+      const walletBalance = await walletService.getBalance(userId);
+      res.json(walletBalance);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   app.get("/api/wallet/transactions", requireAuth, async (req, res) => {
-    const userId = (req.session as any).userId;
-    const transactions = await storage.getTransactions(userId);
-    res.json(transactions);
+    try {
+      const userId = (req.session as any).userId;
+      const txs = await transactionService.getUserTransactions(userId);
+      res.json(txs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   app.post("/api/wallet/deposit", requireAuth, async (req, res) => {
-    const userId = (req.session as any).userId;
-    const { amount } = req.body;
-    if (!amount || Number(amount) <= 0) return res.status(400).json({ message: "Valor inválido" });
-    
-    const transaction = await storage.createTransaction({
-      userId,
-      type: "deposit",
-      amount: String(amount),
-      description: "Depósito via Pix",
-    });
-    res.status(201).json(transaction);
+    try {
+      const userId = (req.session as any).userId;
+      const { amount } = req.body;
+      const numAmount = Number(amount);
+
+      if (!numAmount || numAmount <= 0) {
+        return res.status(400).json({ message: "Valor inválido" });
+      }
+      if (numAmount < DEPOSIT_MINIMUM) {
+        return res.status(400).json({ message: `Depósito mínimo: R$ ${DEPOSIT_MINIMUM},00` });
+      }
+
+      const idempotencyKey = transactionService.generateIdempotencyKey();
+
+      const tx = await transactionService.create({
+        userId,
+        type: TRANSACTION_TYPES.DEPOSIT,
+        amount: numAmount,
+        status: TRANSACTION_STATUS.PENDING,
+        idempotencyKey,
+        description: "Depósito via Pix",
+      });
+
+      if (paymentService.isConfigured()) {
+        const amountInCents = Math.round(numAmount * 100);
+        const charge = await paymentService.createPixCharge(
+          amountInCents,
+          `Depósito FitStake - R$ ${numAmount.toFixed(2)}`,
+          tx.id
+        );
+
+        await transactionService.setExternalId(tx.id, charge.id);
+        await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.PROCESSING, {
+          pixUrl: charge.url,
+          pixQrCode: charge.qrCode,
+          pixQrCodeBase64: charge.qrCodeBase64,
+        });
+
+        res.status(201).json({
+          transaction: tx,
+          pix: {
+            qrCode: charge.qrCode,
+            qrCodeBase64: charge.qrCodeBase64,
+            url: charge.url,
+            chargeId: charge.id,
+          },
+        });
+      } else {
+        await walletService.addBalance(userId, numAmount);
+        await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED);
+
+        res.status(201).json({
+          transaction: { ...tx, status: TRANSACTION_STATUS.COMPLETED },
+          pix: null,
+          message: "Depósito simulado (gateway não configurado)",
+        });
+      }
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao processar depósito" });
+    }
+  });
+
+  app.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { amount, pixKey, pixKeyType } = req.body;
+      const numAmount = Number(amount);
+
+      if (!numAmount || numAmount <= 0) {
+        return res.status(400).json({ message: "Valor inválido" });
+      }
+      if (numAmount < WITHDRAW_MINIMUM) {
+        return res.status(400).json({ message: `Saque mínimo: R$ ${WITHDRAW_MINIMUM},00` });
+      }
+      if (!pixKey) {
+        return res.status(400).json({ message: "Chave Pix obrigatória" });
+      }
+
+      const pending = await transactionService.getPendingWithdrawals(userId);
+      if (pending.length > 0) {
+        return res.status(400).json({ message: "Você já tem um saque pendente" });
+      }
+
+      await walletService.lockBalance(userId, numAmount);
+
+      const idempotencyKey = transactionService.generateIdempotencyKey();
+      const tx = await transactionService.create({
+        userId,
+        type: TRANSACTION_TYPES.WITHDRAW_REQUEST,
+        amount: numAmount,
+        status: TRANSACTION_STATUS.PENDING,
+        idempotencyKey,
+        description: "Saque via Pix",
+        metadata: { pixKey, pixKeyType: pixKeyType || "CPF" },
+      });
+
+      if (paymentService.isConfigured()) {
+        try {
+          const amountInCents = Math.round(numAmount * 100);
+          const withdraw = await paymentService.createPixWithdraw(
+            amountInCents,
+            pixKey,
+            pixKeyType || "CPF",
+            "Saque FitStake"
+          );
+
+          await transactionService.setExternalId(tx.id, withdraw.id);
+          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.PROCESSING);
+
+          res.status(201).json({
+            transaction: { ...tx, status: TRANSACTION_STATUS.PROCESSING },
+            message: "Saque solicitado. O processamento pode levar alguns minutos.",
+          });
+        } catch (gatewayError: any) {
+          await walletService.unlockBalance(userId, numAmount);
+          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {
+            error: gatewayError.message,
+          });
+          res.status(500).json({ message: "Erro no gateway de pagamento. Tente novamente." });
+        }
+      } else {
+        await walletService.deductLockedBalance(userId, numAmount);
+        await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED);
+
+        res.status(201).json({
+          transaction: { ...tx, status: TRANSACTION_STATUS.COMPLETED },
+          message: "Saque simulado (gateway não configurado)",
+        });
+      }
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao processar saque" });
+    }
+  });
+
+  app.get("/api/wallet/deposit/:transactionId/status", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const tx = await transactionService.getTransaction(req.params.transactionId);
+      if (!tx || tx.userId !== userId) {
+        return res.status(404).json({ message: "Transação não encontrada" });
+      }
+
+      if (tx.status === TRANSACTION_STATUS.PROCESSING && tx.externalId && paymentService.isConfigured()) {
+        const gatewayStatus = await paymentService.getChargeStatus(tx.externalId);
+        if (gatewayStatus === "COMPLETED" || gatewayStatus === "PAID") {
+          await webhookService.processPaymentConfirmed(tx.externalId);
+          const updated = await transactionService.getTransaction(tx.id);
+          return res.json(updated);
+        }
+      }
+
+      res.json(tx);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ====== WEBHOOKS ======
+
+  app.post("/api/webhooks/abacatepay", async (req, res) => {
+    try {
+      const { event, data } = req.body;
+
+      console.log("[Webhook] Received:", event, data?.id);
+
+      if (!event || !data) {
+        return res.status(400).json({ message: "Payload inválido" });
+      }
+
+      let result;
+
+      switch (event) {
+        case "billing.paid":
+        case "PAYMENT.RECEIVED":
+          result = await webhookService.processPaymentConfirmed(data.id || data.billing?.id, data);
+          break;
+        case "withdraw.completed":
+          result = await webhookService.processWithdrawCompleted(data.id, data);
+          break;
+        case "withdraw.failed":
+          result = await webhookService.processWithdrawFailed(data.id, data);
+          break;
+        default:
+          console.log("[Webhook] Evento não tratado:", event);
+          result = { success: true, message: "Evento ignorado" };
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Webhook] Error:", error.message);
+      res.status(500).json({ message: "Erro ao processar webhook" });
+    }
   });
 
   return httpServer;

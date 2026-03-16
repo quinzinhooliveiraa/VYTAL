@@ -1,0 +1,274 @@
+Quero que você atue como engenheiro backend especializado em fintech e sistemas de wallet.
+
+Este projeto já possui funcionalidades implementadas.
+Não altere a arquitetura principal, rotas existentes ou funcionalidades atuais do aplicativo.
+
+O objetivo é adicionar um sistema financeiro completo com wallet interna, usando Pix via AbacatePay API, mantendo todas as funcionalidades atuais do app de desafios.
+
+REGRAS IMPORTANTES
+
+Não remover funcionalidades existentes
+
+Não alterar lógica principal do app
+
+Não alterar rotas já implementadas
+
+Apenas adicionar módulos financeiros
+
+Garantir consistência de saldo e segurança financeira
+
+Implementar sistema preparado para escala
+
+ARQUITETURA FINANCEIRA
+
+O aplicativo deve usar wallet interna controlada pelo banco de dados, e usar o gateway apenas para:
+
+depósitos
+
+saques
+
+Nunca para controle de saldo.
+
+ESTRUTURA DA WALLET
+
+Criar tabela:
+
+wallets
+
+user_id
+balance
+locked_balance
+created_at
+updated_at
+
+Regras:
+
+available_balance = balance - locked_balance
+
+locked_balance representa dinheiro comprometido em desafios ou saques em processamento.
+
+TABELA DE TRANSAÇÕES
+
+transactions
+
+id
+user_id
+type
+amount
+status
+external_id
+metadata
+created_at
+updated_at
+
+Tipos de transação:
+
+deposit
+challenge_entry
+challenge_win
+withdraw_request
+withdraw_processing
+withdraw_completed
+platform_fee
+
+Status possíveis:
+
+pending
+processing
+completed
+failed
+SISTEMA DE DEPÓSITO (PIX)
+
+Fluxo:
+
+usuário solicita depósito
+
+backend cria cobrança Pix via AbacatePay
+
+AbacatePay retorna QR code
+
+usuário paga
+
+webhook confirma pagamento
+
+sistema adiciona valor à wallet
+
+Registrar transaction type:
+
+deposit
+WEBHOOKS
+
+Criar endpoint seguro para receber webhooks do gateway.
+
+Eventos importantes:
+
+pagamento confirmado
+
+saque processado
+
+erro de transação
+
+Webhook deve:
+
+validar assinatura
+
+localizar transaction
+
+atualizar status
+
+atualizar wallet
+
+ENTRADA EM DESAFIOS
+
+Quando usuário entra em um desafio:
+
+verificar saldo disponível
+
+mover valor para locked_balance
+
+registrar transaction type challenge_entry
+
+FINALIZAÇÃO DO DESAFIO
+
+Quando desafio termina:
+
+remover valores de locked_balance
+
+distribuir premiação
+
+adicionar ganhos ao balance dos vencedores
+
+registrar transactions:
+
+challenge_win
+platform_fee
+
+A plataforma retém 10% do pool do desafio.
+
+SISTEMA DE SAQUE
+
+Saques devem ser assíncronos, nunca instantâneos.
+
+Fluxo:
+
+usuário solicita saque
+
+validar saldo disponível
+
+mover valor para locked_balance
+
+criar transaction:
+
+withdraw_request
+status = pending
+
+chamar API de saque do gateway
+
+atualizar transaction para:
+
+withdraw_processing
+
+aguardar webhook
+
+CONFIRMAÇÃO DO SAQUE
+
+Quando webhook confirmar saque:
+
+status = completed
+
+Ações:
+
+wallet.balance -= valor
+wallet.locked_balance -= valor
+
+Registrar transaction:
+
+withdraw_completed
+FALHA DE SAQUE
+
+Se o saque falhar:
+
+status = failed
+
+Ações:
+
+wallet.locked_balance -= valor
+
+Saldo volta ao usuário.
+
+PREVENÇÃO DE FRAUDE
+
+Implementar:
+
+idempotência em transações
+
+validação de saldo antes de qualquer operação
+
+bloqueio de saldo durante transações
+
+prevenção de double spending
+
+logs financeiros auditáveis
+
+controle contra race conditions
+
+LIMITES INICIAIS
+
+Para evitar abuso:
+
+deposit_minimum = 30 BRL
+withdraw_minimum = 30 BRL
+UX DO SAQUE
+
+Saques devem mostrar status:
+
+pending
+processing
+completed
+
+Exibir mensagem ao usuário:
+
+"Saque solicitado. O processamento pode levar alguns minutos."
+
+COMPLIANCE BÁSICO
+
+Para reduzir risco regulatório:
+
+tratar saldo como crédito da plataforma
+
+permitir saque a qualquer momento
+
+registrar todas transações
+
+manter histórico auditável
+
+não permitir saldo negativo
+
+ORGANIZAÇÃO DO CÓDIGO
+
+Criar serviços separados:
+
+wallet_service
+transaction_service
+payment_service
+withdraw_service
+webhook_service
+RESULTADO ESPERADO
+
+O aplicativo deve ter:
+
+wallet interna funcional
+
+depósitos Pix
+
+saques Pix assíncronos
+
+controle de saldo seguro
+
+histórico financeiro completo
+
+prevenção de fraude
+
+sistema escalável
+
+Sem quebrar funcionalidades existentes.

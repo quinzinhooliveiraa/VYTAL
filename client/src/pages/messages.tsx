@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { ChevronLeft, Send, Phone, Video, MoreVertical, Mic, Reply, X, Swords, Plus, Square, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -90,10 +89,12 @@ export default function Messages() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isSendingAudio, setIsSendingAudio] = useState(false);
+  const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: targetUser } = useQuery({
     queryKey: ["/api/users", username],
@@ -145,6 +146,26 @@ export default function Messages() {
     setMessage("");
     setReplyingTo(null);
   };
+
+  const handleReply = useCallback((msg: any) => {
+    const isMe = msg.senderId === currentUser?.id;
+    const hasAudio = !!msg.audioUrl;
+    setReplyingTo({ id: msg.id, text: hasAudio ? "🎤 Áudio" : msg.text, sender: isMe ? "me" : "them" });
+    setSelectedMsgId(null);
+  }, [currentUser]);
+
+  const handleTouchStart = useCallback((msgId: string) => {
+    longPressRef.current = setTimeout(() => {
+      setSelectedMsgId(msgId);
+    }, 400);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -232,9 +253,14 @@ export default function Messages() {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getReplyMessage = (replyToId: string | null) => {
+    if (!replyToId) return null;
+    return messagesData.find((m: any) => m.id === replyToId);
+  };
+
   return (
-    <div className="h-[100dvh] flex flex-col bg-background relative">
-      <header className="px-4 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-10">
+    <div className="h-[100dvh] flex flex-col bg-background">
+      <header className="px-4 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-md shrink-0 z-10">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="rounded-full -ml-2" onClick={() => window.history.back()}>
             <ChevronLeft size={24} />
@@ -262,8 +288,8 @@ export default function Messages() {
         </div>
       </header>
 
-      <ScrollArea className="flex-1 p-4 bg-muted/20" ref={scrollRef}>
-        <div className="space-y-6 pb-4">
+      <div className="flex-1 overflow-y-auto overscroll-contain" ref={scrollRef}>
+        <div className="p-4 space-y-4 min-h-full flex flex-col justify-end">
           <div className="text-center">
             <span className="text-[10px] font-bold text-muted-foreground bg-muted px-3 py-1 rounded-full uppercase tracking-widest">
               Mensagens
@@ -279,51 +305,81 @@ export default function Messages() {
           {messagesData.map((msg: any) => {
             const isMe = msg.senderId === currentUser?.id;
             const hasAudio = !!msg.audioUrl;
+            const isSelected = selectedMsgId === msg.id;
+            const replyMsg = getReplyMessage(msg.replyToId);
             return (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={msg.id} 
-                className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}
-              >
-                <div className={`flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-                  <div className="flex flex-col items-end">
-                    <div 
-                      className={`max-w-[280px] sm:max-w-[320px] shadow-sm flex flex-col ${
-                        isMe 
-                          ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" 
-                          : "bg-card border border-border text-foreground rounded-2xl rounded-tl-sm"
-                      }`}
-                    >
-                      <div className="px-4 py-2.5 text-sm">
-                        {hasAudio ? (
-                          <AudioPlayer src={msg.audioUrl} isMe={isMe} />
-                        ) : (
-                          msg.text
-                        )}
+              <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                <div
+                  className={`relative max-w-[280px] sm:max-w-[320px] ${isSelected ? "scale-[1.02]" : ""} transition-transform`}
+                  onTouchStart={() => handleTouchStart(msg.id)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  onContextMenu={(e) => { e.preventDefault(); setSelectedMsgId(msg.id); }}
+                >
+                  <div
+                    className={`shadow-sm flex flex-col ${
+                      isMe 
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" 
+                        : "bg-card border border-border text-foreground rounded-2xl rounded-tl-sm"
+                    }`}
+                  >
+                    {replyMsg && (
+                      <div className={`mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-2 ${
+                        isMe ? "bg-primary-foreground/10 border-primary-foreground/40" : "bg-muted/50 border-primary/40"
+                      }`}>
+                        <p className={`text-[10px] font-bold ${isMe ? "text-primary-foreground/70" : "text-primary"}`}>
+                          {replyMsg.senderId === currentUser?.id ? "Você" : displayName}
+                        </p>
+                        <p className={`text-[10px] truncate ${isMe ? "text-primary-foreground/50" : "text-muted-foreground"}`}>
+                          {replyMsg.audioUrl ? "🎤 Áudio" : replyMsg.text}
+                        </p>
                       </div>
+                    )}
+                    <div className="px-4 py-2.5 text-sm">
+                      {hasAudio ? (
+                        <AudioPlayer src={msg.audioUrl} isMe={isMe} />
+                      ) : (
+                        msg.text
+                      )}
                     </div>
                   </div>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                    onClick={() => setReplyingTo({ id: msg.id, text: hasAudio ? "🎤 Áudio" : msg.text, sender: isMe ? "me" : "them" })}
-                  >
-                    <Reply size={16} className="text-muted-foreground" />
-                  </Button>
+
+                  <AnimatePresence>
+                    {isSelected && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className={`absolute ${isMe ? "left-0 -translate-x-full" : "right-0 translate-x-full"} top-1/2 -translate-y-1/2 px-1`}
+                      >
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="w-9 h-9 rounded-full shadow-lg"
+                          onClick={() => handleReply(msg)}
+                          data-testid={`button-reply-${msg.id}`}
+                        >
+                          <Reply size={16} />
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
+
                 <span className="text-[10px] text-muted-foreground mt-1 px-1">
                   {msg.createdAt ? formatTime(msg.createdAt) : ""}
                 </span>
-              </motion.div>
+              </div>
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
 
-      <div className="p-4 bg-background border-t border-border mt-auto">
+      {selectedMsgId && (
+        <div className="fixed inset-0 z-5" onClick={() => setSelectedMsgId(null)} />
+      )}
+
+      <div className="p-4 bg-background border-t border-border shrink-0">
         <AnimatePresence>
           {replyingTo && (
             <motion.div 

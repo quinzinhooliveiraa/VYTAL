@@ -6,7 +6,7 @@ export async function subscribeToPush(): Promise<boolean> {
 
     const registration = await navigator.serviceWorker.ready;
 
-    const res = await fetch("/api/push/vapid-key");
+    const res = await fetch("/api/push/vapid-key", { credentials: "include" });
     const { publicKey } = await res.json();
     if (!publicKey) return false;
 
@@ -33,6 +33,7 @@ async function saveSubscription(subscription: PushSubscription): Promise<void> {
   const raw = subscription.toJSON();
   await fetch("/api/push/subscribe", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       endpoint: raw.endpoint,
@@ -57,7 +58,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export async function sendTestPush(): Promise<boolean> {
   try {
-    const res = await fetch("/api/push/test", { method: "POST" });
+    const res = await fetch("/api/push/test", { method: "POST", credentials: "include" });
     return res.ok;
   } catch {
     return false;

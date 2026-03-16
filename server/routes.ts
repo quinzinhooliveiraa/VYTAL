@@ -11,8 +11,10 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
-import { challenges, communities, transactions } from "@shared/schema";
+import { challenges, communities, transactions, challengeJoinRequests } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
+import * as oidcClient from "openid-client";
+import memoize from "memoizee";
 
 const ADMIN_EMAILS = [
   "oliveirasocial74@gmail.com",
@@ -112,6 +114,104 @@ export async function registerRoutes(
     res.json(safeUser);
   });
 
+  // ====== SOCIAL LOGIN (Google / Apple via Replit OIDC) ======
+
+  const getOidcConfig = memoize(
+    async () => {
+      return await oidcClient.discovery(
+        new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
+        process.env.REPL_ID!
+      );
+    },
+    { maxAge: 3600 * 1000 }
+  );
+
+  app.get("/api/login", async (req, res) => {
+    try {
+      const config = await getOidcConfig();
+      const callbackUrl = `https://${req.hostname}/api/callback`;
+      const codeVerifier = oidcClient.randomPKCECodeVerifier();
+      const codeChallenge = await oidcClient.calculatePKCECodeChallenge(codeVerifier);
+      const state = oidcClient.randomState();
+
+      (req.session as any).oidc = { codeVerifier, state, callbackUrl };
+
+      const authUrl = oidcClient.buildAuthorizationUrl(config, {
+        redirect_uri: callbackUrl,
+        scope: "openid email profile",
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+        state,
+        prompt: "login consent",
+      });
+
+      res.redirect(authUrl.href);
+    } catch (error: any) {
+      console.error("OIDC login error:", error);
+      res.redirect("/login?error=social_login_failed");
+    }
+  });
+
+  app.get("/api/callback", async (req, res) => {
+    try {
+      const config = await getOidcConfig();
+      const oidcSession = (req.session as any).oidc;
+      if (!oidcSession) return res.redirect("/login?error=session_expired");
+
+      const tokens = await oidcClient.authorizationCodeGrant(config, new URL(req.url, `https://${req.hostname}`), {
+        pkceCodeVerifier: oidcSession.codeVerifier,
+        expectedState: oidcSession.state,
+      });
+
+      const claims = tokens.claims();
+      if (!claims) return res.redirect("/login?error=no_claims");
+
+      const email = claims.email as string;
+      const firstName = (claims as any).first_name || claims.given_name || "";
+      const lastName = (claims as any).last_name || claims.family_name || "";
+      const fullName = `${firstName} ${lastName}`.trim() || email.split("@")[0];
+      const profileImage = (claims as any).profile_image_url || claims.picture || "";
+
+      delete (req.session as any).oidc;
+
+      let appUser = await storage.getUserByEmail(email);
+
+      if (appUser) {
+        (req.session as any).userId = appUser.id;
+        await storage.updateUser(appUser.id, { online: true, avatar: appUser.avatar || profileImage });
+      } else {
+        const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 20);
+        let username = baseUsername;
+        let counter = 1;
+        while (await storage.getUserByUsername(username)) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(2) + Date.now(), 10);
+        const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+
+        appUser = await storage.createUser({
+          username,
+          email,
+          password: randomPassword,
+          name: fullName,
+          avatar: profileImage,
+          isAdmin,
+        } as any);
+
+        (req.session as any).userId = appUser.id;
+        res.redirect("/onboarding");
+        return;
+      }
+
+      res.redirect("/dashboard");
+    } catch (error: any) {
+      console.error("OIDC callback error:", error);
+      res.redirect("/login?error=auth_failed");
+    }
+  });
+
   // ====== USERS ======
 
   app.get("/api/users/search", requireAuth, async (req, res) => {
@@ -174,8 +274,27 @@ export async function registerRoutes(
     const participants = await storage.getChallengeParticipants(req.params.id);
     const userId = (req.session as any)?.userId;
     const isParticipant = userId ? participants.some(p => p.userId === userId) : false;
+    const isCreator = userId === challenge.createdBy;
+
+    let joinRequestStatus: string | null = null;
+    if (userId && !isParticipant) {
+      const [existing] = await db.select().from(challengeJoinRequests)
+        .where(and(eq(challengeJoinRequests.challengeId, req.params.id), eq(challengeJoinRequests.userId, userId)));
+      if (existing) joinRequestStatus = existing.status;
+    }
+
+    const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : true;
+
+    const visibleParticipants = isParticipant || isCreator
+      ? participants
+      : participants.map((p: any) => {
+          if (p.user?.isPrivate) {
+            return { ...p, user: { ...p.user, name: "Perfil Privado", avatar: "", username: "privado" } };
+          }
+          return p;
+        });
     
-    res.json({ ...challenge, participants, isParticipant });
+    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted });
   });
 
   app.post("/api/challenges", requireAuth, async (req, res) => {
@@ -222,6 +341,9 @@ export async function registerRoutes(
       
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+
+      const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : true;
+      if (hasStarted) return res.status(400).json({ message: "Este desafio já começou. Não é possível entrar." });
       
       const entryFee = Number(challenge.entryFee);
       if (entryFee > 0) {
@@ -236,6 +358,130 @@ export async function registerRoutes(
       res.status(201).json(participant);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao entrar no desafio" });
+    }
+  });
+
+  app.post("/api/challenges/:id/request-join", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+
+      const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : true;
+      if (hasStarted) return res.status(400).json({ message: "Este desafio já começou. Não é possível pedir para entrar." });
+
+      const existing = await storage.getParticipant(challengeId, userId);
+      if (existing) return res.status(400).json({ message: "Você já está neste desafio" });
+
+      const [existingRequest] = await db.select().from(challengeJoinRequests)
+        .where(and(eq(challengeJoinRequests.challengeId, challengeId), eq(challengeJoinRequests.userId, userId)));
+      if (existingRequest) {
+        if (existingRequest.status === "pending") return res.status(400).json({ message: "Você já tem uma solicitação pendente" });
+        if (existingRequest.status === "rejected") return res.status(400).json({ message: "Sua solicitação foi recusada pelo moderador" });
+      }
+
+      const [request] = await db.insert(challengeJoinRequests).values({
+        challengeId,
+        userId,
+      }).returning();
+
+      res.status(201).json(request);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao solicitar entrada" });
+    }
+  });
+
+  app.get("/api/challenges/:id/join-requests", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode ver solicitações" });
+
+      const { users } = await import("@shared/schema");
+      const requests = await db.select({
+        id: challengeJoinRequests.id,
+        challengeId: challengeJoinRequests.challengeId,
+        userId: challengeJoinRequests.userId,
+        status: challengeJoinRequests.status,
+        createdAt: challengeJoinRequests.createdAt,
+        userName: users.name,
+        userAvatar: users.avatar,
+        userUsername: users.username,
+      }).from(challengeJoinRequests)
+        .innerJoin(users, eq(challengeJoinRequests.userId, users.id))
+        .where(eq(challengeJoinRequests.challengeId, challengeId))
+        .orderBy(challengeJoinRequests.createdAt);
+
+      res.json(requests);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/challenges/:id/join-requests/:requestId/approve", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { id: challengeId, requestId } = req.params;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode aprovar" });
+
+      const [request] = await db.select().from(challengeJoinRequests).where(eq(challengeJoinRequests.id, requestId));
+      if (!request || request.challengeId !== challengeId) return res.status(404).json({ message: "Solicitação não encontrada" });
+      if (request.status !== "pending") return res.status(400).json({ message: "Solicitação já foi processada" });
+
+      await db.update(challengeJoinRequests).set({
+        status: "approved",
+        reviewedAt: new Date(),
+        reviewedBy: userId,
+      }).where(eq(challengeJoinRequests.id, requestId));
+
+      const entryFee = Number(challenge.entryFee);
+      if (entryFee > 0) {
+        const { availableBalance } = await walletService.getBalance(request.userId);
+        if (availableBalance < entryFee) {
+          await db.update(challengeJoinRequests).set({ status: "rejected", reviewedAt: new Date(), reviewedBy: userId })
+            .where(eq(challengeJoinRequests.id, requestId));
+          return res.status(400).json({ message: "Usuário não tem saldo suficiente. Solicitação recusada." });
+        }
+        await challengeFinanceService.processEntryFee(request.userId, challengeId, entryFee, challenge.title);
+      }
+
+      await storage.joinChallenge(challengeId, request.userId);
+      res.json({ message: "Participante aprovado com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/challenges/:id/join-requests/:requestId/reject", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { id: challengeId, requestId } = req.params;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode recusar" });
+
+      const [request] = await db.select().from(challengeJoinRequests).where(eq(challengeJoinRequests.id, requestId));
+      if (!request || request.challengeId !== challengeId) return res.status(404).json({ message: "Solicitação não encontrada" });
+      if (request.status !== "pending") return res.status(400).json({ message: "Solicitação já foi processada" });
+
+      await db.update(challengeJoinRequests).set({
+        status: "rejected",
+        reviewedAt: new Date(),
+        reviewedBy: userId,
+      }).where(eq(challengeJoinRequests.id, requestId));
+
+      res.json({ message: "Solicitação recusada" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

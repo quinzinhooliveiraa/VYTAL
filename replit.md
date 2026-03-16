@@ -13,7 +13,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - **Backend**: Express.js + TypeScript
 - **Database**: PostgreSQL with Drizzle ORM (node-postgres driver)
-- **Auth**: bcryptjs + express-session + connect-pg-simple
+- **Auth**: bcryptjs + express-session + connect-pg-simple + Replit OIDC (Google/Apple social login)
 - **Payments**: AbacatePay API (Pix deposits/withdrawals)
 - **Routing**: wouter (frontend)
 - **State**: TanStack React Query
@@ -33,7 +33,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - `client/src/App.tsx` — Root with auth-based routing
 
 ## Database Tables
-- **Core**: users (with cpf, phone fields), challenges, challengeParticipants, checkIns, messages, follows, communities, communityMembers, challengeMessages
+- **Core**: users (with cpf, phone fields), challenges (with isPrivate), challengeParticipants, challengeJoinRequests (pending/approved/rejected), checkIns, messages, follows, communities, communityMembers, challengeMessages
 - **Financial**: wallets (balance + locked_balance per user), transactions (with status, external_id, idempotency_key, metadata)
 - **Support**: supportTickets (id, userId, type[feedback/suporte/ideia], message, status[open/resolved/closed], adminNotes, createdAt)
 - **Legacy**: walletTransactions (kept for backward compatibility)
@@ -54,9 +54,9 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Simulation mode**: When ABACATEPAY_API_KEY is not set, deposits/withdrawals complete instantly (dev mode)
 
 ## API Routes
-- **Auth**: POST `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, GET `/api/auth/me`
+- **Auth**: POST `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, GET `/api/auth/me`, GET `/api/login` (social OIDC), GET `/api/callback` (OIDC callback)
 - **Users**: GET `/api/users/search`, `/api/users/:username`, PATCH `/api/users/me`
-- **Challenges**: GET/POST `/api/challenges`, GET `/api/challenges/:id`, POST `/api/challenges/:id/join`, POST `/api/challenges/:id/finalize`
+- **Challenges**: GET/POST `/api/challenges`, GET `/api/challenges/:id`, POST `/api/challenges/:id/join`, POST `/api/challenges/:id/request-join`, GET `/api/challenges/:id/join-requests`, POST `/api/challenges/:id/join-requests/:requestId/approve`, POST `/api/challenges/:id/join-requests/:requestId/reject`, POST `/api/challenges/:id/finalize`
 - **Check-ins**: POST `/api/check-ins`, GET `/api/check-ins/:challengeId`
 - **Messages**: GET `/api/messages/conversations`, GET `/api/messages/:username`, POST `/api/messages`
 - **Follows**: GET/POST/DELETE `/api/follows/:username`, GET `/api/follows/status/:username`, `/api/follows/followers`, `/api/follows/following`

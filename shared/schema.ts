@@ -35,6 +35,7 @@ export const challenges = pgTable("challenges", {
   image: text("image").default(""),
   isActive: boolean("is_active").default(true),
   status: text("status").default("active"),
+  isPrivate: boolean("is_private").default(false),
   communityId: varchar("community_id"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   startDate: timestamp("start_date").defaultNow(),
@@ -98,6 +99,16 @@ export const communityMembers = pgTable("community_members", {
   userId: varchar("user_id").notNull().references(() => users.id),
   isAdmin: boolean("is_admin").default(false),
   joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+export const challengeJoinRequests = pgTable("challenge_join_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  challengeId: varchar("challenge_id").notNull().references(() => challenges.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: varchar("reviewed_by"),
 });
 
 export const challengeMessages = pgTable("challenge_messages", {
@@ -164,6 +175,7 @@ export const insertFollowSchema = createInsertSchema(follows).omit({ id: true, c
 export const insertCommunitySchema = createInsertSchema(communities).omit({ id: true, createdAt: true });
 export const insertChallengeMessageSchema = createInsertSchema(challengeMessages).omit({ id: true, createdAt: true });
 export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, status: true, adminNotes: true });
+export const insertChallengeJoinRequestSchema = createInsertSchema(challengeJoinRequests).omit({ id: true, createdAt: true, reviewedAt: true, reviewedBy: true, status: true });
 export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWalletSchema = createInsertSchema(wallets).omit({ id: true, createdAt: true, updatedAt: true });
@@ -183,6 +195,8 @@ export type InsertFollow = z.infer<typeof insertFollowSchema>;
 export type Community = typeof communities.$inferSelect;
 export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
 export type CommunityMember = typeof communityMembers.$inferSelect;
+export type ChallengeJoinRequest = typeof challengeJoinRequests.$inferSelect;
+export type InsertChallengeJoinRequest = z.infer<typeof insertChallengeJoinRequestSchema>;
 export type ChallengeMessage = typeof challengeMessages.$inferSelect;
 export type InsertChallengeMessage = z.infer<typeof insertChallengeMessageSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;

@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -47,8 +47,18 @@ export default function ChallengeDetails() {
       const res = await fetch(`/api/challenges/${id}/messages`, { credentials: "include" });
       return res.ok ? res.json() : [];
     },
-    enabled: !!id && activeTab === "chat",
+    enabled: !!id && activeTab === "chat" && challenge?.isParticipant,
     refetchInterval: 5000,
+  });
+
+  const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
+    queryKey: [`/api/challenges/${id}/join-requests`],
+    queryFn: async () => {
+      const res = await fetch(`/api/challenges/${id}/join-requests`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id && user?.id === challenge?.createdBy,
+    refetchInterval: 10000,
   });
 
   useEffect(() => {
@@ -82,6 +92,52 @@ export default function ChallengeDetails() {
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       setLocation("/dashboard");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const requestJoinMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/request-join`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Solicitação enviada!", description: "O moderador irá analisar seu pedido." });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const approveRequestMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/join-requests/${requestId}/approve`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Aprovado!", description: "Participante adicionado ao desafio." });
+      refetchJoinRequests();
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const rejectRequestMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/join-requests/${requestId}/reject`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Recusado", description: "Solicitação recusada." });
+      refetchJoinRequests();
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -152,6 +208,9 @@ export default function ChallengeDetails() {
   const entryFee = Number(challenge.entryFee);
   const prizePool = activeParticipants.length * entryFee;
   const isChallengeEnded = !challenge.isActive || challenge.status === "completed";
+  const hasStarted = challenge.hasStarted;
+  const joinRequestStatus = challenge.joinRequestStatus;
+  const pendingRequests = joinRequests.filter((r: any) => r.status === "pending");
 
   const daysLeft = challenge.startDate
     ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() + (challenge.duration || 30) * 86400000 - Date.now()) / 86400000))
@@ -166,7 +225,7 @@ export default function ChallengeDetails() {
   };
   const heroImage = sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
 
-  const tabCount = isCreator ? 4 : 3;
+  const tabCount = isCreator ? 4 : isParticipant ? 3 : 2;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background pb-24">
@@ -185,6 +244,7 @@ export default function ChallengeDetails() {
           <div className="flex gap-2 mb-2 items-center">
             <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/20 capitalize">{challenge.sport}</Badge>
             {isChallengeEnded && <Badge className="bg-red-500 text-white border-none">Finalizado</Badge>}
+            {challenge.isPrivate && <Badge className="bg-yellow-600 text-white border-none flex gap-1 items-center px-2 py-0.5"><Lock size={10} /> Privado</Badge>}
             {isCreator && <Badge className="bg-orange-500 text-white border-none flex gap-1 items-center px-2 py-0.5"><ShieldAlert size={10} /> Criador</Badge>}
           </div>
           <h1 className="text-3xl font-display font-bold text-white drop-shadow-md">{challenge.title}</h1>
@@ -192,12 +252,72 @@ export default function ChallengeDetails() {
       </div>
 
       <div className="px-6 mt-6 space-y-6">
+        {!isParticipant && !isCreator && !isChallengeEnded && (
+          <div className="border border-primary/20 bg-primary/5 rounded-3xl p-6 space-y-4">
+            {hasStarted ? (
+              <>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <Lock size={20} />
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Desafio já começou</p>
+                    <p className="text-xs">Não é mais possível entrar neste desafio.</p>
+                  </div>
+                </div>
+              </>
+            ) : joinRequestStatus === "pending" ? (
+              <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-400">
+                <Hourglass size={20} />
+                <div>
+                  <p className="font-bold text-sm">Solicitação pendente</p>
+                  <p className="text-xs text-muted-foreground">Aguardando aprovação do moderador.</p>
+                </div>
+              </div>
+            ) : joinRequestStatus === "rejected" ? (
+              <div className="flex items-center gap-3 text-red-500">
+                <XCircle size={20} />
+                <div>
+                  <p className="font-bold text-sm">Solicitação recusada</p>
+                  <p className="text-xs text-muted-foreground">O moderador recusou sua participação neste desafio.</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-display font-bold text-lg">Quer participar?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Envie uma solicitação para o moderador. Após aprovação, a taxa de entrada de <strong>{formatBRL(entryFee)}</strong> será cobrada.
+                </p>
+                <Button
+                  className="w-full h-14 rounded-2xl font-bold bg-primary text-primary-foreground shadow-xl shadow-primary/20"
+                  onClick={() => requestJoinMutation.mutate()}
+                  disabled={requestJoinMutation.isPending}
+                  data-testid="button-request-join"
+                >
+                  {requestJoinMutation.isPending ? (
+                    <Loader2 className="animate-spin mr-2" size={18} />
+                  ) : (
+                    <UserPlus className="mr-2" size={20} />
+                  )}
+                  Pedir para Participar
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={`grid h-12 rounded-xl bg-muted p-1`} style={{ gridTemplateColumns: `repeat(${tabCount}, 1fr)` }}>
             <TabsTrigger value="progresso" className="rounded-lg font-bold">Resumo</TabsTrigger>
             <TabsTrigger value="ranking" className="rounded-lg font-bold">Ranking</TabsTrigger>
-            <TabsTrigger value="chat" className="rounded-lg font-bold">Chat</TabsTrigger>
-            {isCreator && <TabsTrigger value="mod" className="rounded-lg font-bold flex gap-1 items-center text-orange-600 dark:text-orange-400"><ShieldAlert size={14}/> Mod</TabsTrigger>}
+            {isParticipant && <TabsTrigger value="chat" className="rounded-lg font-bold">Chat</TabsTrigger>}
+            {isCreator && (
+              <TabsTrigger value="mod" className="rounded-lg font-bold flex gap-1 items-center text-orange-600 dark:text-orange-400">
+                <ShieldAlert size={14}/>
+                Mod
+                {pendingRequests.length > 0 && (
+                  <span className="ml-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">{pendingRequests.length}</span>
+                )}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="progresso" className="space-y-6 mt-4 animate-in fade-in slide-in-from-bottom-2">
@@ -225,7 +345,7 @@ export default function ChallengeDetails() {
             <div className="space-y-3">
               <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1">Regras & Info</h4>
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
-                <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : `${daysLeft} dias restantes`}</span></div>
+                <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : hasStarted ? `${daysLeft} dias restantes` : "Ainda não começou"}</span></div>
                 <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{activeParticipants.length} participantes ativos</span></div>
                 <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação: {challenge.validationType || "foto"}</span></div>
                 {challenge.description && (
@@ -271,47 +391,47 @@ export default function ChallengeDetails() {
             </div>
           </TabsContent>
 
-          <TabsContent value="chat" className="mt-4 animate-in fade-in slide-in-from-bottom-2 h-[50vh] flex flex-col">
-            <div className="flex-1 bg-card border border-border rounded-[2rem] p-4 flex flex-col shadow-sm">
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4">
-                  {chatMessages.length === 0 && (
-                    <div className="text-center py-12 space-y-2">
-                      <MessageCircle className="mx-auto text-muted-foreground" size={32} />
-                      <p className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</p>
-                      <p className="text-xs text-muted-foreground">Seja o primeiro a mandar uma mensagem!</p>
-                    </div>
-                  )}
-                  {chatMessages.map((msg: any) => {
-                    const isMe = msg.userId === user?.id;
-                    return (
-                      <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={msg.user?.avatar} />
-                          <AvatarFallback>{(msg.user?.name || "?").charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className={`flex flex-col ${isMe ? 'items-end' : ''}`}>
-                          <div className="flex items-baseline gap-2 mb-1">
-                            <span className="text-[10px] font-bold text-muted-foreground">{isMe ? "Você" : msg.user?.name}</span>
-                            <span className="text-[8px] text-muted-foreground/60">
-                              {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
-                            </span>
-                          </div>
-                          <div className={`px-4 py-2.5 rounded-2xl text-sm ${
-                            isMe
-                              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                              : 'bg-muted rounded-tl-sm'
-                          }`}>
-                            {msg.text}
+          {isParticipant && (
+            <TabsContent value="chat" className="mt-4 animate-in fade-in slide-in-from-bottom-2 h-[50vh] flex flex-col">
+              <div className="flex-1 bg-card border border-border rounded-[2rem] p-4 flex flex-col shadow-sm">
+                <ScrollArea className="flex-1 pr-4">
+                  <div className="space-y-4">
+                    {chatMessages.length === 0 && (
+                      <div className="text-center py-12 space-y-2">
+                        <MessageCircle className="mx-auto text-muted-foreground" size={32} />
+                        <p className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</p>
+                        <p className="text-xs text-muted-foreground">Seja o primeiro a mandar uma mensagem!</p>
+                      </div>
+                    )}
+                    {chatMessages.map((msg: any) => {
+                      const isMe = msg.userId === user?.id;
+                      return (
+                        <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={msg.user?.avatar} />
+                            <AvatarFallback>{(msg.user?.name || "?").charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className={`flex flex-col ${isMe ? 'items-end' : ''}`}>
+                            <div className="flex items-baseline gap-2 mb-1">
+                              <span className="text-[10px] font-bold text-muted-foreground">{isMe ? "Você" : msg.user?.name}</span>
+                              <span className="text-[8px] text-muted-foreground/60">
+                                {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                              </span>
+                            </div>
+                            <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                              isMe
+                                ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                                : 'bg-muted rounded-tl-sm'
+                            }`}>
+                              {msg.text}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={chatEndRef} />
-                </div>
-              </ScrollArea>
-              {isParticipant && (
+                      );
+                    })}
+                    <div ref={chatEndRef} />
+                  </div>
+                </ScrollArea>
                 <div className="mt-4 flex gap-2 pt-4 border-t border-border">
                   <Input
                     placeholder="Mande uma mensagem pro grupo..."
@@ -325,12 +445,9 @@ export default function ChallengeDetails() {
                     {sendMessageMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                   </Button>
                 </div>
-              )}
-              {!isParticipant && (
-                <p className="text-center text-xs text-muted-foreground py-2">Participe do desafio para enviar mensagens</p>
-              )}
-            </div>
-          </TabsContent>
+              </div>
+            </TabsContent>
+          )}
 
           {isCreator && (
             <TabsContent value="mod" className="space-y-6 mt-4 animate-in fade-in slide-in-from-bottom-2">
@@ -338,9 +455,51 @@ export default function ChallengeDetails() {
                 <ShieldAlert className="text-orange-500 shrink-0 mt-1" size={18} />
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-orange-600 dark:text-orange-400">Área de Moderação</p>
-                  <p className="text-xs text-orange-600/80 dark:text-orange-400/80">Você é o criador deste desafio. Revise as evidências e gerencie os participantes.</p>
+                  <p className="text-xs text-orange-600/80 dark:text-orange-400/80">Você é o criador deste desafio. Aprove solicitações e gerencie participantes.</p>
                 </div>
               </div>
+
+              {pendingRequests.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                    <UserPlus size={14} /> Solicitações Pendentes
+                    <span className="ml-auto bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-bold">{pendingRequests.length}</span>
+                  </h4>
+                  {pendingRequests.map((req: any) => (
+                    <div key={req.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
+                      <Avatar className="w-12 h-12 border-2 border-border">
+                        <AvatarImage src={req.userAvatar} />
+                        <AvatarFallback>{(req.userName || "?").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{req.userName}</p>
+                        <p className="text-[10px] text-muted-foreground">@{req.userUsername} · {req.createdAt ? new Date(req.createdAt).toLocaleDateString("pt-BR") : ""}</p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="w-10 h-10 rounded-xl border-red-500/30 text-red-500 hover:bg-red-500/10"
+                          onClick={() => rejectRequestMutation.mutate(req.id)}
+                          disabled={rejectRequestMutation.isPending}
+                          data-testid={`button-reject-${req.id}`}
+                        >
+                          <XCircle size={18} />
+                        </Button>
+                        <Button
+                          size="icon"
+                          className="w-10 h-10 rounded-xl bg-primary text-primary-foreground"
+                          onClick={() => approveRequestMutation.mutate(req.id)}
+                          disabled={approveRequestMutation.isPending}
+                          data-testid={`button-approve-${req.id}`}
+                        >
+                          <CheckCircle2 size={18} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
                 <div className="flex items-center justify-between">
@@ -423,6 +582,27 @@ export default function ChallengeDetails() {
                   </div>
                 ))}
               </div>
+
+              {joinRequests.filter((r: any) => r.status !== "pending").length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1">Histórico de Solicitações</h4>
+                  {joinRequests.filter((r: any) => r.status !== "pending").map((req: any) => (
+                    <div key={req.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3 opacity-60">
+                      <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={req.userAvatar} />
+                        <AvatarFallback>{(req.userName || "?").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-bold text-sm">{req.userName}</p>
+                        <p className="text-[10px] text-muted-foreground">@{req.userUsername}</p>
+                      </div>
+                      <Badge className={req.status === "approved" ? "bg-green-500/20 text-green-600 border-none" : "bg-red-500/20 text-red-500 border-none"}>
+                        {req.status === "approved" ? "Aprovado" : "Recusado"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </TabsContent>
           )}
         </Tabs>

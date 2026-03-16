@@ -438,14 +438,35 @@ export async function registerRoutes(
 
   app.get("/api/challenges/explore", async (req, res) => {
     const allChallenges = await storage.getExploreChallenges();
+    const userId = (req.session as any)?.userId;
+    let userGoals: string[] = [];
+    if (userId) {
+      const user = await storage.getUser(userId);
+      if (user?.goals && Array.isArray(user.goals)) {
+        userGoals = (user.goals as string[]).map(g => g.toLowerCase());
+      }
+    }
+
     const withDetails = await Promise.all(allChallenges.map(async (c) => {
       const creator = await storage.getUser(c.createdBy);
       const participants = await storage.getChallengeParticipants(c.id);
       const activeCount = participants.filter((p: any) => p.isActive !== false).length;
+      const joinRequests = await db.select().from(challengeJoinRequests)
+        .where(eq(challengeJoinRequests.challengeId, c.id));
+      const recentRequests = joinRequests.filter(r => {
+        const dayAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return r.createdAt && new Date(r.createdAt) > dayAgo;
+      }).length;
+      const matchesGoal = userGoals.length > 0 && c.sport
+        ? userGoals.some(g => c.sport.toLowerCase().includes(g) || g.includes(c.sport.toLowerCase()))
+        : false;
       return {
         ...c,
         participantCount: participants.length,
         activeParticipantCount: activeCount,
+        joinRequestCount: joinRequests.length,
+        recentRequestCount: recentRequests,
+        matchesGoal,
         creator: creator ? { id: creator.id, name: creator.name, username: creator.username, avatar: creator.avatar } : null,
       };
     }));

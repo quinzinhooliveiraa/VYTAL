@@ -93,7 +93,10 @@ export default function Explorar() {
     return matchesSearch && matchesModality;
   });
 
-  const sortedChallenges = [...filteredChallenges].sort((a: any, b: any) => {
+  const suggestedChallenges = filteredChallenges.filter((c: any) => c.matchesGoal);
+  const nonSuggested = filteredChallenges.filter((c: any) => !c.matchesGoal);
+
+  const sortFn = (a: any, b: any) => {
     if (a.status === "pending" && b.status !== "pending") return -1;
     if (a.status !== "pending" && b.status === "pending") return 1;
     if (sortBy === "new") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -103,10 +106,16 @@ export default function Explorar() {
       const bCount = b.activeParticipantCount || b.participantCount || 0;
       return bCount - aCount;
     }
-    const aScore = (a.activeParticipantCount || a.participantCount || 0) * 2 + Number(a.entryFee || 0);
-    const bScore = (b.activeParticipantCount || b.participantCount || 0) * 2 + Number(b.entryFee || 0);
-    return bScore - aScore;
-  });
+    const aReq = a.recentRequestCount || 0;
+    const bReq = b.recentRequestCount || 0;
+    if (aReq !== bReq) return bReq - aReq;
+    const aCount = a.activeParticipantCount || a.participantCount || 0;
+    const bCount = b.activeParticipantCount || b.participantCount || 0;
+    return bCount - aCount;
+  };
+
+  const sortedSuggested = [...suggestedChallenges].sort(sortFn);
+  const sortedChallenges = [...nonSuggested].sort(sortFn);
 
   const renderChallengeCard = (challenge: any, i: number) => {
     const img = sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
@@ -147,8 +156,18 @@ export default function Explorar() {
                     <h3 className="font-display font-bold text-base leading-tight group-hover:text-primary transition-colors">{challenge.title}</h3>
                     <p className="font-bold text-primary text-sm shrink-0 ml-2">{formatBRL(Number(challenge.entryFee))}</p>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="secondary" className="bg-muted/50 text-[10px] h-5 py-0 border-none font-semibold capitalize">{challenge.sport}</Badge>
+                    {(challenge.recentRequestCount || 0) >= 3 && (
+                      <Badge className="bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[9px] h-5 py-0 border-none font-bold gap-0.5">
+                        <Flame size={9} /> Em Alta
+                      </Badge>
+                    )}
+                    {challenge.matchesGoal && (
+                      <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 text-[9px] h-5 py-0 border-none font-bold gap-0.5">
+                        <Sparkles size={9} /> Para você
+                      </Badge>
+                    )}
                     {challenge.startDate && (
                       <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
                         <Calendar size={10} /> {new Date(challenge.startDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
@@ -284,7 +303,7 @@ export default function Explorar() {
         </div>
       )}
 
-      {!isLoading && sortedChallenges.length === 0 && (
+      {!isLoading && sortedChallenges.length === 0 && sortedSuggested.length === 0 && (
         <div className="text-center py-12 space-y-3">
           <Trophy className="mx-auto text-muted-foreground" size={48} />
           <p className="text-lg font-bold">Nenhum desafio disponível</p>
@@ -296,18 +315,36 @@ export default function Explorar() {
         </div>
       )}
 
+      {!isLoading && sortedSuggested.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-yellow-500" />
+            <h2 className="text-xl font-display font-bold">Sugestões para você</h2>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-2">Baseado nos seus objetivos</p>
+          <div className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {sortedSuggested.map((challenge: any, i: number) => renderChallengeCard(challenge, i))}
+            </AnimatePresence>
+          </div>
+        </section>
+      )}
+
       {!isLoading && sortedChallenges.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold">
-              {selectedModality !== "Todos" ? `Desafios de ${selectedModality}` : "Desafios Disponíveis"}
-            </h2>
-            <span className="text-xs text-muted-foreground font-medium">{sortedChallenges.length} resultados</span>
+            <div className="flex items-center gap-2">
+              {sortBy === "trending" && <Flame size={18} className="text-orange-500" />}
+              <h2 className="text-xl font-display font-bold">
+                {selectedModality !== "Todos" ? `Desafios de ${selectedModality}` : sortBy === "trending" ? "Em Alta" : "Desafios Disponíveis"}
+              </h2>
+            </div>
+            <span className="text-xs text-muted-foreground font-medium">{sortedChallenges.length + sortedSuggested.length} resultados</span>
           </div>
 
           <div className="space-y-4">
             <AnimatePresence mode="popLayout">
-              {sortedChallenges.map((challenge: any, i: number) => renderChallengeCard(challenge, i))}
+              {sortedChallenges.map((challenge: any, i: number) => renderChallengeCard(challenge, i + sortedSuggested.length))}
             </AnimatePresence>
           </div>
         </section>

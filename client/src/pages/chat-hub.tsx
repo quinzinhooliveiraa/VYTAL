@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Search, Users, MessageCircle, Trophy, ChevronRight, Hash, ShieldCheck, Inbox, Phone } from "lucide-react";
+import { Search, Users, MessageCircle, Trophy, ChevronRight, Hash, Inbox, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ export default function ChatHub() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("direct");
+  const [showRequests, setShowRequests] = useState(false);
 
   const { data: conversations = [] } = useQuery({
     queryKey: ["/api/messages/conversations"],
@@ -51,6 +52,8 @@ export default function ChatHub() {
   const followerConversations = normalizedConversations.filter((c: any) => c.isFollower);
   const requestConversations = normalizedConversations.filter((c: any) => !c.isFollower);
 
+  const requestCount = requestConversations.length;
+
   const filteredFollower = followerConversations.filter((c: any) =>
     search === "" || c.otherUser?.name?.toLowerCase().includes(search.toLowerCase()) || c.otherUser?.username?.toLowerCase().includes(search.toLowerCase())
   );
@@ -59,11 +62,9 @@ export default function ChatHub() {
     search === "" || c.otherUser?.name?.toLowerCase().includes(search.toLowerCase()) || c.otherUser?.username?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const requestCount = requestConversations.length;
-
-  const renderConversation = (chat: any) => (
+  const renderConversation = (chat: any, isRequest?: boolean) => (
     <Link key={chat.otherUser?.id} href={`/messages/${chat.otherUser?.username}`}>
-      <div className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors">
+      <div className={`flex items-center gap-4 p-3 rounded-2xl hover:border-primary/50 cursor-pointer transition-colors ${isRequest ? 'bg-muted/50 border border-dashed border-border' : 'bg-card border border-border'}`}>
         <div className="relative">
           <Avatar className="w-14 h-14 border border-border">
             {chat.otherUser?.avatar && <AvatarImage src={chat.otherUser.avatar} />}
@@ -89,11 +90,60 @@ export default function ChatHub() {
     </Link>
   );
 
+  if (showRequests) {
+    return (
+      <div className="min-h-[100dvh] bg-background pb-24">
+        <header className="px-6 pt-6 pb-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => setShowRequests(false)} className="p-1 -ml-1 rounded-full hover:bg-muted" data-testid="button-back-requests">
+              <ArrowLeft size={22} />
+            </button>
+            <h1 className="text-xl font-display font-bold">Pedidos de Mensagem</h1>
+            {requestCount > 0 && (
+              <Badge className="bg-primary/20 text-primary text-[10px] font-bold border-none">{requestCount}</Badge>
+            )}
+          </div>
+        </header>
+
+        <div className="px-6 mt-4 space-y-3">
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-3">
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium flex items-center gap-2">
+              <Inbox size={14} />
+              Mensagens de pessoas que você não segue. Ao responder, a conversa vai para suas mensagens.
+            </p>
+          </div>
+          {filteredRequests.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Inbox size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Nenhum pedido de mensagem</p>
+            </div>
+          )}
+          {filteredRequests.map((c: any) => renderConversation(c, true))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] bg-background pb-24">
       <header className="px-6 pt-6 pb-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
-        <h1 className="text-3xl font-display font-bold mb-4">Conversas</h1>
-        
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-display font-bold">Conversas</h1>
+          {requestCount > 0 && (
+            <button
+              onClick={() => setShowRequests(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors"
+              data-testid="button-open-requests"
+            >
+              <Inbox size={16} className="text-primary" />
+              <span className="text-xs font-bold text-primary">Pedidos</span>
+              <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                {requestCount}
+              </span>
+            </button>
+          )}
+        </div>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <Input 
@@ -108,20 +158,12 @@ export default function ChatHub() {
 
       <div className="px-6 mt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 h-12 rounded-xl bg-muted p-1 mb-6">
-            <TabsTrigger value="direct" className="rounded-lg font-bold">Mensagens</TabsTrigger>
-            <TabsTrigger value="requests" className="rounded-lg font-bold relative">
-              Pedidos
-              {requestCount > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                  {requestCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="communities" className="rounded-lg font-bold">Comunidades</TabsTrigger>
+          <TabsList className="grid grid-cols-2 h-12 rounded-xl bg-muted p-1 mb-6">
+            <TabsTrigger value="direct" className="rounded-lg font-bold" data-testid="tab-messages">Mensagens</TabsTrigger>
+            <TabsTrigger value="communities" className="rounded-lg font-bold" data-testid="tab-communities">Comunidades</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="direct" className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+          <TabsContent value="direct" className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
             {filteredFollower.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
@@ -129,26 +171,7 @@ export default function ChatHub() {
                 <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
               </div>
             )}
-            {filteredFollower.map(renderConversation)}
-          </TabsContent>
-
-          <TabsContent value="requests" className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-            {filteredRequests.length > 0 && (
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-3 mb-2">
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium flex items-center gap-2">
-                  <Inbox size={14} />
-                  Mensagens de pessoas que você não segue
-                </p>
-              </div>
-            )}
-            {filteredRequests.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Inbox size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Nenhum pedido de mensagem</p>
-                <p className="text-xs mt-1">Mensagens de pessoas que você não segue aparecem aqui.</p>
-              </div>
-            )}
-            {filteredRequests.map(renderConversation)}
+            {filteredFollower.map((c: any) => renderConversation(c))}
           </TabsContent>
 
           <TabsContent value="communities" className="space-y-6 animate-in fade-in slide-in-from-bottom-2">

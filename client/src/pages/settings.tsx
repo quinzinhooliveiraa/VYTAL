@@ -6,21 +6,37 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const [, setLocation] = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
-  const [showEarnings, setShowEarnings] = useState(localStorage.getItem("fitstake-public-earnings") !== "false");
+  const [isPrivate, setIsPrivate] = useState(user?.isPrivate || false);
+  const [showEarnings, setShowEarnings] = useState(user?.publicEarnings !== false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(localStorage.getItem("fitstake-notifications") !== "false");
   const [showMedals, setShowMedals] = useState(false);
 
   const [feedbackType, setFeedbackType] = useState<"feedback" | "suporte" | "ideia">("feedback");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
+
+  const updatePrivacy = useMutation({
+    mutationFn: async (data: { isPrivate?: boolean; publicEarnings?: boolean }) => {
+      const res = await apiRequest("PATCH", "/api/users/me", data);
+      if (!res.ok) throw new Error("Erro ao atualizar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Salvo", description: "Configuração atualizada." });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível salvar.", variant: "destructive" });
+    },
+  });
 
   const submitFeedback = useMutation({
     mutationFn: async () => {
@@ -75,14 +91,17 @@ export default function Settings() {
               }} className="data-[state=checked]:bg-primary" data-testid="switch-notifications" />
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><Eye size={18} className="text-foreground" /> <span className="text-sm font-bold">Perfil Privado</span></div>
-              <Switch data-testid="switch-private-profile" />
+              <div className="flex items-center gap-3"><Eye size={18} className={isPrivate ? "text-primary" : "text-foreground"} /> <span className="text-sm font-bold">Perfil Privado</span></div>
+              <Switch checked={isPrivate} onCheckedChange={(checked) => {
+                setIsPrivate(checked);
+                updatePrivacy.mutate({ isPrivate: checked });
+              }} className="data-[state=checked]:bg-primary" data-testid="switch-private-profile" />
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center gap-3"><Eye size={18} className="text-foreground" /> <span className="text-sm font-bold">Privacidade de Ganhos</span></div>
+              <div className="flex items-center gap-3"><Eye size={18} className={showEarnings ? "text-primary" : "text-foreground"} /> <span className="text-sm font-bold">Mostrar Ganhos</span></div>
               <Switch checked={showEarnings} onCheckedChange={(checked) => {
                 setShowEarnings(checked);
-                localStorage.setItem("fitstake-public-earnings", checked.toString());
+                updatePrivacy.mutate({ publicEarnings: checked });
               }} className="data-[state=checked]:bg-primary" data-testid="switch-earnings-privacy" />
             </div>
             <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">

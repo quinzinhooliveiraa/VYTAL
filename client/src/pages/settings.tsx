@@ -187,37 +187,77 @@ export default function Settings() {
         <div className="space-y-4">
           <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Negócios & Parcerias</h3>
 
-          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-4 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl transition-transform" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                <Award size={24} />
+          {user?.isAdmin && (
+            <>
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-4 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl transition-transform" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                    <Award size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm text-foreground">Painel de Comunidades</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Gerencie organizadores, comunidades, comissões e membros.</p>
+                  </div>
+                </div>
+                <Button className="w-full rounded-xl bg-primary text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20" onClick={() => setLocation("/community-dashboard")} data-testid="button-community-dashboard">
+                  ABRIR PAINEL
+                </Button>
               </div>
-              <div className="flex-1">
-                <p className="font-bold text-sm text-foreground">Organizador de Eventos</p>
-                <p className="text-[10px] text-muted-foreground mt-1">Crie desafios para centenas de pessoas e receba comissão sobre as entradas.</p>
-              </div>
-            </div>
-            <Button className="w-full rounded-xl bg-primary text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20" onClick={() => setLocation("/communities")} data-testid="button-organizer">
-              CANDIDATAR-SE
-            </Button>
-          </div>
 
-          <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5 space-y-4 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-accent/10 rounded-full blur-2xl transition-transform" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent">
-                <Star size={24} />
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-5 space-y-4 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl transition-transform" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-500">
+                    <Star size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm text-foreground">Painel de Parceiros</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Gerencie parcerias, campanhas, cupons e métricas.</p>
+                  </div>
+                </div>
+                <Button className="w-full rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs h-10 shadow-lg shadow-blue-500/20" onClick={() => setLocation("/partner-dashboard")} data-testid="button-partner-dashboard">
+                  ABRIR PAINEL
+                </Button>
               </div>
-              <div className="flex-1">
-                <p className="font-bold text-sm text-foreground">Parceiro do App</p>
-                <p className="text-[10px] text-muted-foreground mt-1">Academias, nutricionistas ou marcas. Ofereça benefícios e ganhe destaque.</p>
+            </>
+          )}
+
+          {!user?.isAdmin && (
+            <>
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-4 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl transition-transform" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                    <Award size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm text-foreground">Organizador de Eventos</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Crie desafios para centenas de pessoas e receba comissão sobre as entradas.</p>
+                  </div>
+                </div>
+                <Button className="w-full rounded-xl bg-primary text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20" onClick={() => setLocation("/communities")} data-testid="button-organizer">
+                  CANDIDATAR-SE
+                </Button>
               </div>
-            </div>
-            <Button className="w-full rounded-xl bg-accent text-accent-foreground font-bold text-xs h-10 shadow-lg shadow-accent/20" onClick={() => setLocation("/partner")} data-testid="button-partner">
-              SEJA UM PARCEIRO
-            </Button>
-          </div>
+
+              <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5 space-y-4 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-accent/10 rounded-full blur-2xl transition-transform" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent">
+                    <Star size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm text-foreground">Parceiro do App</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Academias, nutricionistas ou marcas. Ofereça benefícios e ganhe destaque.</p>
+                  </div>
+                </div>
+                <Button className="w-full rounded-xl bg-accent text-accent-foreground font-bold text-xs h-10 shadow-lg shadow-accent/20" onClick={() => setLocation("/partner")} data-testid="button-partner">
+                  SEJA UM PARCEIRO
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-4">

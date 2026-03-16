@@ -26,6 +26,8 @@ import CreateCommunity from "@/pages/create-community";
 import ChatHub from "@/pages/chat-hub";
 import Admin from "@/pages/admin";
 import Partner from "@/pages/partner";
+import CommunityDashboard from "@/pages/community-dashboard";
+import PartnerDashboard from "@/pages/partner-dashboard";
 
 function Router() {
   const [location] = useLocation();
@@ -108,6 +110,8 @@ function Router() {
         <Route path="/communities" component={Communities} />
         <Route path="/create-community" component={CreateCommunity} />
         <Route path="/partner" component={Partner} />
+        <Route path="/community-dashboard" component={CommunityDashboard} />
+        <Route path="/partner-dashboard" component={PartnerDashboard} />
         <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>

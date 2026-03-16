@@ -350,6 +350,17 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
         const { subscribeToPush, sendTestPush } = await import("@/lib/push-notifications");
         await subscribeToPush();
         await sendTestPush();
+        localStorage.setItem("vytal-notif-prefs", JSON.stringify({
+          pushEnabled: true,
+          checkinReminders: true,
+          challengeUpdates: true,
+          challengeResults: true,
+          newMessages: true,
+          friendActivity: true,
+          payments: true,
+          promotions: false,
+          dailyMotivation: true,
+        }));
       }
     } catch {
       setNotifState("denied");

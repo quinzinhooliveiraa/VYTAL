@@ -11,7 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-const DEFAULT_NOTIF_PREFS = {
+const ALL_ON_PREFS = {
   pushEnabled: true,
   checkinReminders: true,
   challengeUpdates: true,
@@ -23,14 +23,27 @@ const DEFAULT_NOTIF_PREFS = {
   dailyMotivation: true,
 };
 
-type NotifPrefs = typeof DEFAULT_NOTIF_PREFS;
+const ALL_OFF_PREFS = {
+  pushEnabled: false,
+  checkinReminders: false,
+  challengeUpdates: false,
+  challengeResults: false,
+  newMessages: false,
+  friendActivity: false,
+  payments: false,
+  promotions: false,
+  dailyMotivation: false,
+};
+
+type NotifPrefs = typeof ALL_ON_PREFS;
 
 function loadNotifPrefs(): NotifPrefs {
   try {
     const stored = localStorage.getItem("vytal-notif-prefs");
-    if (stored) return { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(stored) };
+    if (stored) return { ...ALL_OFF_PREFS, ...JSON.parse(stored) };
   } catch {}
-  return { ...DEFAULT_NOTIF_PREFS };
+  const hasPermission = typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted";
+  return hasPermission ? { ...ALL_ON_PREFS } : { ...ALL_OFF_PREFS };
 }
 
 function saveNotifPrefs(prefs: NotifPrefs) {
@@ -189,15 +202,15 @@ export default function Settings() {
                     if (result === "granted") {
                       const { subscribeToPush } = await import("@/lib/push-notifications");
                       await subscribeToPush();
-                      const updated = { ...notifPrefs, pushEnabled: true };
+                      const updated = { ...ALL_ON_PREFS };
                       setNotifPrefs(updated);
                       saveNotifPrefs(updated);
                       toast({ title: "Ativado!", description: "Notificações push habilitadas." });
                     } else {
                       toast({ title: "Bloqueado", description: "Ative nas configurações do navegador.", variant: "destructive" });
                     }
-                  } else {
-                    const updated = { ...notifPrefs, pushEnabled: checked };
+                  } else if (!checked) {
+                    const updated = { ...ALL_OFF_PREFS };
                     setNotifPrefs(updated);
                     saveNotifPrefs(updated);
                   }
@@ -206,6 +219,14 @@ export default function Settings() {
                 data-testid="switch-push-notifications"
               />
             </div>
+
+            {!(notifPrefs.pushEnabled && pushPermission === "granted") && (
+              <div className="px-4 py-2.5 border-b border-border/50 bg-yellow-500/5">
+                <p className="text-[11px] text-yellow-600 dark:text-yellow-400 font-medium">
+                  Ative as notificações push acima para personalizar cada tipo de alerta.
+                </p>
+              </div>
+            )}
 
             {([
               { key: "checkinReminders" as keyof NotifPrefs, icon: Camera, label: "Lembretes de Check-in", desc: "Aviso quando estiver perto do horário limite", color: "text-yellow-500 bg-yellow-500/10" },
@@ -216,29 +237,33 @@ export default function Settings() {
               { key: "payments" as keyof NotifPrefs, icon: Wallet, label: "Pagamentos e Carteira", desc: "Depósitos, saques e movimentações financeiras", color: "text-green-500 bg-green-500/10" },
               { key: "dailyMotivation" as keyof NotifPrefs, icon: Clock, label: "Motivação Diária", desc: "Uma mensagem motivacional todo dia pela manhã", color: "text-pink-500 bg-pink-500/10" },
               { key: "promotions" as keyof NotifPrefs, icon: Megaphone, label: "Promoções e Novidades", desc: "Novos recursos, eventos especiais e descontos", color: "text-cyan-500 bg-cyan-500/10" },
-            ]).map((item, i, arr) => (
-              <div key={item.key} className={`flex items-center justify-between px-4 py-3 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}>
-                    <item.icon size={15} />
+            ]).map((item, i, arr) => {
+              const pushActive = notifPrefs.pushEnabled && pushPermission === "granted";
+              return (
+                <div key={item.key} className={`flex items-center justify-between px-4 py-3 ${i < arr.length - 1 ? "border-b border-border/50" : ""} ${!pushActive ? "opacity-40" : ""}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}>
+                      <item.icon size={15} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{item.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold">{item.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.desc}</p>
-                  </div>
+                  <Switch
+                    checked={!!notifPrefs[item.key]}
+                    disabled={!pushActive}
+                    onCheckedChange={(checked) => {
+                      const updated = { ...notifPrefs, [item.key]: checked };
+                      setNotifPrefs(updated);
+                      saveNotifPrefs(updated);
+                    }}
+                    className="data-[state=checked]:bg-primary shrink-0"
+                    data-testid={`switch-notif-${item.key}`}
+                  />
                 </div>
-                <Switch
-                  checked={!!notifPrefs[item.key]}
-                  onCheckedChange={(checked) => {
-                    const updated = { ...notifPrefs, [item.key]: checked };
-                    setNotifPrefs(updated);
-                    saveNotifPrefs(updated);
-                  }}
-                  className="data-[state=checked]:bg-primary shrink-0"
-                  data-testid={`switch-notif-${item.key}`}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -44,9 +44,9 @@ import { Label } from "@/components/ui/label";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 
 const slideIn = {
-  initial: { opacity: 0, x: 60, scale: 0.97 },
-  animate: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, x: -60, scale: 0.97, transition: { duration: 0.3 } },
+  initial: { opacity: 0, x: 30, scale: 0.98 },
+  animate: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, x: -30, scale: 0.98, transition: { duration: 0.15 } },
 };
 
 const FloatingParticle = ({ delay, x, size = 4, color = "bg-primary/20" }: { delay: number; x: string; size?: number; color?: string }) => (
@@ -54,7 +54,7 @@ const FloatingParticle = ({ delay, x, size = 4, color = "bg-primary/20" }: { del
     className={`absolute rounded-full ${color} pointer-events-none`}
     style={{ width: size, height: size, left: x, bottom: "-5%" }}
     animate={{ y: [0, -600], opacity: [0, 0.8, 0.8, 0], x: [0, Math.random() * 40 - 20] }}
-    transition={{ duration: 6 + Math.random() * 4, delay, repeat: Infinity, ease: "easeOut" }}
+    transition={{ duration: 4 + Math.random() * 2, delay, repeat: Infinity, ease: "easeOut" }}
   />
 );
 
@@ -186,7 +186,7 @@ const LegalTerms = ({ onNext }: { onNext: () => void }) => {
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.2 }}
           className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
             accepted
               ? "border-primary bg-primary/5"
@@ -249,7 +249,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
           className="absolute -top-2 -right-2 z-20"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.8, type: "spring" }}
+          transition={{ delay: 0.25, type: "spring" }}
         >
           <Sparkles size={20} className="text-yellow-500" />
         </motion.div>
@@ -268,7 +268,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
             <motion.div
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ delay: 0.8, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 0.25, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="absolute bottom-0 left-0 right-0 h-1.5 bg-primary/30 rounded-full origin-left"
             />
           </span>
@@ -276,7 +276,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.2 }}
           className="text-muted-foreground text-base px-2 leading-relaxed"
         >
           Desafios esportivos com dinheiro real. Quem desiste, paga. Quem persiste, lucra.
@@ -286,7 +286,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9 }}
+        transition={{ delay: 0.3 }}
         className="flex items-center justify-center gap-4 pt-2"
       >
         {[
@@ -314,7 +314,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2 }}
+        transition={{ delay: 0.4 }}
       >
         <Button
           className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 relative overflow-hidden group"
@@ -333,7 +333,7 @@ const Welcome = ({ onNext }: { onNext: () => void }) => (
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
+        transition={{ delay: 0.5 }}
         className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-widest"
       >
         VYTAL Accountability System
@@ -402,7 +402,7 @@ const HowItWorks = ({ onNext }: { onNext: () => void }) => (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9 }}
+        transition={{ delay: 0.3 }}
         className="p-3 bg-red-500/5 border border-red-500/15 rounded-xl text-center"
       >
         <p className="text-[10px] text-red-500/80 font-medium flex items-center justify-center gap-1.5">
@@ -470,7 +470,7 @@ const Stats = ({ onNext }: { onNext: () => void }) => (
               key={i}
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: 0.6 + i * 0.12, type: "spring" }}
+              transition={{ delay: 0.2 + i * 0.12, type: "spring" }}
               className="bg-card border border-border rounded-2xl p-3 relative overflow-hidden"
             >
               <motion.div
@@ -617,7 +617,7 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.2 }}
       >
         <Button
           className="w-full h-14 text-lg font-bold rounded-2xl mt-6 shrink-0 shadow-xl shadow-primary/20"
@@ -807,7 +807,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
               <motion.div
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 }}
+                transition={{ delay: 0.2 }}
                 className="flex items-start gap-3"
               >
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 relative border border-blue-500/20">
@@ -823,7 +823,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
               <motion.div
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.9 }}
+                transition={{ delay: 0.3 }}
                 className="flex items-start gap-3"
               >
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 relative border border-green-500/20">
@@ -873,7 +873,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
               <motion.div
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 }}
+                transition={{ delay: 0.2 }}
                 className="flex items-start gap-3"
               >
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 relative border border-blue-500/20">
@@ -889,7 +889,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
               <motion.div
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.9 }}
+                transition={{ delay: 0.3 }}
                 className="flex items-start gap-3"
               >
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 relative border border-green-500/20">
@@ -1057,7 +1057,7 @@ const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.2 }}
               className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3"
             >
               <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
@@ -1170,7 +1170,7 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.2 }}
           className="absolute -top-1 right-[calc(50%-60px)] z-20"
         >
           <Sparkles size={20} className="text-yellow-500" />
@@ -1189,7 +1189,7 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.2 }}
           className="text-muted-foreground text-base px-4"
         >
           Sua jornada para a consistência começa agora.
@@ -1199,7 +1199,7 @@ const Final = ({ onComplete }: { onComplete: () => void }) => (
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.25 }}
         className="bg-card border border-border rounded-2xl p-4 mx-2 text-left"
       >
         <div className="flex items-center gap-3 mb-3">
@@ -1278,12 +1278,12 @@ export default function Onboarding() {
     <div className="h-[100dvh] max-w-md mx-auto flex flex-col p-6 relative overflow-hidden bg-background">
       <motion.div
         animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         className="absolute top-[-15%] right-[-15%] w-[350px] h-[350px] rounded-full bg-primary/5 blur-[120px] pointer-events-none"
       />
       <motion.div
         animate={{ x: [0, -20, 0], y: [0, 30, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         className="absolute bottom-[-10%] left-[-10%] w-[250px] h-[250px] rounded-full bg-primary/3 blur-[100px] pointer-events-none"
       />
 

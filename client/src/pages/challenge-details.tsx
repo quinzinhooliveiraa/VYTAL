@@ -39,6 +39,7 @@ export default function ChallengeDetails() {
       return res.json();
     },
     enabled: !!id,
+    refetchInterval: 15000,
   });
 
   const { data: chatMessages = [], refetch: refetchMessages } = useQuery({
@@ -49,6 +50,16 @@ export default function ChallengeDetails() {
     },
     enabled: !!id && activeTab === "chat" && challenge?.isParticipant,
     refetchInterval: 5000,
+  });
+
+  const { data: checkInHistory = [] } = useQuery({
+    queryKey: [`/api/check-ins/${id}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/check-ins/${id}`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id && !!challenge?.isParticipant,
+    refetchInterval: 30000,
   });
 
   const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
@@ -343,10 +354,22 @@ export default function ChallengeDetails() {
             {isParticipant && !isChallengeEnded && (
               <div className="border border-primary/20 bg-primary/5 rounded-3xl p-6 space-y-4">
                 <h3 className="font-display font-bold text-lg">Seu Status</h3>
-                <p className="text-sm text-muted-foreground">Você está participando deste desafio!</p>
-                <Button className="w-full h-14 rounded-2xl font-bold bg-foreground text-background dark:bg-white dark:text-black mt-2 shadow-xl" onClick={() => setLocation(`/check-in/${id}`)} data-testid="button-checkin">
-                  <Camera className="mr-2" size={20} /> Fazer Check-in Hoje
-                </Button>
+                {hasStarted ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">Você está participando deste desafio!</p>
+                    <Button className="w-full h-14 rounded-2xl font-bold bg-foreground text-background dark:bg-white dark:text-black mt-2 shadow-xl" onClick={() => setLocation(`/check-in/${id}`)} data-testid="button-checkin">
+                      <Camera className="mr-2" size={20} /> Fazer Check-in Hoje
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    <Hourglass size={20} className="text-yellow-500" />
+                    <div>
+                      <p className="font-bold text-sm text-foreground">Aguardando início</p>
+                      <p className="text-xs">O desafio começa em {challenge.startDate ? new Date(challenge.startDate).toLocaleDateString("pt-BR") : "breve"}. Check-ins estarão disponíveis após o início.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -361,6 +384,73 @@ export default function ChallengeDetails() {
                 )}
               </div>
             </div>
+
+            {participants.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                  <Trophy size={14} /> Ranking
+                </h4>
+                <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
+                  {[...participants].sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).slice(0, 5).map((p: any, i: number) => (
+                    <div key={p.userId} className={`flex items-center gap-3 p-3 ${p.userId === user?.id ? 'bg-primary/5' : ''} ${!p.isActive ? 'opacity-50' : ''}`}>
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-500 text-black' : i === 1 ? 'bg-gray-300 text-black' : i === 2 ? 'bg-orange-600 text-white' : 'bg-muted text-muted-foreground'}`}>{i + 1}</span>
+                      <Avatar className="w-8 h-8 border border-border">
+                        <AvatarImage src={p.user?.avatar} />
+                        <AvatarFallback className="text-[10px]">{(p.user?.name || "?").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold truncate">{p.user?.name || "Usuário"}{p.userId === user?.id ? " (Você)" : ""}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">{p.score || 0}</p>
+                        <p className="text-[8px] text-muted-foreground uppercase">check-ins</p>
+                      </div>
+                    </div>
+                  ))}
+                  {participants.length > 5 && (
+                    <button className="w-full p-2 text-xs text-primary font-bold hover:bg-primary/5 transition-colors" onClick={() => setActiveTab("ranking")}>
+                      Ver ranking completo
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isParticipant && checkInHistory.filter((c: any) => c.status === "completed" && c.userId === user?.id).length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                  <Camera size={14} /> Seus Check-ins
+                </h4>
+                <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
+                  {checkInHistory.filter((c: any) => c.status === "completed" && c.userId === user?.id).slice(0, 10).map((c: any) => (
+                    <div key={c.id} className="flex items-center gap-3 p-3">
+                      {c.photoUrl ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0">
+                          <img src={c.photoUrl} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <CheckCircle2 size={16} className="text-primary" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold">
+                          {new Date(c.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                          {" às "}
+                          {new Date(c.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          {c.durationMins && <span>{c.durationMins} min</span>}
+                          {c.distanceKm && Number(c.distanceKm) > 0 && <span>• {Number(c.distanceKm).toFixed(2)} km</span>}
+                          {c.caloriesBurned && <span>• {c.caloriesBurned} kcal</span>}
+                        </div>
+                      </div>
+                      <CheckCircle2 size={16} className="text-primary shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {isParticipant && !isCreator && !isChallengeEnded && (
               <Button

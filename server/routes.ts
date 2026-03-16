@@ -477,6 +477,13 @@ export async function registerRoutes(
       }
 
       const startDateVal = data.startDate ? new Date(data.startDate) : new Date();
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const startCheck = new Date(startDateVal);
+      startCheck.setHours(0, 0, 0, 0);
+      if (startCheck < now) {
+        return res.status(400).json({ message: "A data de início não pode ser no passado." });
+      }
       const endDate = new Date(startDateVal);
       endDate.setDate(endDate.getDate() + (data.duration || 30));
       
@@ -776,6 +783,17 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const { challengeId, photoUrl, backPhotoUrl, latitude, longitude, isIndoor } = req.body;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+
+      const challengeStartDate = challenge.startDate ? new Date(challenge.startDate) : null;
+      if (challengeStartDate && challengeStartDate > new Date()) {
+        return res.status(400).json({ message: "Este desafio ainda não começou. Aguarde a data de início." });
+      }
+      if (!challenge.isActive || challenge.status === "completed") {
+        return res.status(400).json({ message: "Este desafio já foi finalizado." });
+      }
 
       const participant = await storage.getParticipant(challengeId, userId);
       if (!participant) return res.status(400).json({ message: "Você não está neste desafio" });
@@ -1353,6 +1371,27 @@ export async function registerRoutes(
       }
       if (!pixKey) {
         return res.status(400).json({ message: "Chave Pix obrigatória" });
+      }
+
+      const keyType = (pixKeyType || "CPF").toUpperCase();
+      if (keyType === "CPF") {
+        const cpfClean = pixKey.replace(/[.\-]/g, "");
+        if (!/^\d{11}$/.test(cpfClean)) {
+          return res.status(400).json({ message: "CPF inválido. Informe 11 dígitos numéricos." });
+        }
+      } else if (keyType === "EMAIL") {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pixKey)) {
+          return res.status(400).json({ message: "E-mail inválido. Verifique o formato." });
+        }
+      } else if (keyType === "PHONE") {
+        const phoneClean = pixKey.replace(/[\s\-\(\)\+]/g, "");
+        if (!/^\d{10,13}$/.test(phoneClean)) {
+          return res.status(400).json({ message: "Telefone inválido. Informe com DDD (ex: 11999999999)." });
+        }
+      } else if (keyType === "RANDOM" || keyType === "ALEATORIA") {
+        if (!/^[a-f0-9\-]{32,36}$/i.test(pixKey)) {
+          return res.status(400).json({ message: "Chave aleatória inválida. Verifique o formato UUID." });
+        }
       }
 
       const { availableBalance } = await walletService.getBalance(userId);

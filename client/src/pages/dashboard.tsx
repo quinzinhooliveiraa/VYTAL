@@ -27,6 +27,7 @@ export default function Dashboard() {
       const res = await fetch("/api/challenges/mine", { credentials: "include" });
       return res.ok ? res.json() : [];
     },
+    refetchInterval: 15000,
   });
 
   const userName = user?.name || "Seu Nome";
@@ -151,7 +152,8 @@ export default function Dashboard() {
             {activeChallenges.map((challenge: any) => {
               const count = challenge.activeParticipantCount || challenge.participantCount || 0;
               const max = challenge.maxParticipants || 50;
-              const waiting = count < 2;
+              const notStarted = challenge.startDate ? new Date(challenge.startDate) > new Date() : false;
+              const waiting = count < 2 || notStarted;
               const isCreator = challenge.createdBy === user?.id;
               const entryFee = Number(challenge.entryFee || 0);
               const prizePool = count * entryFee;
@@ -176,7 +178,10 @@ export default function Dashboard() {
                       {isCreator && (
                         <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px] font-black tracking-tighter">MOD</Badge>
                       )}
-                      {waiting && (
+                      {notStarted && (
+                        <Badge className="bg-yellow-500/20 text-yellow-600 border-none text-[9px]">AGUARDANDO INÍCIO</Badge>
+                      )}
+                      {!notStarted && count < 2 && (
                         <Badge className="bg-yellow-500/20 text-yellow-600 border-none text-[9px]">AGUARDANDO</Badge>
                       )}
                     </div>

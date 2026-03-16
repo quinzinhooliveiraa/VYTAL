@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { useLocation, useParams, Link } from "wouter";
-import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, Flame, Medal, UserCheck, Loader2, Swords, DollarSign, Target, TrendingUp, Calendar } from "lucide-react";
+import { useLocation, useParams } from "wouter";
+import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, Flame, Medal, UserCheck, Loader2, Swords, DollarSign, Target, Calendar, X, Hourglass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
@@ -12,6 +14,8 @@ import { motion } from "framer-motion";
 export default function PublicProfile() {
   const [, setLocation] = useLocation();
   const { username } = useParams();
+  const [followersOpen, setFollowersOpen] = useState(false);
+  const [followingOpen, setFollowingOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -31,10 +35,40 @@ export default function PublicProfile() {
     queryKey: ["/api/follows/status", username],
     queryFn: async () => {
       const res = await fetch(`/api/follows/status/${username}`, { credentials: "include" });
-      if (!res.ok) return { following: false };
+      if (!res.ok) return { following: false, requested: false };
       return res.json();
     },
     enabled: !!username,
+  });
+
+  const { data: suggestedUsers = [] } = useQuery({
+    queryKey: ["/api/users", username, "suggested"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${username}/suggested`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!username,
+  });
+
+  const { data: userFollowers = [] } = useQuery({
+    queryKey: ["/api/users", username, "followers-list"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${username}/followers`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!username && followersOpen,
+  });
+
+  const { data: userFollowing = [] } = useQuery({
+    queryKey: ["/api/users", username, "following-list"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${username}/following`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!username && followingOpen,
   });
 
   const followMutation = useMutation({
@@ -60,6 +94,7 @@ export default function PublicProfile() {
   });
 
   const isFollowing = followStatus?.following || false;
+  const isRequested = followStatus?.requested || false;
   const isPrivate = user?.isPrivate || false;
 
   if (isLoading) {
@@ -126,6 +161,16 @@ export default function PublicProfile() {
             >
               <UserCheck size={16} className="mr-1.5" /> Seguindo
             </Button>
+          ) : isRequested ? (
+            <Button
+              variant="outline"
+              className="rounded-xl h-10 px-5 font-bold text-sm text-yellow-600 border-yellow-500/30"
+              onClick={() => unfollowMutation.mutate()}
+              disabled={unfollowMutation.isPending}
+              data-testid="button-requested"
+            >
+              <Hourglass size={16} className="mr-1.5" /> Solicitado
+            </Button>
           ) : (
             <Button
               className="rounded-xl h-10 px-5 font-bold text-sm shadow-lg shadow-primary/20"
@@ -139,11 +184,11 @@ export default function PublicProfile() {
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="text-center" data-testid="stat-followers">
+          <div className="text-center cursor-pointer" onClick={() => setFollowersOpen(true)} data-testid="stat-followers">
             <p className="font-display font-bold text-lg">{user.followerCount || 0}</p>
             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguidores</p>
           </div>
-          <div className="text-center" data-testid="stat-following">
+          <div className="text-center cursor-pointer" onClick={() => setFollowingOpen(true)} data-testid="stat-following">
             <p className="font-display font-bold text-lg">{user.followingCount || 0}</p>
             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Seguindo</p>
           </div>
@@ -286,7 +331,86 @@ export default function PublicProfile() {
             </div>
           </div>
         )}
+
+        {suggestedUsers.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="space-y-3">
+            <h3 className="font-display font-bold flex items-center gap-2">
+              <Users size={18} className="text-blue-500" /> Sugestões para Você
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+              {suggestedUsers.map((s: any) => (
+                <div
+                  key={s.id}
+                  className="flex-shrink-0 w-32 bg-card border border-border rounded-2xl p-4 flex flex-col items-center text-center gap-2 cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => setLocation(`/user/${s.username}`)}
+                  data-testid={`suggested-${s.username}`}
+                >
+                  <Avatar className="w-14 h-14 border-2 border-border">
+                    <AvatarImage src={s.avatar || `https://i.pravatar.cc/150?u=${s.username}`} />
+                    <AvatarFallback>{(s.name || "?").charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <p className="font-bold text-xs truncate w-full">{s.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate w-full">@{s.username}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
+
+      <Dialog open={followersOpen} onOpenChange={setFollowersOpen}>
+        <DialogContent className="max-w-sm rounded-2xl max-h-[70vh]">
+          <DialogHeader>
+            <DialogTitle>Seguidores ({user.followerCount || 0})</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[50vh]">
+            <div className="space-y-3">
+              {userFollowers.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-8">Nenhum seguidor ainda</p>
+              )}
+              {userFollowers.map((f: any) => (
+                <div key={f.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setFollowersOpen(false); setLocation(`/user/${f.username}`); }}>
+                  <Avatar className="w-10 h-10 border border-border">
+                    <AvatarImage src={f.avatar || `https://i.pravatar.cc/150?u=${f.username}`} />
+                    <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{f.name}</p>
+                    <p className="text-[10px] text-muted-foreground">@{f.username}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={followingOpen} onOpenChange={setFollowingOpen}>
+        <DialogContent className="max-w-sm rounded-2xl max-h-[70vh]">
+          <DialogHeader>
+            <DialogTitle>Seguindo ({user.followingCount || 0})</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[50vh]">
+            <div className="space-y-3">
+              {userFollowing.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-8">Não segue ninguém ainda</p>
+              )}
+              {userFollowing.map((f: any) => (
+                <div key={f.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setFollowingOpen(false); setLocation(`/user/${f.username}`); }}>
+                  <Avatar className="w-10 h-10 border border-border">
+                    <AvatarImage src={f.avatar || `https://i.pravatar.cc/150?u=${f.username}`} />
+                    <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{f.name}</p>
+                    <p className="text-[10px] text-muted-foreground">@{f.username}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

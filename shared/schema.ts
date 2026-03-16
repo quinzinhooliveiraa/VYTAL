@@ -81,6 +81,15 @@ export const follows = pgTable("follows", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const followRequests = pgTable("follow_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requesterId: varchar("requester_id").notNull().references(() => users.id),
+  targetId: varchar("target_id").notNull().references(() => users.id),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
 export const communities = pgTable("communities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -179,6 +188,7 @@ export const insertChallengeJoinRequestSchema = createInsertSchema(challengeJoin
 export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWalletSchema = createInsertSchema(wallets).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFollowRequestSchema = createInsertSchema(followRequests).omit({ id: true, createdAt: true, reviewedAt: true, status: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -196,6 +206,8 @@ export type Community = typeof communities.$inferSelect;
 export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
 export type CommunityMember = typeof communityMembers.$inferSelect;
 export type ChallengeJoinRequest = typeof challengeJoinRequests.$inferSelect;
+export type FollowRequest = typeof followRequests.$inferSelect;
+export type InsertFollowRequest = z.infer<typeof insertFollowRequestSchema>;
 export type InsertChallengeJoinRequest = z.infer<typeof insertChallengeJoinRequestSchema>;
 export type ChallengeMessage = typeof challengeMessages.$inferSelect;
 export type InsertChallengeMessage = z.infer<typeof insertChallengeMessageSchema>;

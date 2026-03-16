@@ -1,8 +1,8 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
 
   const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
@@ -45,6 +46,35 @@ export default function Profile() {
     queryFn: async () => {
       const res = await fetch("/api/wallet/transactions", { credentials: "include" });
       return res.ok ? res.json() : [];
+    },
+  });
+
+  const { data: followRequests = [] } = useQuery({
+    queryKey: ["/api/follows/requests"],
+    queryFn: async () => {
+      const res = await fetch("/api/follows/requests", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const approveFollowMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/follows/requests/${id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follows/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/follows/followers"] });
+    },
+  });
+
+  const rejectFollowMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/follows/requests/${id}/reject`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follows/requests"] });
     },
   });
 
@@ -371,15 +401,53 @@ export default function Profile() {
               <h3 className="text-xl font-bold">Seguidores ({followersData?.length || 0})</h3>
               <Button variant="ghost" size="icon" onClick={() => setShowFollowers(false)}><XCircle size={24} /></Button>
             </div>
+
+            {followRequests.length > 0 && (
+              <div className="mb-6 space-y-3">
+                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <UserPlus size={14} /> Solicitações ({followRequests.length})
+                </h4>
+                {followRequests.map((req: any) => (
+                  <div key={req.id} className="flex items-center justify-between bg-muted/50 rounded-xl p-3">
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setShowFollowers(false); setLocation(`/user/${req.requester?.username}`); }}>
+                      <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={req.requester?.avatar} />
+                        <AvatarFallback>{(req.requester?.name || "?").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{req.requester?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">@{req.requester?.username}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" className="w-8 h-8 rounded-full bg-primary text-white" onClick={() => approveFollowMutation.mutate(req.id)} data-testid={`approve-follow-${req.id}`}>
+                        <Check size={14} />
+                      </Button>
+                      <Button size="icon" variant="outline" className="w-8 h-8 rounded-full" onClick={() => rejectFollowMutation.mutate(req.id)} data-testid={`reject-follow-${req.id}`}>
+                        <X size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <div className="border-b border-border" />
+              </div>
+            )}
+
             {(!followersData || followersData.length === 0) ? (
               <p className="text-center text-muted-foreground text-sm py-10">Nenhum seguidor ainda</p>
             ) : (
               <div className="space-y-4">
                 {followersData.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between">
+                  <div key={i} className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setShowFollowers(false); setLocation(`/user/${f.follower?.username}`); }}>
                     <div className="flex items-center gap-3">
-                      <Avatar><AvatarFallback>{(f.name || "U").substring(0,2).toUpperCase()}</AvatarFallback></Avatar>
-                      <p className="font-bold text-sm">{f.name || `Usuário ${i+1}`}</p>
+                      <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={f.follower?.avatar} />
+                        <AvatarFallback>{(f.follower?.name || "U").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{f.follower?.name || `Usuário ${i+1}`}</p>
+                        <p className="text-[10px] text-muted-foreground">@{f.follower?.username}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -401,10 +469,16 @@ export default function Profile() {
             ) : (
               <div className="space-y-4">
                 {followingData.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between">
+                  <div key={i} className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setShowFollowing(false); setLocation(`/user/${f.following?.username}`); }}>
                     <div className="flex items-center gap-3">
-                      <Avatar><AvatarFallback>{(f.name || "U").substring(0,2).toUpperCase()}</AvatarFallback></Avatar>
-                      <p className="font-bold text-sm">{f.name || `Usuário ${i+1}`}</p>
+                      <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={f.following?.avatar} />
+                        <AvatarFallback>{(f.following?.name || "U").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{f.following?.name || `Usuário ${i+1}`}</p>
+                        <p className="text-[10px] text-muted-foreground">@{f.following?.username}</p>
+                      </div>
                     </div>
                     <Button variant="outline" size="sm" className="h-8 text-xs font-bold rounded-lg border-border">Seguindo</Button>
                   </div>

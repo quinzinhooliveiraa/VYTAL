@@ -43,7 +43,12 @@ export default function ChatHub() {
     return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   };
 
-  const filteredConversations = conversations.filter((c: any) =>
+  const normalizedConversations = conversations.map((c: any) => ({
+    ...c,
+    otherUser: c.otherUser || c.user,
+  }));
+
+  const filteredConversations = normalizedConversations.filter((c: any) =>
     search === "" || c.otherUser?.name?.toLowerCase().includes(search.toLowerCase()) || c.otherUser?.username?.toLowerCase().includes(search.toLowerCase())
   );
 

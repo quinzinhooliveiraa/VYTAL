@@ -11,7 +11,7 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
-import { challenges, communities, transactions, challengeJoinRequests } from "@shared/schema";
+import { challenges, communities, transactions, challengeJoinRequests, followRequests, users } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import * as oidcClient from "openid-client";
 import memoize from "memoizee";
@@ -243,6 +243,20 @@ export async function registerRoutes(
       followerCount: followers.length,
       followingCount: following.length,
     });
+  });
+
+  app.get("/api/users/:username/followers", async (req, res) => {
+    const target = await storage.getUserByUsername(req.params.username);
+    if (!target) return res.json([]);
+    const followers = await storage.getFollowers(target.id);
+    res.json(followers.map(f => ({ id: f.follower.id, name: f.follower.name, username: f.follower.username, avatar: f.follower.avatar })));
+  });
+
+  app.get("/api/users/:username/following", async (req, res) => {
+    const target = await storage.getUserByUsername(req.params.username);
+    if (!target) return res.json([]);
+    const following = await storage.getFollowing(target.id);
+    res.json(following.map(f => ({ id: f.following.id, name: f.following.name, username: f.following.username, avatar: f.following.avatar })));
   });
 
   app.patch("/api/users/me", requireAuth, async (req, res) => {
@@ -676,16 +690,29 @@ export async function registerRoutes(
   // ====== FOLLOWS ======
 
   app.post("/api/follows/:username", requireAuth, async (req, res) => {
-    const userId = (req.session as any).userId;
-    const target = await storage.getUserByUsername(req.params.username);
-    if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
-    if (target.id === userId) return res.status(400).json({ message: "Não pode seguir a si mesmo" });
+    try {
+      const userId = (req.session as any).userId;
+      const target = await storage.getUserByUsername(req.params.username);
+      if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
+      if (target.id === userId) return res.status(400).json({ message: "Não pode seguir a si mesmo" });
 
-    const alreadyFollowing = await storage.isFollowing(userId, target.id);
-    if (alreadyFollowing) return res.status(400).json({ message: "Já está seguindo" });
-    
-    const follow = await storage.follow(userId, target.id);
-    res.status(201).json(follow);
+      const alreadyFollowing = await storage.isFollowing(userId, target.id);
+      if (alreadyFollowing) return res.status(400).json({ message: "Já está seguindo" });
+
+      if (target.isPrivate) {
+        const existing = await db.select().from(followRequests)
+          .where(and(eq(followRequests.requesterId, userId), eq(followRequests.targetId, target.id), eq(followRequests.status, "pending")));
+        if (existing.length > 0) return res.status(400).json({ message: "Solicitação já enviada" });
+
+        const [request] = await db.insert(followRequests).values({ requesterId: userId, targetId: target.id }).returning();
+        return res.status(201).json({ ...request, type: "request" });
+      }
+
+      const follow = await storage.follow(userId, target.id);
+      res.status(201).json(follow);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro" });
+    }
   });
 
   app.delete("/api/follows/:username", requireAuth, async (req, res) => {
@@ -694,15 +721,18 @@ export async function registerRoutes(
     if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
     
     await storage.unfollow(userId, target.id);
+    await db.delete(followRequests).where(and(eq(followRequests.requesterId, userId), eq(followRequests.targetId, target.id)));
     res.json({ message: "Unfollowed" });
   });
 
   app.get("/api/follows/status/:username", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
     const target = await storage.getUserByUsername(req.params.username);
-    if (!target) return res.status(404).json({ following: false });
+    if (!target) return res.status(404).json({ following: false, requested: false });
     const following = await storage.isFollowing(userId, target.id);
-    res.json({ following });
+    const [pendingReq] = await db.select().from(followRequests)
+      .where(and(eq(followRequests.requesterId, userId), eq(followRequests.targetId, target.id), eq(followRequests.status, "pending")));
+    res.json({ following, requested: !!pendingReq });
   });
 
   app.get("/api/follows/followers", requireAuth, async (req, res) => {
@@ -715,6 +745,74 @@ export async function registerRoutes(
     const userId = (req.session as any).userId;
     const following = await storage.getFollowing(userId);
     res.json(following.map(f => ({ ...f, following: { ...f.following, password: undefined } })));
+  });
+
+  app.get("/api/follows/requests", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const requests = await db.select()
+      .from(followRequests)
+      .innerJoin(users, eq(followRequests.requesterId, users.id))
+      .where(and(eq(followRequests.targetId, userId), eq(followRequests.status, "pending")));
+    res.json(requests.map(r => ({
+      ...r.follow_requests,
+      requester: { ...r.users, password: undefined },
+    })));
+  });
+
+  app.post("/api/follows/requests/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const [request] = await db.select().from(followRequests).where(eq(followRequests.id, req.params.id));
+      if (!request) return res.status(404).json({ message: "Solicitação não encontrada" });
+      if (request.targetId !== userId) return res.status(403).json({ message: "Sem permissão" });
+
+      await db.update(followRequests).set({ status: "approved", reviewedAt: new Date() }).where(eq(followRequests.id, req.params.id));
+      await storage.follow(request.requesterId, request.targetId);
+      res.json({ message: "Aprovado" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro" });
+    }
+  });
+
+  app.post("/api/follows/requests/:id/reject", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const [request] = await db.select().from(followRequests).where(eq(followRequests.id, req.params.id));
+    if (!request) return res.status(404).json({ message: "Solicitação não encontrada" });
+    if (request.targetId !== userId) return res.status(403).json({ message: "Sem permissão" });
+
+    await db.update(followRequests).set({ status: "rejected", reviewedAt: new Date() }).where(eq(followRequests.id, req.params.id));
+    res.json({ message: "Rejeitado" });
+  });
+
+  app.get("/api/users/:username/suggested", async (req, res) => {
+    try {
+      const target = await storage.getUserByUsername(req.params.username);
+      if (!target) return res.status(404).json([]);
+
+      const targetFollowing = await storage.getFollowing(target.id);
+      const targetFollowingIds = targetFollowing.map(f => f.followingId);
+
+      const userId = (req as any).session?.userId;
+
+      const allUsers = await db.select().from(users);
+      const suggested = allUsers
+        .filter(u => u.id !== target.id && u.id !== userId && targetFollowingIds.includes(u.id))
+        .slice(0, 10)
+        .map(u => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, bio: u.bio }));
+
+      if (suggested.length < 5) {
+        const usedIds = new Set([target.id, userId, ...suggested.map(s => s.id)]);
+        const extras = allUsers
+          .filter(u => !usedIds.has(u.id))
+          .slice(0, 5 - suggested.length)
+          .map(u => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, bio: u.bio }));
+        suggested.push(...extras);
+      }
+
+      res.json(suggested);
+    } catch {
+      res.json([]);
+    }
   });
 
   // ====== COMMUNITIES ======

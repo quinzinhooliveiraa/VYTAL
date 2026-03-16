@@ -561,12 +561,17 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Transação não encontrada" });
       }
 
-      if (tx.status === TRANSACTION_STATUS.PROCESSING && tx.externalId && paymentService.isConfigured()) {
-        const gatewayStatus = await paymentService.getChargeStatus(tx.externalId);
-        if (gatewayStatus === "COMPLETED" || gatewayStatus === "PAID") {
-          await webhookService.processPaymentConfirmed(tx.externalId);
-          const updated = await transactionService.getTransaction(tx.id);
-          return res.json(updated);
+      if ((tx.status === TRANSACTION_STATUS.PROCESSING || tx.status === TRANSACTION_STATUS.PENDING) && tx.externalId && paymentService.isConfigured()) {
+        try {
+          const gatewayStatus = await paymentService.getChargeStatus(tx.externalId);
+          console.log("[DepositStatus] Gateway status for", tx.externalId, ":", gatewayStatus);
+          if (gatewayStatus === "COMPLETED" || gatewayStatus === "PAID") {
+            await webhookService.processPaymentConfirmed(tx.externalId);
+            const updated = await transactionService.getTransaction(tx.id);
+            return res.json(updated);
+          }
+        } catch (err: any) {
+          console.error("[DepositStatus] Error checking gateway:", err.message);
         }
       }
 

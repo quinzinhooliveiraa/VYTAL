@@ -67,8 +67,8 @@ export class PaymentService {
         cellphone: customer.cellphone,
         taxId: customer.taxId,
       },
-      returnUrl: process.env.APP_URL || "https://fitstake.app",
-      completionUrl: process.env.APP_URL || "https://fitstake.app",
+      returnUrl: process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}/wallet`,
+      completionUrl: process.env.APP_URL || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}/wallet`,
     });
 
     const billing = data.data || data;
@@ -84,8 +84,14 @@ export class PaymentService {
   }
 
   async getChargeStatus(chargeId: string): Promise<string> {
-    const data = await this.request("GET", `/billing/show/${chargeId}`);
-    return data.data?.status || data.status || "PENDING";
+    const data = await this.request("GET", "/billing/list");
+    const billings = data.data || [];
+    const billing = billings.find((b: any) => b.id === chargeId);
+    if (!billing) {
+      console.log("[AbacatePay] Billing not found in list:", chargeId);
+      return "PENDING";
+    }
+    return billing.status || "PENDING";
   }
 
   async createPixWithdraw(amountInCents: number, pixKey: string, pixKeyType: string, description: string): Promise<PixWithdrawResult> {

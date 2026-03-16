@@ -64,6 +64,16 @@ export default function Settings() {
   );
 
   const [showPermissionGuide, setShowPermissionGuide] = useState(false);
+
+  useEffect(() => {
+    if (pushPermission === "granted" && !notifPrefs.pushEnabled) {
+      const updated = { ...ALL_ON_PREFS };
+      setNotifPrefs(updated);
+      saveNotifPrefs(updated);
+      import("@/lib/push-notifications").then(({ subscribeToPush }) => subscribeToPush()).catch(() => {});
+    }
+  }, [pushPermission]);
+
   const [feedbackType, setFeedbackType] = useState<"feedback" | "suporte" | "ideia">("feedback");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);

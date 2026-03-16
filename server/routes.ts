@@ -1552,7 +1552,7 @@ export async function registerRoutes(
   app.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
-      const { amount, pixKey, pixKeyType, testMode } = req.body;
+      const { amount, pixKey, pixKeyType } = req.body;
       const numAmount = Number(amount);
 
       if (!numAmount || numAmount <= 0) {
@@ -1598,7 +1598,6 @@ export async function registerRoutes(
 
       await walletService.lockBalance(userId, numAmount);
 
-      const isTest = testMode === true;
       const idempotencyKey = transactionService.generateIdempotencyKey();
       const tx = await transactionService.create({
         userId,
@@ -1606,11 +1605,11 @@ export async function registerRoutes(
         amount: numAmount,
         status: TRANSACTION_STATUS.PENDING,
         idempotencyKey,
-        description: isTest ? "Saque simulado (teste)" : "Saque via Pix",
-        metadata: { pixKey, pixKeyType: pixKeyType || "CPF", testMode: isTest },
+        description: "Saque via Pix",
+        metadata: { pixKey, pixKeyType: pixKeyType || "CPF" },
       });
 
-      if (!isTest && paymentService.isConfigured()) {
+      if (paymentService.isConfigured()) {
         try {
           const amountInCents = Math.round(numAmount * 100);
           const withdraw = await paymentService.createPixWithdraw(
@@ -1651,7 +1650,7 @@ export async function registerRoutes(
 
         res.status(201).json({
           transaction: { ...tx, status: TRANSACTION_STATUS.COMPLETED },
-          message: isTest ? "Saque simulado com sucesso (modo teste). O saldo foi debitado mas nenhum Pix real foi enviado." : "Saque processado.",
+          message: "Saque processado.",
         });
       }
     } catch (error: any) {

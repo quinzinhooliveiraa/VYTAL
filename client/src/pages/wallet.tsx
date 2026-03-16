@@ -569,21 +569,6 @@ export default function Wallet() {
                     )}
                     Sacar {withdrawAmount ? formatBRL(Number(withdrawAmount)) : ""}
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full h-10 rounded-xl text-xs border-dashed border-yellow-500/50 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/5"
-                    disabled={
-                      !withdrawAmount ||
-                      Number(withdrawAmount) < 30 ||
-                      Number(withdrawAmount) > availableBalance ||
-                      !pixKey ||
-                      withdrawMutation.isPending
-                    }
-                    onClick={() => withdrawMutation.mutate({ amount: Number(withdrawAmount), pixKey, pixKeyType, testMode: true })}
-                    data-testid="button-test-withdraw"
-                  >
-                    Simular Saque (Teste - sem Pix real)
-                  </Button>
                 </div>
 
                 {withdrawMutation.isError && (

@@ -32,10 +32,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 
-const slideIn = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0, transition: { duration: 0.2, ease: "easeOut" } },
-  exit: { opacity: 0, x: -20, transition: { duration: 0.12 } },
+const pageTransition = {
+  initial: { opacity: 0, x: 40, scale: 0.97 },
+  animate: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } },
+  exit: { opacity: 0, x: -40, scale: 0.97, transition: { duration: 0.25, ease: "easeIn" } },
+};
+
+const staggerContainer = {
+  animate: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } },
+};
+
+const staggerItem = {
+  initial: { opacity: 0, y: 20, scale: 0.95 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
+};
+
+const fadeUp = {
+  initial: { opacity: 0, y: 15 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
+
+const scaleIn = {
+  initial: { opacity: 0, scale: 0.8 },
+  animate: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 200, damping: 20 } },
 };
 
 const Step1Terms = ({ onNext }: { onNext: () => void }) => {
@@ -50,19 +69,19 @@ const Step1Terms = ({ onNext }: { onNext: () => void }) => {
   ];
 
   return (
-    <motion.div {...slideIn} className="flex flex-col h-full justify-between">
-      <div className="space-y-3 flex-1 overflow-y-auto pb-4">
-        <div className="text-center space-y-1">
-          <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto border border-primary/20">
+    <motion.div {...pageTransition} className="flex flex-col h-full justify-between">
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-3 flex-1 overflow-y-auto pb-4">
+        <motion.div variants={fadeUp} className="text-center space-y-1">
+          <motion.div variants={scaleIn} className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto border border-primary/20">
             <Shield size={28} />
-          </div>
+          </motion.div>
           <h2 className="text-2xl font-display font-bold">Termos e Condições</h2>
           <p className="text-xs text-muted-foreground">Leia e aceite para continuar.</p>
-        </div>
+        </motion.div>
 
         <div className="space-y-2">
-          {sections.map((section) => (
-            <div key={section.id}>
+          {sections.map((section, i) => (
+            <motion.div key={section.id} variants={staggerItem}>
               <button
                 className="w-full text-left p-3 bg-card border border-border rounded-2xl transition-all hover:border-primary/30"
                 onClick={() => setExpanded(expanded === section.id ? null : section.id)}
@@ -76,7 +95,7 @@ const Step1Terms = ({ onNext }: { onNext: () => void }) => {
                     <h3 className="font-bold text-sm">{section.title}</h3>
                     <p className="text-[11px] text-muted-foreground">{section.summary}</p>
                   </div>
-                  <ChevronDown size={14} className={`text-muted-foreground transition-transform ${expanded === section.id ? "rotate-180" : ""}`} />
+                  <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-300 ${expanded === section.id ? "rotate-180" : ""}`} />
                 </div>
               </button>
               <AnimatePresence>
@@ -85,7 +104,7 @@ const Step1Terms = ({ onNext }: { onNext: () => void }) => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
                     <div className="px-4 py-3 text-xs text-muted-foreground leading-relaxed bg-muted/30 rounded-b-2xl -mt-2 border border-t-0 border-border">
@@ -94,32 +113,39 @@ const Step1Terms = ({ onNext }: { onNext: () => void }) => {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        <button
+        <motion.button
+          variants={staggerItem}
           className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all ${accepted ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
           onClick={() => setAccepted(!accepted)}
           data-testid="button-accept-terms"
         >
-          <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${accepted ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <motion.div
+            animate={accepted ? { scale: [1, 1.3, 1] } : {}}
+            transition={{ duration: 0.3 }}
+            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${accepted ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
             {accepted && <Check size={14} strokeWidth={3} />}
-          </div>
+          </motion.div>
           <p className="text-sm text-left">
             Li e aceito os <strong>Termos de Uso</strong>, <strong>Política de Privacidade</strong> e demais condições.
           </p>
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
-      <Button
-        className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
-        onClick={onNext}
-        disabled={!accepted}
-        data-testid="button-onboarding-terms-accept"
-      >
-        Aceitar e Continuar <ArrowRight className="ml-2" size={18} />
-      </Button>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+        <Button
+          className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
+          onClick={onNext}
+          disabled={!accepted}
+          data-testid="button-onboarding-terms-accept"
+        >
+          Aceitar e Continuar <ArrowRight className="ml-2" size={18} />
+        </Button>
+      </motion.div>
     </motion.div>
   );
 };
@@ -133,30 +159,40 @@ const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
   ];
 
   return (
-    <motion.div {...slideIn} className="flex flex-col h-full justify-between">
-      <div className="space-y-4 flex-1 overflow-y-auto pb-4">
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-primary/10 rounded-[1.5rem] flex items-center justify-center text-primary mx-auto border border-primary/20">
+    <motion.div {...pageTransition} className="flex flex-col h-full justify-between">
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 flex-1 overflow-y-auto pb-4">
+        <motion.div variants={fadeUp} className="text-center space-y-2">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="w-16 h-16 bg-primary/10 rounded-[1.5rem] flex items-center justify-center text-primary mx-auto border border-primary/20"
+          >
             <Activity size={32} strokeWidth={2.5} />
-          </div>
+          </motion.div>
           <h2 className="text-2xl font-display font-bold">Como funciona</h2>
           <p className="text-sm text-muted-foreground px-2">
             Desafios esportivos com dinheiro real.<br />Quem desiste, paga. Quem persiste, lucra.
           </p>
-        </div>
+        </motion.div>
 
         <div className="space-y-2.5">
           {steps.map((item, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 + i * 0.12, duration: 0.4, ease: "easeOut" }}
               className="flex gap-3 p-3.5 bg-card border border-border rounded-2xl items-center"
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3 + i * 0.12, type: "spring", stiffness: 300 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}
+              >
                 <item.icon size={20} />
-              </div>
+              </motion.div>
               <div className="min-w-0">
                 <h3 className="font-bold text-sm">{item.title}</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">{item.text}</p>
@@ -165,7 +201,12 @@ const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
           ))}
         </div>
 
-        <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl"
+        >
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
               <AlertTriangle size={16} className="text-yellow-500" />
@@ -177,16 +218,18 @@ const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
               </p>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <Button
-        className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
-        onClick={onNext}
-        data-testid="button-onboarding-rules"
-      >
-        Entendi <ArrowRight className="ml-2" size={18} />
-      </Button>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+        <Button
+          className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
+          onClick={onNext}
+          data-testid="button-onboarding-rules"
+        >
+          Entendi <ArrowRight className="ml-2" size={18} />
+        </Button>
+      </motion.div>
     </motion.div>
   );
 };
@@ -217,14 +260,14 @@ const Step3Personalize = ({ onNext }: { onNext: () => void }) => {
   ];
 
   return (
-    <motion.div {...slideIn} className="flex flex-col h-full justify-between">
-      <div className="space-y-6 flex-1">
-        <div className="space-y-1">
+    <motion.div {...pageTransition} className="flex flex-col h-full justify-between">
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 flex-1">
+        <motion.div variants={fadeUp} className="space-y-1">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Personalização</p>
           <h2 className="text-2xl font-display font-bold">Sobre você</h2>
-        </div>
+        </motion.div>
 
-        <div className="space-y-2">
+        <motion.div variants={staggerItem} className="space-y-2">
           <label className="text-sm font-bold">Como quer ser chamado?</label>
           <Input
             placeholder="Seu nome"
@@ -233,16 +276,20 @@ const Step3Personalize = ({ onNext }: { onNext: () => void }) => {
             className="h-14 rounded-2xl bg-card border-border shadow-sm px-4 text-base"
             data-testid="input-onboarding-name"
           />
-        </div>
+        </motion.div>
 
-        <div className="space-y-3">
+        <motion.div variants={staggerItem} className="space-y-3">
           <label className="text-sm font-bold">Seus objetivos <span className="text-muted-foreground font-normal">(opcional)</span></label>
           <div className="grid grid-cols-2 gap-2">
-            {goalOptions.map((o) => {
+            {goalOptions.map((o, i) => {
               const selected = goals.includes(o.label);
               return (
-                <button
+                <motion.button
                   key={o.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 + i * 0.08 }}
+                  whileTap={{ scale: 0.95 }}
                   className={`p-3.5 rounded-2xl border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     selected
                       ? "border-primary bg-primary/10 text-primary"
@@ -252,21 +299,23 @@ const Step3Personalize = ({ onNext }: { onNext: () => void }) => {
                   data-testid={`button-goal-${o.label}`}
                 >
                   {o.emoji} {o.label}
-                </button>
+                </motion.button>
               );
             })}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <Button
-        className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 mt-4 shadow-lg shadow-primary/20"
-        onClick={handleNext}
-        disabled={!name.trim()}
-        data-testid="button-onboarding-personalize"
-      >
-        Continuar <ArrowRight className="ml-2" size={18} />
-      </Button>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+        <Button
+          className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 mt-4 shadow-lg shadow-primary/20"
+          onClick={handleNext}
+          disabled={!name.trim()}
+          data-testid="button-onboarding-personalize"
+        >
+          Continuar <ArrowRight className="ml-2" size={18} />
+        </Button>
+      </motion.div>
     </motion.div>
   );
 };
@@ -274,9 +323,15 @@ const Step3Personalize = ({ onNext }: { onNext: () => void }) => {
 const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
   const { canInstall, isInstalled, install, isIOS } = usePwaInstall();
   const [installing, setInstalling] = useState(false);
+  const [showContinue, setShowContinue] = useState(false);
   const [notifState, setNotifState] = useState<"idle" | "granted" | "denied">(
     typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted" ? "granted" : "idle"
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowContinue(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleInstall = async () => {
     if (canInstall) {
@@ -301,42 +356,57 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
     }
   };
 
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   const showIosInstructions = isIOS && !isInstalled;
   const showAndroidInstructions = !isIOS && !canInstall && !isInstalled;
 
   return (
-    <motion.div {...slideIn} className="flex flex-col h-full justify-between">
-      <div className="space-y-4 flex-1 overflow-y-auto pb-4">
-        <div className="text-center space-y-1">
-          <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20">
+    <motion.div {...pageTransition} className="flex flex-col h-full justify-between">
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 flex-1 overflow-y-auto pb-4">
+        <motion.div variants={fadeUp} className="text-center space-y-1">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+            className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20"
+          >
             <Smartphone size={28} />
-          </div>
+          </motion.div>
           <h2 className="text-2xl font-display font-bold">Instale o VYTAL</h2>
           <p className="text-xs text-muted-foreground">Para a melhor experiência, instale o app e ative as notificações.</p>
-        </div>
+        </motion.div>
 
         <div className="space-y-2.5">
           {canInstall && !isInstalled && (
-            <button
+            <motion.button
+              variants={staggerItem}
+              whileTap={{ scale: 0.98 }}
               onClick={handleInstall}
               disabled={installing}
               className="w-full flex items-center gap-3 p-4 bg-primary/5 border-2 border-primary/30 rounded-2xl text-left hover:border-primary/50 transition-all"
               data-testid="button-install-pwa"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <motion.div
+                animate={{ y: [0, -3, 0] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"
+              >
                 <Download size={20} className="text-primary" />
-              </div>
+              </motion.div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold">{installing ? "Instalando..." : "Instalar na tela inicial"}</p>
                 <p className="text-[11px] text-muted-foreground">Acesso instantâneo e performance nativa</p>
               </div>
               <ArrowRight size={16} className="text-primary shrink-0" />
-            </button>
+            </motion.button>
           )}
 
           {isInstalled && (
-            <div className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/20 rounded-2xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/20 rounded-2xl"
+            >
               <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
                 <Check size={20} className="text-green-500" />
               </div>
@@ -344,10 +414,12 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
                 <p className="text-sm font-bold text-green-600 dark:text-green-400">App instalado!</p>
                 <p className="text-[11px] text-muted-foreground">O VYTAL já está na sua tela inicial.</p>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          <button
+          <motion.button
+            variants={staggerItem}
+            whileTap={{ scale: 0.98 }}
             onClick={handleNotifications}
             disabled={notifState !== "idle"}
             className={`w-full flex items-center gap-3 p-4 bg-card border rounded-2xl text-left transition-all ${
@@ -370,81 +442,128 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
                   : "Lembretes de check-in, desafios e prêmios."}
               </p>
             </div>
-          </button>
+          </motion.button>
 
           {showIosInstructions && (
-            <div className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3"
+            >
               <p className="text-xs font-bold text-center">Como instalar no iPhone / iPad</p>
               <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 text-[10px] font-bold">1</div>
-                  <p className="text-xs text-muted-foreground">Toque no botão de <strong className="text-foreground">Compartilhar</strong> (ícone de quadrado com seta) na barra do Safari</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 text-[10px] font-bold">2</div>
-                  <p className="text-xs text-muted-foreground">Role e toque em <strong className="text-foreground">"Adicionar à Tela de Início"</strong></p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0 text-[10px] font-bold">3</div>
-                  <p className="text-xs text-muted-foreground">Toque em <strong className="text-foreground">"Adicionar"</strong> para confirmar</p>
-                </div>
+                {[
+                  { n: "1", color: "bg-blue-500/10 text-blue-500", text: <>Toque no botão de <strong className="text-foreground">Compartilhar</strong> (ícone de quadrado com seta) na barra do Safari</> },
+                  { n: "2", color: "bg-green-500/10 text-green-500", text: <>Role e toque em <strong className="text-foreground">"Adicionar à Tela de Início"</strong></> },
+                  { n: "3", color: "bg-yellow-500/10 text-yellow-500", text: <>Toque em <strong className="text-foreground">"Adicionar"</strong> para confirmar</> },
+                ].map((step, i) => (
+                  <motion.div
+                    key={step.n}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + i * 0.15 }}
+                    className="flex items-start gap-3"
+                  >
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold ${step.color}`}>{step.n}</div>
+                    <p className="text-xs text-muted-foreground">{step.text}</p>
+                  </motion.div>
+                ))}
               </div>
-            </div>
+            </motion.div>
           )}
 
           {showAndroidInstructions && (
-            <div className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3"
+            >
               <p className="text-xs font-bold text-center">Como instalar o app</p>
               <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 text-[10px] font-bold">1</div>
-                  <p className="text-xs text-muted-foreground">Toque nos <strong className="text-foreground">3 pontos (⋮)</strong> no canto superior do navegador</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 text-[10px] font-bold">2</div>
-                  <p className="text-xs text-muted-foreground">Toque em <strong className="text-foreground">"Instalar aplicativo"</strong> ou <strong className="text-foreground">"Adicionar à tela inicial"</strong></p>
-                </div>
+                {[
+                  { n: "1", color: "bg-blue-500/10 text-blue-500", text: <>Toque nos <strong className="text-foreground">3 pontos (⋮)</strong> no canto superior do navegador</> },
+                  { n: "2", color: "bg-green-500/10 text-green-500", text: <>Toque em <strong className="text-foreground">"Instalar aplicativo"</strong> ou <strong className="text-foreground">"Adicionar à tela inicial"</strong></> },
+                ].map((step, i) => (
+                  <motion.div
+                    key={step.n}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + i * 0.15 }}
+                    className="flex items-start gap-3"
+                  >
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold ${step.color}`}>{step.n}</div>
+                    <p className="text-xs text-muted-foreground">{step.text}</p>
+                  </motion.div>
+                ))}
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      <Button
-        className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
-        onClick={onNext}
-        data-testid="button-onboarding-setup-next"
-      >
-        Continuar <ArrowRight className="ml-2" size={18} />
-      </Button>
+      <AnimatePresence>
+        {showContinue && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          >
+            <Button
+              className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
+              onClick={onNext}
+              data-testid="button-onboarding-setup-next"
+            >
+              Continuar <ArrowRight className="ml-2" size={18} />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
 
 const Step5Final = ({ onComplete }: { onComplete: () => void }) => (
-  <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-4">
+  <motion.div {...pageTransition} className="flex flex-col items-center text-center h-full justify-between py-4">
     <div />
 
-    <div className="space-y-6 w-full">
-      <div className="flex items-center justify-center">
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 w-full">
+      <motion.div variants={scaleIn} className="flex items-center justify-center">
         <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200 }}
+          animate={{
+            boxShadow: [
+              "0 0 0 0 rgba(34,197,94,0)",
+              "0 0 0 20px rgba(34,197,94,0.1)",
+              "0 0 0 40px rgba(34,197,94,0)",
+            ],
+          }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
           className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20"
         >
-          <CheckCircle2 size={40} />
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+          >
+            <CheckCircle2 size={40} />
+          </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
 
-      <div className="space-y-2">
+      <motion.div variants={fadeUp} className="space-y-2">
         <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
         <p className="text-muted-foreground text-sm px-4">
           Sua jornada para a consistência começa agora.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="px-2">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="px-2"
+      >
         <button
           onClick={() => {
             if (navigator.share) {
@@ -467,19 +586,26 @@ const Step5Final = ({ onComplete }: { onComplete: () => void }) => (
           </div>
           <ExternalLink size={14} className="text-muted-foreground shrink-0" />
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
 
-    <Button
-      className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-      onClick={() => {
-        localStorage.setItem("fitstake-onboarding-done", "true");
-        onComplete();
-      }}
-      data-testid="button-onboarding-complete"
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7 }}
+      className="w-full"
     >
-      Explorar Desafios <ArrowRight className="ml-2" size={18} />
-    </Button>
+      <Button
+        className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+        onClick={() => {
+          localStorage.setItem("fitstake-onboarding-done", "true");
+          onComplete();
+        }}
+        data-testid="button-onboarding-complete"
+      >
+        Explorar Desafios <ArrowRight className="ml-2" size={18} />
+      </Button>
+    </motion.div>
   </motion.div>
 );
 
@@ -514,15 +640,17 @@ export default function Onboarding() {
 
         <div className="flex gap-1.5">
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div
+            <motion.div
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i + 1 === step
-                  ? "w-8 bg-primary"
-                  : i + 1 < step
-                  ? "w-3 bg-primary/50"
-                  : "w-1.5 bg-muted"
-              }`}
+              animate={{
+                width: i + 1 === step ? 32 : i + 1 < step ? 12 : 6,
+                backgroundColor: i + 1 <= step
+                  ? "hsl(var(--primary))"
+                  : "hsl(var(--muted))",
+              }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="h-1.5 rounded-full"
+              style={{ opacity: i + 1 < step ? 0.5 : 1 }}
             />
           ))}
         </div>

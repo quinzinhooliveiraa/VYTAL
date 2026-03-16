@@ -1,9 +1,9 @@
-import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -22,7 +22,32 @@ export default function Wallet() {
   const [pixKeyType, setPixKeyType] = useState("CPF");
   const [cpfInput, setCpfInput] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
-  const [pixData, setPixData] = useState<{ qrCode?: string; qrCodeBase64?: string; url?: string } | null>(null);
+  const [pixData, setPixData] = useState<{ qrCode?: string; qrCodeBase64?: string; url?: string; transactionId?: string } | null>(null);
+  const [pixPaid, setPixPaid] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (pixData?.transactionId && !pixPaid) {
+      pollingRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/wallet/deposit/${pixData.transactionId}/status`, { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === "completed") {
+              setPixPaid(true);
+              queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+              if (pollingRef.current) clearInterval(pollingRef.current);
+            }
+          }
+        } catch {}
+      }, 4000);
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [pixData?.transactionId, pixPaid]);
 
   const { data: walletData } = useQuery({
     queryKey: ["/api/wallet/balance"],
@@ -75,7 +100,9 @@ export default function Wallet() {
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
       if (data.pix) {
-        setPixData(data.pix);
+        setPixPaid(false);
+        setCopied(false);
+        setPixData({ ...data.pix, transactionId: data.transaction?.id });
       } else {
         setDepositOpen(false);
         setDepositAmount("");
@@ -256,58 +283,81 @@ export default function Wallet() {
 
           {pixData ? (
             <div className="space-y-5 py-4">
-              <div className="text-center space-y-2">
-                <p className="font-bold text-lg">Pague o Pix</p>
-                <p className="text-sm text-muted-foreground">Escaneie o QR Code abaixo com o app do seu banco</p>
-              </div>
-
-              <div className="flex justify-center">
-                <div className="bg-white p-4 rounded-2xl shadow-md">
-                  <QRCodeSVG
-                    value={pixData.url || pixData.qrCode || ""}
-                    size={200}
-                    level="H"
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                  />
+              {pixPaid ? (
+                <div className="text-center space-y-4 py-6">
+                  <div className="w-20 h-20 mx-auto bg-primary/15 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="text-primary" size={44} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-xl">Pagamento confirmado!</p>
+                    <p className="text-sm text-muted-foreground">
+                      R$ {depositAmount},00 adicionado ao seu saldo
+                    </p>
+                  </div>
+                  <Button
+                    className="w-full h-12 rounded-xl font-bold mt-4"
+                    onClick={() => { setPixData(null); setPixPaid(false); setDepositOpen(false); setDepositAmount(""); }}
+                    data-testid="button-close-deposit-success"
+                  >
+                    Voltar para carteira
+                  </Button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="text-center space-y-1">
+                    <p className="font-bold text-lg">R$ {depositAmount},00</p>
+                    <p className="text-sm text-muted-foreground">Escaneie com o app do seu banco</p>
+                  </div>
 
-              <div className="bg-muted rounded-xl p-3 flex items-center justify-between border border-border">
-                <p className="font-mono text-[9px] text-muted-foreground truncate mr-2">{pixData.url || pixData.qrCode}</p>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 shrink-0 text-primary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(pixData.url || pixData.qrCode || "");
-                  }}
-                  data-testid="button-copy-pix"
-                >
-                  <Copy size={16} />
-                </Button>
-              </div>
+                  <div className="flex justify-center">
+                    <div className="bg-white p-4 rounded-2xl">
+                      <QRCodeSVG
+                        value={pixData.url || pixData.qrCode || ""}
+                        size={200}
+                        level="H"
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                      />
+                    </div>
+                  </div>
 
-              {pixData.url && (
-                <Button
-                  variant="outline"
-                  className="w-full h-11 rounded-xl font-semibold"
-                  onClick={() => window.open(pixData.url, "_blank")}
-                >
-                  Abrir link de pagamento
-                </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 rounded-xl font-semibold gap-2"
+                    onClick={() => {
+                      navigator.clipboard.writeText(pixData.url || pixData.qrCode || "");
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2500);
+                    }}
+                    data-testid="button-copy-pix"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={16} className="text-primary" />
+                        Código copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={16} />
+                        Copiar código Pix
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="animate-spin" size={14} />
+                    <p className="text-xs">Aguardando pagamento...</p>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 rounded-xl text-muted-foreground text-sm"
+                    onClick={() => { setPixData(null); setPixPaid(false); setDepositOpen(false); setDepositAmount(""); }}
+                  >
+                    Cancelar
+                  </Button>
+                </>
               )}
-
-              <p className="text-[11px] text-center text-muted-foreground">
-                Após o pagamento, o saldo será creditado automaticamente.
-              </p>
-
-              <Button
-                className="w-full h-11 rounded-xl font-bold"
-                onClick={() => { setPixData(null); setDepositOpen(false); }}
-              >
-                Fechar
-              </Button>
             </div>
           ) : (
             <div className="space-y-4 py-2">

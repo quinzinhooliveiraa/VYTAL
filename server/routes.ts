@@ -1594,7 +1594,20 @@ export async function registerRoutes(
       req.on("data", (chunk: Buffer) => chunks.push(chunk));
       req.on("end", () => {
         const buffer = Buffer.concat(chunks);
-        const filename = `${randomUUID()}.webm`;
+        const contentType = req.headers["content-type"] || "audio/webm";
+        const extMap: Record<string, string> = {
+          "audio/webm": ".webm",
+          "audio/webm;codecs=opus": ".webm",
+          "audio/ogg": ".ogg",
+          "audio/ogg;codecs=opus": ".ogg",
+          "audio/mp4": ".m4a",
+          "audio/aac": ".aac",
+          "audio/mpeg": ".mp3",
+          "audio/mp3": ".mp3",
+          "audio/wav": ".wav",
+        };
+        const ext = extMap[contentType.toLowerCase().split(";")[0].trim()] || extMap[contentType.toLowerCase()] || ".webm";
+        const filename = `${randomUUID()}${ext}`;
         const uploadDir = path.join(process.cwd(), "server/uploads/audio");
         if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
         fs.writeFileSync(path.join(uploadDir, filename), buffer);

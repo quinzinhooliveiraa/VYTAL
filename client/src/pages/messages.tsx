@@ -167,10 +167,29 @@ export default function Messages() {
     }
   }, []);
 
+  const getSupportedMimeType = () => {
+    const types = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/ogg",
+      "audio/mp4",
+      "audio/aac",
+      "audio/mpeg",
+    ];
+    for (const t of types) {
+      if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return undefined;
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      const mimeType = getSupportedMimeType();
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
+      const actualMime = mediaRecorder.mimeType || mimeType || "audio/webm";
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       
@@ -180,9 +199,9 @@ export default function Messages() {
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: actualMime });
         if (blob.size < 1000) return;
-        await sendAudio(blob);
+        await sendAudio(blob, actualMime);
       };
 
       mediaRecorder.start(100);
@@ -216,15 +235,16 @@ export default function Messages() {
     chunksRef.current = [];
   };
 
-  const sendAudio = async (blob: Blob) => {
+  const sendAudio = async (blob: Blob, mimeType?: string) => {
     if (!username) return;
     setIsSendingAudio(true);
     try {
+      const contentType = mimeType || blob.type || "application/octet-stream";
       const res = await fetch("/api/upload/audio", {
         method: "POST",
         body: blob,
         credentials: "include",
-        headers: { "Content-Type": "application/octet-stream" },
+        headers: { "Content-Type": contentType },
       });
       if (!res.ok) throw new Error("Upload falhou");
       const { url } = await res.json();

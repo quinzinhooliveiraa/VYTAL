@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity } from "lucide-react";
+import { NotificationBell } from "@/components/notification-center";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,7 +56,8 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Bem-vindo de volta</p>
           <h1 className="text-3xl font-display font-bold">{userName}</h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <NotificationBell />
           <Link href="/wallet">
             <motion.div
               whileHover={{ scale: 1.05 }}

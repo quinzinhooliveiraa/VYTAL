@@ -45,6 +45,7 @@ import * as oidcClient from "openid-client";
 import memoize from "memoizee";
 import { OAuth2Client } from "google-auth-library";
 import { pushService } from "./services/push-service";
+import { notificationService } from "./services/notification-service";
 
 const ADMIN_EMAILS = [
   "oliveirasocial74@gmail.com",
@@ -727,11 +728,13 @@ export async function registerRoutes(
       }).returning();
 
       const requester = await storage.getUser(userId);
-      pushService.sendToUser(challenge.createdBy, {
+      notificationService.notify(challenge.createdBy, {
+        type: "join_request",
         title: "Pedido de entrada",
         body: `${requester?.name || "Alguém"} quer participar de "${challenge.title}"`,
-        url: `/challenge/${challengeId}`,
-        tag: `join-req-${challengeId}`,
+        actionUrl: `/challenge/${challengeId}`,
+        challengeId,
+        fromUserId: userId,
       }).catch(() => {});
 
       res.status(201).json(request);
@@ -808,11 +811,12 @@ export async function registerRoutes(
 
       await storage.joinChallenge(challengeId, request.userId);
       
-      pushService.sendToUser(request.userId, {
+      notificationService.notify(request.userId, {
+        type: "join_approved",
         title: "Entrada aprovada!",
         body: `Você foi aprovado no desafio "${challenge.title}"`,
-        url: `/challenge/${challengeId}`,
-        tag: `join-approved-${challengeId}`,
+        actionUrl: `/challenge/${challengeId}`,
+        challengeId,
       }).catch(() => {});
 
       res.json({ message: "Participante aprovado com sucesso" });
@@ -890,11 +894,13 @@ export async function registerRoutes(
       await db.update(challenges).set({ createdBy: newCreatorId }).where(eq(challenges.id, challengeId));
 
       const newCreator = await storage.getUser(newCreatorId);
-      pushService.sendToUser(newCreatorId, {
+      notificationService.notify(newCreatorId, {
+        type: "moderator_transfer",
         title: "Você é o novo moderador!",
         body: `Você foi nomeado moderador do desafio "${challenge.title}"`,
-        data: { challengeId },
-      });
+        actionUrl: `/challenge/${challengeId}`,
+        challengeId,
+      }).catch(() => {});
 
       res.json({ success: true, message: `Moderação transferida para ${newCreator?.name || "novo moderador"}` });
     } catch (error: any) {
@@ -1224,11 +1230,12 @@ export async function registerRoutes(
 
         if (!checkIn.isIndoor && distKm > 0.5) {
           const challenge = await storage.getChallenge(checkIn.challengeId);
-          pushService.sendToUser(userId, {
+          notificationService.notify(userId, {
+            type: "checkout_reminder",
             title: "Lembrete de Check-out",
             body: `Parece que você saiu do local. Não esqueça de fazer o check-out do desafio "${challenge?.title || ""}"!`,
-            url: `/check-in/${checkIn.challengeId}`,
-            tag: `checkout-reminder-${checkIn.challengeId}`,
+            actionUrl: `/check-in/${checkIn.challengeId}`,
+            challengeId: checkIn.challengeId,
           }).catch(() => {});
           return res.json({ reminder: true, distance: distKm });
         }
@@ -1380,11 +1387,12 @@ export async function registerRoutes(
         audioUrl: audioUrl || null,
       });
       
-      pushService.sendToUser(receiver.id, {
+      notificationService.notify(receiver.id, {
+        type: "new_message",
         title: sender?.name || "Nova mensagem",
-        body: audioUrl ? "🎤 Mensagem de voz" : (text?.length > 80 ? text.slice(0, 80) + "..." : text),
-        url: `/messages/${sender?.username}`,
-        tag: `msg-${senderId}`,
+        body: audioUrl ? "Mensagem de voz" : (text?.length > 80 ? text.slice(0, 80) + "..." : text),
+        actionUrl: `/messages/${sender?.username}`,
+        fromUserId: senderId,
       }).catch(() => {});
 
       res.status(201).json(message);
@@ -1414,11 +1422,12 @@ export async function registerRoutes(
 
         const [request] = await db.insert(followRequests).values({ requesterId: userId, targetId: target.id }).returning();
         
-        pushService.sendToUser(target.id, {
+        notificationService.notify(target.id, {
+          type: "follow_request",
           title: "Solicitação de seguir",
           body: `${currentUser?.name || "Alguém"} quer te seguir`,
-          url: "/settings",
-          tag: `follow-req-${userId}`,
+          actionUrl: "/settings",
+          fromUserId: userId,
         }).catch(() => {});
 
         return res.status(201).json({ ...request, type: "request" });
@@ -1426,11 +1435,12 @@ export async function registerRoutes(
 
       const follow = await storage.follow(userId, target.id);
       
-      pushService.sendToUser(target.id, {
+      notificationService.notify(target.id, {
+        type: "new_follower",
         title: "Novo seguidor",
         body: `${currentUser?.name || "Alguém"} começou a te seguir`,
-        url: `/profile/${currentUser?.username}`,
-        tag: `follow-${userId}`,
+        actionUrl: `/profile/${currentUser?.username}`,
+        fromUserId: userId,
       }).catch(() => {});
 
       res.status(201).json(follow);
@@ -1494,11 +1504,12 @@ export async function registerRoutes(
       await storage.follow(request.requesterId, request.targetId);
       
       const approver = await storage.getUser(request.targetId);
-      pushService.sendToUser(request.requesterId, {
+      notificationService.notify(request.requesterId, {
+        type: "follow_accepted",
         title: "Pedido aceito!",
         body: `${approver?.name || "Alguém"} aceitou seu pedido de seguir`,
-        url: `/profile/${approver?.username}`,
-        tag: `follow-accepted-${request.targetId}`,
+        actionUrl: `/profile/${approver?.username}`,
+        fromUserId: request.targetId,
       }).catch(() => {});
 
       res.json({ message: "Aprovado" });
@@ -2212,6 +2223,53 @@ export async function registerRoutes(
       console.error("[Webhook] Error:", error.message);
       res.status(500).json({ message: "Erro ao processar webhook" });
     }
+  });
+
+  // ---- In-App Notifications + SSE ----
+
+  app.get("/api/notifications/stream", requireAuth, (req, res) => {
+    const userId = (req.session as any).userId;
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    res.write(`data: ${JSON.stringify({ connected: true })}\n\n`);
+
+    const heartbeat = setInterval(() => {
+      try { res.write(": heartbeat\n\n"); } catch { clearInterval(heartbeat); }
+    }, 30000);
+
+    notificationService.addSSEClient(userId, res);
+
+    req.on("close", () => clearInterval(heartbeat));
+  });
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const notifs = await storage.getNotifications(userId, 50);
+    const unreadCount = await storage.getUnreadNotificationCount(userId);
+    res.json({ notifications: notifs, unreadCount });
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const count = await storage.getUnreadNotificationCount(userId);
+    res.json({ count });
+  });
+
+  app.post("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    await storage.markNotificationRead(req.params.id, userId);
+    res.json({ success: true });
+  });
+
+  app.post("/api/notifications/read-all", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    await storage.markAllNotificationsRead(userId);
+    notificationService.sendSSE(userId, "unread-count", { unreadCount: 0 });
+    res.json({ success: true });
   });
 
   // ---- Push Notifications ----

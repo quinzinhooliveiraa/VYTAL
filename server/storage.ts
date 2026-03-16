@@ -407,7 +407,7 @@ export class DatabaseStorage implements IStorage {
     
     const ids = memberships.map(m => m.communityId);
     return db.select().from(communities)
-      .where(sql`${communities.id} = ANY(${ids})`);
+      .where(inArray(communities.id, ids));
   }
 
   // Wallet

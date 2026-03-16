@@ -38,6 +38,12 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Support**: supportTickets (id, userId, type[feedback/suporte/ideia], message, status[open/resolved/closed], adminNotes, createdAt)
 - **Legacy**: walletTransactions (kept for backward compatibility)
 
+## Communities Business Model
+- Communities have `ownerFeePercent` (default 5%) — community owner earns % of challenge prize pool for challenges linked to their community
+- Communities only appear publicly when they have 50+ members
+- Challenges can be linked to a community via `communityId` field
+- Revenue split: 10% platform fee + community owner fee from remaining pool
+
 ## Financial System
 - **Wallet**: Internal balance tracking. `available_balance = balance - locked_balance`
 - **Deposits**: Pix via AbacatePay → QR code → webhook confirms → balance credited

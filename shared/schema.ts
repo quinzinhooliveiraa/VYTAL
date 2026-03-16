@@ -35,6 +35,7 @@ export const challenges = pgTable("challenges", {
   image: text("image").default(""),
   isActive: boolean("is_active").default(true),
   status: text("status").default("active"),
+  communityId: varchar("community_id"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   startDate: timestamp("start_date").defaultNow(),
   endDate: timestamp("end_date"),
@@ -86,6 +87,7 @@ export const communities = pgTable("communities", {
   sport: text("sport").notNull(),
   image: text("image").default(""),
   isPrivate: boolean("is_private").default(false),
+  ownerFeePercent: decimal("owner_fee_percent", { precision: 5, scale: 2 }).default("5.00"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

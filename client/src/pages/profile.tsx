@@ -196,23 +196,44 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="flex gap-4 px-2 overflow-x-auto no-scrollbar pb-2 pt-2">
-          {[
-            { name: "Invicto", icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30" },
-            { name: "Maratona", icon: Medal, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30" },
-            { name: "Top 1%", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30" },
-            { name: "Ouro", icon: Award, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/30" },
-            { name: "Elite", icon: Zap, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/30" },
-            { name: "Sênior", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
-          ].map((badge, i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5 shrink-0">
-              <div className={`w-16 h-16 rounded-full border-[3px] p-0.5 flex items-center justify-center shadow-sm ${badge.bg} ${badge.border}`}>
-                <badge.icon className={badge.color} size={24} />
-              </div>
-              <span className="text-[10px] text-foreground font-semibold">{badge.name}</span>
+        {(() => {
+          const allMedals = [
+            { name: "Invicto", icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", check: () => {
+              const active = activeChallenges.filter((c: any) => c.myParticipation?.isActive !== false);
+              return active.length > 0;
+            }, desc: "Participando de desafios sem desistir" },
+            { name: "Maratona", icon: Medal, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", check: () => completedChallenges.length >= 5, desc: "Completou 5+ desafios" },
+            { name: "Top 1%", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30", check: () => totalEarned >= 500, desc: "Ganhou R$ 500+ em prêmios" },
+            { name: "Ouro", icon: Award, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/30", check: () => totalEarned >= 1000, desc: "Ganhou R$ 1.000+ em prêmios" },
+            { name: "Veterano", icon: Zap, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/30", check: () => myChallenges.length >= 10, desc: "Participou de 10+ desafios" },
+            { name: "Estreante", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30", check: () => myChallenges.length >= 1, desc: "Completou o primeiro desafio" },
+          ];
+          const earned = allMedals.filter(m => m.check());
+          const locked = allMedals.filter(m => !m.check());
+
+          if (earned.length === 0 && locked.length === 0) return null;
+
+          return (
+            <div className="flex gap-4 px-2 overflow-x-auto no-scrollbar pb-2 pt-2">
+              {earned.map((badge, i) => (
+                <div key={`e-${i}`} className="flex flex-col items-center gap-1.5 shrink-0">
+                  <div className={`w-16 h-16 rounded-full border-[3px] p-0.5 flex items-center justify-center shadow-sm ${badge.bg} ${badge.border}`}>
+                    <badge.icon className={badge.color} size={24} />
+                  </div>
+                  <span className="text-[10px] text-foreground font-semibold">{badge.name}</span>
+                </div>
+              ))}
+              {locked.map((badge, i) => (
+                <div key={`l-${i}`} className="flex flex-col items-center gap-1.5 shrink-0 opacity-30 grayscale">
+                  <div className={`w-16 h-16 rounded-full border-[3px] p-0.5 flex items-center justify-center shadow-sm bg-muted border-border`}>
+                    <badge.icon className="text-muted-foreground" size={24} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-semibold">{badge.name}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          );
+        })()}
 
         <div className="flex border-t border-border/50 pt-1">
           <button
@@ -307,8 +328,8 @@ export default function Profile() {
       </div>
 
       {isEditing && (
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 p-6 flex flex-col justify-end animate-in fade-in">
-          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe space-y-6 w-full max-w-md mx-auto translate-y-0 animate-in slide-in-from-bottom-full">
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[60] p-6 flex flex-col justify-end animate-in fade-in" onClick={() => setIsEditing(false)}>
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-28 space-y-6 w-full max-w-md mx-auto translate-y-0 animate-in slide-in-from-bottom-full" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-bold">Editar Perfil</h3>
               <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)}>

@@ -10,6 +10,9 @@ import { transactionService } from "./services/transaction-service";
 import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
+import { db } from "./db";
+import { challenges, communities, transactions } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 const ADMIN_EMAILS = [
   "oliveirasocial74@gmail.com",
@@ -471,15 +474,25 @@ export async function registerRoutes(
   // ====== COMMUNITIES ======
 
   app.get("/api/communities", async (req, res) => {
-    const communities = await storage.getCommunities();
-    res.json(communities);
+    const allComms = await storage.getCommunities();
+    const result = [];
+    for (const comm of allComms) {
+      const activeChallenges = await db.select({ count: sql<number>`count(*)::int` })
+        .from(challenges)
+        .where(and(eq(challenges.communityId, comm.id), eq(challenges.isActive, true)));
+      result.push({ ...comm, activeChallenges: activeChallenges[0]?.count || 0 });
+    }
+    res.json(result);
   });
 
   app.get("/api/communities/:id", async (req, res) => {
     const community = await storage.getCommunity(req.params.id);
     if (!community) return res.status(404).json({ message: "Comunidade não encontrada" });
     const members = await storage.getCommunityMembers(req.params.id);
-    res.json({ ...community, members, memberCount: members.length });
+    const activeChallenges = await db.select({ count: sql<number>`count(*)::int` })
+      .from(challenges)
+      .where(and(eq(challenges.communityId, community.id), eq(challenges.isActive, true)));
+    res.json({ ...community, members, memberCount: members.length, activeChallenges: activeChallenges[0]?.count || 0 });
   });
 
   app.post("/api/communities", requireAuth, async (req, res) => {
@@ -508,8 +521,8 @@ export async function registerRoutes(
 
   app.get("/api/communities/mine", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
-    const communities = await storage.getUserCommunities(userId);
-    res.json(communities);
+    const userComms = await storage.getUserCommunities(userId);
+    res.json(userComms);
   });
 
   // ====== WALLET ======

@@ -192,12 +192,12 @@ export default function Settings() {
           {showMedals && (
             <div className="space-y-3 p-4 rounded-2xl bg-card border border-border animate-in fade-in slide-in-from-top-2 duration-200">
               {[
-                { name: "Invicto", desc: "Nunca falhou um dia de check-in." },
-                { name: "Maratona", desc: "Completou 5 desafios longos." },
-                { name: "Top 1%", desc: "Entre os usuários mais consistentes." },
+                { name: "Invicto", desc: "Participando de desafios ativos sem desistir." },
+                { name: "Maratona", desc: "Completou 5 ou mais desafios." },
+                { name: "Top 1%", desc: "Ganhou R$ 500+ em prêmios." },
                 { name: "Ouro", desc: "Acumulou mais de R$ 1.000 em prêmios." },
-                { name: "Elite", desc: "Venceu desafios no modo Sobrevivência." },
-                { name: "Sênior", desc: "Membro da comunidade há mais de 1 ano." },
+                { name: "Veterano", desc: "Participou de 10 ou mais desafios." },
+                { name: "Estreante", desc: "Completou o primeiro desafio." },
               ].map((m, i) => (
                 <div key={i} className="flex justify-between items-center text-sm border-b border-border/50 last:border-0 pb-3 mb-1 last:pb-0 last:mb-0">
                   <span className="font-bold">{m.name}</span>

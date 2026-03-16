@@ -751,6 +751,38 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/challenges/:id/transfer-creator", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+      const { newCreatorId } = req.body;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode transferir a moderação" });
+      if (!newCreatorId) return res.status(400).json({ message: "Selecione o novo moderador" });
+      if (newCreatorId === userId) return res.status(400).json({ message: "Você já é o moderador" });
+
+      const newCreatorParticipant = await storage.getParticipant(challengeId, newCreatorId);
+      if (!newCreatorParticipant || !newCreatorParticipant.isActive) {
+        return res.status(400).json({ message: "O novo moderador precisa ser um participante ativo" });
+      }
+
+      await db.update(challenges).set({ createdBy: newCreatorId }).where(eq(challenges.id, challengeId));
+
+      const newCreator = await storage.getUser(newCreatorId);
+      pushService.sendToUser(newCreatorId, {
+        title: "Você é o novo moderador!",
+        body: `Você foi nomeado moderador do desafio "${challenge.title}"`,
+        data: { challengeId },
+      });
+
+      res.json({ success: true, message: `Moderação transferida para ${newCreator?.name || "novo moderador"}` });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao transferir moderação" });
+    }
+  });
+
   app.post("/api/challenges/:id/quit", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
@@ -766,7 +798,7 @@ export async function registerRoutes(
       }
 
       if (challenge.createdBy === userId) {
-        return res.status(400).json({ message: "O criador do desafio não pode desistir. Finalize o desafio se necessário." });
+        return res.status(400).json({ message: "Transfira a moderação para outro participante antes de desistir." });
       }
 
       const entryFee = Number(challenge.entryFee);

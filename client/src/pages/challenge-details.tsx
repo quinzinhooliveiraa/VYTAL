@@ -31,6 +31,8 @@ export default function ChallengeDetails() {
   const [editRules, setEditRules] = useState("");
   const [editPrivate, setEditPrivate] = useState(false);
   const [editMaxParticipants, setEditMaxParticipants] = useState(50);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedNewMod, setSelectedNewMod] = useState<string | null>(null);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -114,6 +116,23 @@ export default function ChallengeDetails() {
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       setLocation("/dashboard");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const transferCreatorMutation = useMutation({
+    mutationFn: async (newCreatorId: string) => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/transfer-creator`, { newCreatorId });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Transferido!", description: data.message });
+      setTransferDialogOpen(false);
+      setSelectedNewMod(null);
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -268,7 +287,20 @@ export default function ChallengeDetails() {
           <button onClick={() => setLocation("/dashboard")} className={`p-2 -ml-2 rounded-full backdrop-blur-md border ${hasBanner ? 'bg-black/40 border-white/10 text-white' : 'bg-background/60 border-border text-foreground'}`} data-testid="button-back">
             <ChevronLeft size={24} />
           </button>
-          <button className={`p-2 -mr-2 rounded-full backdrop-blur-md border ${hasBanner ? 'bg-black/40 border-white/10 text-white' : 'bg-background/60 border-border text-foreground'}`} data-testid="button-share">
+          <button
+            className={`p-2 -mr-2 rounded-full backdrop-blur-md border ${hasBanner ? 'bg-black/40 border-white/10 text-white' : 'bg-background/60 border-border text-foreground'}`}
+            data-testid="button-share"
+            onClick={() => {
+              const url = `${window.location.origin}/challenge/${id}`;
+              const shareData = { title: challenge.title, text: `Confira o desafio "${challenge.title}" no VYTAL!`, url };
+              if (navigator.share) {
+                navigator.share(shareData).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(url);
+                toast({ title: "Link copiado!" });
+              }
+            }}
+          >
             <Share2 size={20} />
           </button>
         </header>
@@ -465,15 +497,29 @@ export default function ChallengeDetails() {
               </div>
             )}
 
-            {isParticipant && !isCreator && !isChallengeEnded && (
-              <Button
-                variant="outline"
-                className="w-full h-12 rounded-2xl text-red-500 border-red-500/20 hover:bg-red-500/10 font-bold"
-                onClick={() => setQuitDialogOpen(true)}
-                data-testid="button-quit-challenge"
-              >
-                <LogOut className="mr-2" size={18} /> Desistir do Desafio
-              </Button>
+            {isParticipant && !isChallengeEnded && (
+              <div className="space-y-2">
+                {isCreator && (
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-2xl text-orange-500 border-orange-500/20 hover:bg-orange-500/10 font-bold"
+                    onClick={() => { setSelectedNewMod(null); setTransferDialogOpen(true); }}
+                    data-testid="button-transfer-mod"
+                  >
+                    <ShieldAlert className="mr-2" size={18} /> Transferir Moderação e Sair
+                  </Button>
+                )}
+                {!isCreator && (
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-2xl text-red-500 border-red-500/20 hover:bg-red-500/10 font-bold"
+                    onClick={() => setQuitDialogOpen(true)}
+                    data-testid="button-quit-challenge"
+                  >
+                    <LogOut className="mr-2" size={18} /> Desistir do Desafio
+                  </Button>
+                )}
+              </div>
             )}
           </TabsContent>
 
@@ -755,6 +801,80 @@ export default function ChallengeDetails() {
           )}
         </Tabs>
       </div>
+
+      <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-[380px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="w-16 h-16 mx-auto bg-orange-500/15 rounded-full flex items-center justify-center mb-2">
+              <ShieldAlert className="text-orange-500" size={32} />
+            </div>
+            <DialogTitle className="text-center text-xl">Transferir Moderação</DialogTitle>
+            <DialogDescription className="text-center">
+              Escolha quem será o novo moderador antes de sair
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {participants.filter((p: any) => p.userId !== user?.id && p.isActive !== false).map((p: any) => (
+              <button
+                key={p.userId}
+                onClick={() => setSelectedNewMod(p.userId)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                  selectedNewMod === p.userId ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/30'
+                }`}
+                data-testid={`select-mod-${p.userId}`}
+              >
+                <Avatar className="w-10 h-10 border border-border">
+                  <AvatarImage src={p.user?.avatar} />
+                  <AvatarFallback>{(p.user?.name || "?")[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-bold">{p.user?.name || "Participante"}</p>
+                  <p className="text-xs text-muted-foreground">@{p.user?.username}</p>
+                </div>
+                {selectedNewMod === p.userId && <CheckCircle2 size={18} className="text-primary ml-auto" />}
+              </button>
+            ))}
+            {participants.filter((p: any) => p.userId !== user?.id && p.isActive !== false).length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-4">Nenhum participante ativo para transferir</p>
+            )}
+          </div>
+          <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 text-xs text-orange-600 dark:text-orange-400">
+            <p className="font-bold flex items-center gap-1 mb-1"><AlertCircle size={12} /> Após transferir:</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>O novo moderador terá controle total do desafio</li>
+              <li>Você será removido como participante</li>
+              <li>Seu valor de entrada será perdido</li>
+            </ul>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="w-full h-12 rounded-xl font-bold"
+              onClick={() => setTransferDialogOpen(false)}
+              data-testid="button-cancel-transfer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="w-full h-12 rounded-xl font-bold bg-orange-500 hover:bg-orange-600 text-white"
+              disabled={!selectedNewMod || transferCreatorMutation.isPending}
+              onClick={async () => {
+                if (!selectedNewMod) return;
+                await transferCreatorMutation.mutateAsync(selectedNewMod);
+                quitMutation.mutate();
+              }}
+              data-testid="button-confirm-transfer"
+            >
+              {transferCreatorMutation.isPending || quitMutation.isPending ? (
+                <Loader2 className="animate-spin mr-2" size={18} />
+              ) : (
+                <ShieldAlert className="mr-2" size={18} />
+              )}
+              Transferir e Sair
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={quitDialogOpen} onOpenChange={setQuitDialogOpen}>
         <DialogContent className="rounded-3xl max-w-[380px] max-h-[90vh] overflow-y-auto">

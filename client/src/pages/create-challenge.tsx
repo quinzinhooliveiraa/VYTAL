@@ -718,7 +718,12 @@ export default function CreateChallenge() {
                 className="w-full h-14 rounded-2xl text-lg font-semibold flex gap-2"
                 onClick={() => {
                   if (challengeUrl) {
-                    navigator.clipboard.writeText(challengeUrl);
+                    const shareData = { title: challengeName, text: `Entra no meu desafio "${challengeName}" no VYTAL!`, url: challengeUrl };
+                    if (navigator.share) {
+                      navigator.share(shareData).catch(() => {});
+                    } else {
+                      navigator.clipboard.writeText(challengeUrl);
+                    }
                     copyLink();
                   }
                 }}

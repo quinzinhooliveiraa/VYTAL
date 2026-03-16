@@ -1323,11 +1323,11 @@ export default function Onboarding() {
       <div className="flex-1 flex flex-col relative z-10 min-h-0">
         <AnimatePresence mode="wait">
           {step === 1 && <LegalTerms key="1" onNext={next} />}
-          {step === 2 && <Welcome key="2" onNext={next} />}
-          {step === 3 && <HowItWorks key="3" onNext={next} />}
-          {step === 4 && <Stats key="4" onNext={next} />}
-          {step === 5 && <Personalization key="5" onNext={next} />}
-          {step === 6 && <InstallPWA key="6" onNext={next} />}
+          {step === 2 && <InstallPWA key="2" onNext={next} />}
+          {step === 3 && <Welcome key="3" onNext={next} />}
+          {step === 4 && <HowItWorks key="4" onNext={next} />}
+          {step === 5 && <Stats key="5" onNext={next} />}
+          {step === 6 && <Personalization key="6" onNext={next} />}
           {step === 7 && <NotificationsStep key="7" onNext={next} />}
           {step === 8 && <Final key="8" onComplete={next} />}
         </AnimatePresence>

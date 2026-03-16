@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, ArrowUpRight, Check, Send } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Flame, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, ArrowUpRight, Check, Send, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function ChallengeDetails() {
   const [, setLocation] = useLocation();
@@ -16,6 +20,26 @@ export default function ChallengeDetails() {
   // Mock data
   const isAdmin = true; // In a real app, check if user is in moderators list
   const isChallengeEnded = false;
+
+  const { toast } = useToast();
+  const [quitDialogOpen, setQuitDialogOpen] = useState(false);
+
+  const quitMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/quit`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Desistência confirmada", description: data.message });
+      setQuitDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
+      setLocation("/dashboard");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
 
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState([
@@ -114,6 +138,15 @@ export default function ChallengeDetails() {
                 <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação via Foto + GPS</span></div>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              className="w-full h-12 rounded-2xl text-red-500 border-red-500/20 hover:bg-red-500/10 font-bold"
+              onClick={() => setQuitDialogOpen(true)}
+              data-testid="button-quit-challenge"
+            >
+              <LogOut className="mr-2" size={18} /> Desistir do Desafio
+            </Button>
           </TabsContent>
 
           <TabsContent value="ranking" className="mt-4 animate-in fade-in slide-in-from-bottom-2">
@@ -271,6 +304,55 @@ export default function ChallengeDetails() {
           )}
         </Tabs>
       </div>
+
+      <Dialog open={quitDialogOpen} onOpenChange={setQuitDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-[380px]">
+          <DialogHeader>
+            <div className="w-16 h-16 mx-auto bg-red-500/15 rounded-full flex items-center justify-center mb-2">
+              <AlertCircle className="text-red-500" size={32} />
+            </div>
+            <DialogTitle className="text-center text-xl">Desistir do Desafio?</DialogTitle>
+            <DialogDescription className="text-center">
+              Tem certeza que deseja desistir?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 space-y-2 text-sm">
+            <p className="font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+              <AlertCircle size={16} /> Atenção — você vai perder dinheiro!
+            </p>
+            <ul className="space-y-1 text-red-600/80 dark:text-red-400/80 text-xs list-disc pl-5">
+              <li>Seu valor de entrada <strong>não será devolvido</strong></li>
+              <li>O dinheiro ficará no pote do desafio para os vencedores</li>
+              <li>Você <strong>não poderá voltar</strong> ao desafio depois</li>
+              <li>Essa ação é <strong>irreversível</strong></li>
+            </ul>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="w-full h-12 rounded-xl font-bold"
+              onClick={() => setQuitDialogOpen(false)}
+              data-testid="button-cancel-quit"
+            >
+              Voltar ao Desafio
+            </Button>
+            <Button
+              variant="destructive"
+              className="w-full h-12 rounded-xl font-bold"
+              disabled={quitMutation.isPending}
+              onClick={() => quitMutation.mutate()}
+              data-testid="button-confirm-quit"
+            >
+              {quitMutation.isPending ? (
+                <Loader2 className="animate-spin mr-2" size={18} />
+              ) : (
+                <LogOut className="mr-2" size={18} />
+              )}
+              Sim, quero desistir
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

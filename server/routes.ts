@@ -236,6 +236,51 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/challenges/:id/quit", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (!challenge.isActive) return res.status(400).json({ message: "Este desafio já foi finalizado" });
+
+      const participant = await storage.getParticipant(challengeId, userId);
+      if (!participant || !participant.isActive) {
+        return res.status(400).json({ message: "Você não está participando deste desafio" });
+      }
+
+      if (challenge.createdBy === userId) {
+        return res.status(400).json({ message: "O criador do desafio não pode desistir. Finalize o desafio se necessário." });
+      }
+
+      const entryFee = Number(challenge.entryFee);
+
+      await storage.leaveChallenge(challengeId, userId);
+
+      if (entryFee > 0) {
+        await walletService.deductLockedBalance(userId, entryFee);
+
+        await transactionService.create({
+          userId,
+          type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
+          amount: entryFee,
+          status: TRANSACTION_STATUS.COMPLETED,
+          description: `Desistência: ${challenge.title} (valor perdido)`,
+          challengeId,
+          metadata: { action: "quit", forfeit: true },
+        });
+      }
+
+      res.json({
+        success: true,
+        message: `Você desistiu do desafio "${challenge.title}". O valor de entrada de R$ ${entryFee.toFixed(2)} foi perdido e permanece no pote do desafio.`,
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao desistir do desafio" });
+    }
+  });
+
   app.post("/api/challenges/:id/finalize", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
@@ -568,10 +613,21 @@ export async function registerRoutes(
           });
         } catch (gatewayError: any) {
           await walletService.unlockBalance(userId, numAmount);
+          const errorMsg = gatewayError.message || "Erro desconhecido";
           await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {
-            error: gatewayError.message,
+            error: errorMsg,
           });
-          res.status(500).json({ message: "Erro no gateway de pagamento. Tente novamente." });
+          let userMessage = "Erro ao processar saque. ";
+          if (errorMsg.toLowerCase().includes("key") || errorMsg.toLowerCase().includes("chave") || errorMsg.toLowerCase().includes("pix")) {
+            userMessage += "Verifique se a chave Pix está correta e corresponde ao tipo selecionado.";
+          } else if (errorMsg.toLowerCase().includes("insufficient") || errorMsg.toLowerCase().includes("saldo") || errorMsg.toLowerCase().includes("balance")) {
+            userMessage += "Saldo insuficiente no gateway.";
+          } else if (errorMsg.toLowerCase().includes("limit") || errorMsg.toLowerCase().includes("limite")) {
+            userMessage += "Limite de saque excedido. Tente um valor menor.";
+          } else {
+            userMessage += `Detalhe: ${errorMsg}`;
+          }
+          res.status(400).json({ message: userMessage });
         }
       } else {
         await walletService.deductLockedBalance(userId, numAmount);

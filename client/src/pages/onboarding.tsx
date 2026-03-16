@@ -330,7 +330,7 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowContinue(true), 5000);
+    const timer = setTimeout(() => setShowContinue(true), 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -379,36 +379,84 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
             initial={{ opacity: 0, scale: 0.5, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-            className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20"
+            className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto border border-primary/20"
           >
-            <Smartphone size={28} />
+            <Bell size={28} />
           </motion.div>
-          <h2 className="text-2xl font-display font-bold">Instale o VYTAL</h2>
-          <p className="text-xs text-muted-foreground">Para a melhor experiência, instale o app e ative as notificações.</p>
+          <h2 className="text-2xl font-display font-bold">Não perca nada!</h2>
+          <p className="text-xs text-muted-foreground">Ative as notificações para receber lembretes de check-in, resultados e prêmios.</p>
         </motion.div>
 
         <div className="space-y-2.5">
+          {notifState === "idle" ? (
+            <motion.button
+              variants={staggerItem}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleNotifications}
+              className="w-full flex items-center gap-4 p-5 bg-primary/5 border-2 border-primary/30 rounded-2xl text-left hover:border-primary/50 transition-all"
+              data-testid="button-onboarding-notifications"
+            >
+              <motion.div
+                animate={{ rotate: [0, -15, 15, -10, 10, 0] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut", repeatDelay: 1 }}
+                className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"
+              >
+                <Bell size={24} className="text-primary" />
+              </motion.div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold">Ativar notificações</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Receba lembretes de check-in, resultados de desafios e prêmios.</p>
+              </div>
+              <ArrowRight size={18} className="text-primary shrink-0" />
+            </motion.button>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className={`flex items-center gap-3 p-4 rounded-2xl ${
+                notifState === "granted" ? "bg-green-500/5 border border-green-500/20" : "bg-muted border border-border"
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                notifState === "granted" ? "bg-green-500/10" : "bg-muted"
+              }`}>
+                {notifState === "granted" ? <Check size={20} className="text-green-500" /> : <Bell size={20} className="text-muted-foreground" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold ${notifState === "granted" ? "text-green-600 dark:text-green-400" : ""}`}>
+                  {notifState === "granted" ? "Notificações ativadas!" : "Notificações bloqueadas"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {notifState === "granted"
+                    ? "Você receberá alertas de check-in e prêmios."
+                    : "Você pode ativar depois nas configurações."}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {canInstall && !isInstalled && (
             <motion.button
               variants={staggerItem}
               whileTap={{ scale: 0.98 }}
               onClick={handleInstall}
               disabled={installing}
-              className="w-full flex items-center gap-3 p-4 bg-primary/5 border-2 border-primary/30 rounded-2xl text-left hover:border-primary/50 transition-all"
+              className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
               data-testid="button-install-pwa"
             >
               <motion.div
                 animate={{ y: [0, -3, 0] }}
                 transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0"
               >
-                <Download size={20} className="text-primary" />
+                <Download size={20} className="text-blue-500" />
               </motion.div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold">{installing ? "Instalando..." : "Instalar na tela inicial"}</p>
-                <p className="text-[11px] text-muted-foreground">Acesso instantâneo e performance nativa</p>
+                <p className="text-[11px] text-muted-foreground">Acesso rápido como um app nativo</p>
               </div>
-              <ArrowRight size={16} className="text-primary shrink-0" />
+              <ArrowRight size={16} className="text-blue-500 shrink-0" />
             </motion.button>
           )}
 
@@ -428,33 +476,6 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
               </div>
             </motion.div>
           )}
-
-          <motion.button
-            variants={staggerItem}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleNotifications}
-            disabled={notifState !== "idle"}
-            className={`w-full flex items-center gap-3 p-4 bg-card border rounded-2xl text-left transition-all ${
-              notifState === "granted" ? "border-green-500/30 bg-green-500/5" : "border-border hover:border-primary/30"
-            }`}
-            data-testid="button-onboarding-notifications"
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              notifState === "granted" ? "bg-green-500/10" : "bg-yellow-500/10"
-            }`}>
-              {notifState === "granted" ? <Check size={20} className="text-green-500" /> : <Bell size={20} className="text-yellow-500" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold">{notifState === "granted" ? "Notificações ativadas!" : "Ativar notificações"}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {notifState === "granted"
-                  ? "Você receberá alertas de check-in e prêmios."
-                  : notifState === "denied"
-                  ? "Você pode ativar depois nas configurações."
-                  : "Lembretes de check-in, desafios e prêmios."}
-              </p>
-            </div>
-          </motion.button>
 
           {showIosInstructions && (
             <motion.div

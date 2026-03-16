@@ -1,192 +1,184 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Trophy, 
-  ArrowRight, 
-  Users, 
-  CheckCircle2, 
-  Bell, 
-  Apple, 
-  Mail, 
-  Share2, 
+import {
+  Trophy,
+  ArrowRight,
+  Users,
+  CheckCircle2,
+  Bell,
+  Share,
   TrendingUp,
   Activity,
   ChevronLeft,
   Calendar,
   Zap,
-  Camera
+  Camera,
+  Download,
+  Smartphone,
+  Plus,
+  ExternalLink,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { usePwaInstall } from "@/hooks/use-pwa-install";
 
-// --- Step Components ---
+const slideIn = {
+  initial: { opacity: 0, x: 60 },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.4, ease: "easeOut" } },
+  exit: { opacity: 0, x: -60, transition: { duration: 0.25 } },
+};
 
 const Welcome = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="flex flex-col items-center text-center space-y-8"
-  >
-    <div className="w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-xl shadow-primary/5">
-      <Activity size={48} strokeWidth={2.5} />
-    </div>
-    <div className="space-y-4">
-      <h1 className="text-4xl font-display font-bold leading-tight">
-        Seja pago por ser <span className="text-primary">Consistente.</span>
-      </h1>
-      <p className="text-muted-foreground text-lg px-4">
-        O FitStake recompensa sua disciplina através de desafios sociais e compromisso financeiro.
-      </p>
-    </div>
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground mt-12 shadow-lg shadow-primary/20" onClick={onNext}>
-      Começar Jornada
-    </Button>
-  </motion.div>
-);
+  <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-8">
+    <div />
 
-const ValueProp = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-8"
-  >
-    <div className="space-y-4 text-center">
-      <Badge className="bg-primary/10 text-primary border-primary/20 mb-2">Mentalidade</Badge>
-      <h2 className="text-3xl font-display font-bold italic">"Consistência vence a motivação."</h2>
-    </div>
-    
-    <div className="bg-card border border-border rounded-3xl p-6 space-y-4">
-      <div className="flex justify-between items-end gap-3">
-        {[
-          { week: "S1", value: 45, label: "início" },
-          { week: "S2", value: 60, label: "consistência" },
-          { week: "S3", value: 55, label: "comprometido" },
-          { week: "S4", value: 70, label: "forte" },
-          { week: "S5", value: 65, label: "dedicado" },
-          { week: "S6", value: 80, label: "disciplinado" },
-          { week: "S7", value: 90, label: "campeão" }
-        ].map((item, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 flex-1">
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: `${item.value * 1.5}px`, opacity: 1 }}
-              transition={{ delay: i * 0.1, duration: 0.6 }}
-              className="w-full bg-gradient-to-t from-primary to-primary/70 rounded-t-lg shadow-lg shadow-primary/20 relative"
-            >
-              <motion.div 
-                className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-primary whitespace-nowrap"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.1 + 0.4 }}
-              >
-                {item.value}%
-              </motion.div>
-            </motion.div>
-            <p className="text-[9px] font-bold text-muted-foreground">{item.week}</p>
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground pt-2 border-t border-border">
-        <span>Progressão de 7 Semanas</span>
-        <span className="font-bold text-primary">Média: 67%</span>
+    <div className="space-y-6">
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+        className="w-28 h-28 bg-primary/10 rounded-[2.5rem] flex items-center justify-center text-primary mx-auto border border-primary/20 shadow-2xl shadow-primary/10"
+      >
+        <Activity size={56} strokeWidth={2} />
+      </motion.div>
+
+      <div className="space-y-3">
+        <h1 className="text-4xl font-display font-bold leading-[1.1]">
+          Seja pago por ser{" "}
+          <span className="text-primary relative">
+            consistente.
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="absolute bottom-0 left-0 right-0 h-1 bg-primary/30 rounded-full origin-left"
+            />
+          </span>
+        </h1>
+        <p className="text-muted-foreground text-base px-2 leading-relaxed">
+          Desafios esportivos com dinheiro real. Quem desiste, paga. Quem persiste, lucra.
+        </p>
       </div>
     </div>
-    <p className="text-muted-foreground text-center">
-      Veja como nossos usuários mantêm consistência: treinos diários, provas registradas, sequência garantida.
-    </p>
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl" onClick={onNext}>
-      Entendi <ArrowRight className="ml-2" />
-    </Button>
-  </motion.div>
-);
 
-const SocialProof = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-8 text-center"
-  >
-    <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20">
-      <Users size={40} />
+    <div className="w-full space-y-4">
+      <Button
+        className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20"
+        onClick={onNext}
+        data-testid="button-onboarding-start"
+      >
+        Começar Jornada
+      </Button>
+      <p className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-widest">FitStake Accountability System</p>
     </div>
-    <div className="space-y-4">
-      <h2 className="text-5xl font-display font-bold text-primary">83%</h2>
-      <p className="text-xl font-medium px-4">
-        Dos nossos usuários mantêm sua sequência por mais de 30 dias.
-      </p>
-      <p className="text-muted-foreground">
-        Junte-se a milhares de pessoas que decidiram não falhar mais consigo mesmas.
-      </p>
-    </div>
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl" onClick={onNext}>
-      Quero fazer parte
-    </Button>
   </motion.div>
 );
 
 const HowItWorks = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-6"
-  >
-    <div className="space-y-2 text-center">
-      <h2 className="text-3xl font-display font-bold">Entenda o Jogo</h2>
-      <p className="text-muted-foreground text-sm">O FitStake usa psicologia comportamental e risco financeiro para garantir sua constância.</p>
-    </div>
-    
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 pb-4">
-      {[
-        { 
-          icon: Zap, 
-          title: "1. A Regra do Pix (Skin in the game)", 
-          text: "Você não entra de graça. Você aposta em você mesmo fazendo um depósito via Pix (ex: R$50). Esse dinheiro seu, junto com o dos outros, forma o 'Pote de Prêmio'." 
-        },
-        { 
-          icon: Calendar, 
-          title: "2. Consistência é Tudo", 
-          text: "Você DEVE cumprir a meta do desafio (ex: 5 treinos na semana). Se faltar 1 dia e não atingir a meta semanal, você é ELIMINADO e perde o que pagou." 
-        },
-        { 
-          icon: Camera, 
-          title: "3. Check-in Antifraude", 
-          text: "Para provar que treinou, você usa nossa câmera embutida (estilo BeReal). Não é possível enviar foto da galeria. A câmera captura o momento ao vivo e a sua localização GPS exata." 
-        },
-        {
-          icon: Users,
-          title: "4. Moderação Comunitária",
-          text: "Todos podem ver os check-ins uns dos outros. Se alguém postar foto fake, a comunidade vota para invalidar. Quem trapaceia é banido do desafio."
-        },
-        { 
-          icon: Trophy, 
-          title: "5. A Divisão do Lucro", 
-          text: "Quem for disciplinado e chegar até o fim, recupera o seu dinheiro e AINDA divide TODO o dinheiro das pessoas que desistiram ou falharam. Você sai no lucro!" 
-        }
-      ].map((item, i) => (
-        <div key={i} className="flex gap-4 p-4 bg-card border border-border rounded-2xl items-start shadow-sm">
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 mt-1">
-            <item.icon size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm text-primary mb-1">{item.title}</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">{item.text}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-    
-    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
-      <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest mb-1">Aviso Importante</p>
-      <p className="text-xs text-red-400">O app cobra 10% de taxa sobre o pote final para cobrir custos de operação, saques e moderação.</p>
+  <motion.div {...slideIn} className="flex flex-col h-full justify-between">
+    <div className="space-y-5 flex-1 overflow-y-auto pb-4">
+      <div className="space-y-1 text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Como funciona</p>
+        <h2 className="text-2xl font-display font-bold">Entenda o Jogo</h2>
+      </div>
+
+      <div className="space-y-3">
+        {[
+          { icon: Zap, color: "text-yellow-500 bg-yellow-500/10", title: "Aposte em você", text: "Deposite via Pix (ex: R$ 50). Seu dinheiro + o dos outros formam o pote de prêmio." },
+          { icon: Calendar, color: "text-blue-500 bg-blue-500/10", title: "Cumpra a meta", text: "Seja consistente (ex: 5 treinos/semana). Se não bater a meta, você é eliminado." },
+          { icon: Camera, color: "text-purple-500 bg-purple-500/10", title: "Check-in ao vivo", text: "Prove que treinou com nossa câmera. Sem foto da galeria — só ao vivo com GPS." },
+          { icon: Shield, color: "text-orange-500 bg-orange-500/10", title: "Moderação", text: "A comunidade valida os check-ins. Quem trapaceia é banido." },
+          { icon: Trophy, color: "text-primary bg-primary/10", title: "Lucre!", text: "Quem persiste divide o dinheiro dos desistentes. Você sai no lucro!" },
+        ].map((item, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            className="flex gap-3 p-4 bg-card border border-border rounded-2xl items-start"
+          >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
+              <item.icon size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm mb-0.5">{item.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{item.text}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="p-3 bg-red-500/5 border border-red-500/15 rounded-xl text-center">
+        <p className="text-[10px] text-red-500/80 font-medium">Taxa de 10% sobre o pote final para custos de operação.</p>
+      </div>
     </div>
 
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 shrink-0" onClick={onNext}>
-      Entendi as Regras <ArrowRight className="ml-2" />
+    <Button className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 mt-4" onClick={onNext} data-testid="button-onboarding-rules">
+      Entendi <ArrowRight className="ml-2" size={18} />
+    </Button>
+  </motion.div>
+);
+
+const Stats = ({ onNext }: { onNext: () => void }) => (
+  <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-8">
+    <div />
+
+    <div className="space-y-8">
+      <motion.div
+        initial={{ scale: 0, rotate: -20 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+        className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto border border-primary/20"
+      >
+        <TrendingUp size={40} />
+      </motion.div>
+
+      <div className="space-y-6">
+        <div>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-6xl font-display font-bold text-primary"
+          >
+            83%
+          </motion.p>
+          <p className="text-lg font-medium mt-2 px-6">
+            dos nossos usuários mantêm a sequência por mais de <strong>30 dias</strong>.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { value: "2.4k", label: "Usuários ativos" },
+            { value: "R$ 340k", label: "Distribuídos" },
+            { value: "4.8★", label: "Avaliação" },
+          ].map((s, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 + i * 0.1 }}
+              className="bg-card border border-border rounded-2xl p-3"
+            >
+              <p className="text-lg font-display font-bold">{s.value}</p>
+              <p className="text-[9px] text-muted-foreground font-medium">{s.label}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <Button className="w-full h-14 text-lg font-bold rounded-2xl mt-8" onClick={onNext} data-testid="button-onboarding-stats">
+      Quero fazer parte <ArrowRight className="ml-2" size={18} />
     </Button>
   </motion.div>
 );
 
 const Personalization = ({ onNext }: { onNext: () => void }) => {
-  const [level, setLevel] = useState(50);
   const [name, setName] = useState(localStorage.getItem("fitstake-user-name") || "");
   const [goals, setGoals] = useState<string[]>([]);
 
@@ -203,168 +195,265 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
     localStorage.setItem("fitstake-user-goals", JSON.stringify(goals));
     onNext();
   };
-  
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-      className="space-y-6"
-    >
-      <div className="space-y-2">
-        <h2 className="text-3xl font-display font-bold">Inteligência do App</h2>
-        <p className="text-muted-foreground text-sm">Nosso algoritmo precisa conhecer você para recomendar desafios e calcular probabilidades de sucesso.</p>
-      </div>
-      
-      <div className="space-y-5 pt-4 bg-card border border-border p-5 rounded-3xl shadow-sm">
-        <div className="space-y-2">
-          <Label className="text-xs font-bold text-primary uppercase tracking-widest">Identidade</Label>
-          <Input 
-            placeholder="Seu nome real completo" 
-            className="h-12 rounded-xl" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <p className="text-[10px] text-muted-foreground">Usamos nomes reais para manter a comunidade autêntica e inibir fraudes.</p>
-        </div>
-        
-        <div className="space-y-2">
-          <Label className="text-xs font-bold text-primary uppercase tracking-widest">Nível de Atividade Atual</Label>
-          <div className="pt-4 pb-2">
-            <input 
-              type="range" 
-              min="0" max="100" 
-              value={level} 
-              onChange={(e) => setLevel(parseInt(e.target.value))}
-              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-          </div>
-          <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
-            <span>Sedentário</span>
-            <span className="text-primary">{level < 30 ? "Iniciante" : level < 70 ? "Intermediário" : "Avançado"}</span>
-            <span>Atleta</span>
-          </div>
+    <motion.div {...slideIn} className="flex flex-col h-full justify-between">
+      <div className="space-y-6 flex-1">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Personalização</p>
+          <h2 className="text-2xl font-display font-bold">Sobre você</h2>
+          <p className="text-sm text-muted-foreground">Precisamos de algumas informações para personalizar sua experiência.</p>
         </div>
 
-        <div className="space-y-2 pt-2 border-t border-border">
-          <Label className="text-xs font-bold text-primary uppercase tracking-widest">Foco Principal do Algoritmo</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {["Perda de Peso", "Hipertrofia", "Cardio/Endurance", "Hábito/Disciplina"].map(o => (
-              <Button 
-                key={o} 
-                variant={goals.includes(o) ? "default" : "outline"} 
-                className={`h-10 rounded-xl text-[10px] font-bold ${goals.includes(o) ? '' : 'border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary'}`}
-                onClick={() => {
-                  if (goals.includes(o)) {
-                    setGoals(goals.filter(g => g !== o));
-                  } else {
-                    setGoals([...goals, o]);
-                  }
-                }}
-              >
-                {o}
-              </Button>
-            ))}
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Seu nome</Label>
+            <Input
+              placeholder="Nome completo"
+              className="h-12 rounded-xl text-base"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              data-testid="input-onboarding-name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Qual seu foco?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Perda de Peso", emoji: "🔥" },
+                { label: "Hipertrofia", emoji: "💪" },
+                { label: "Cardio", emoji: "🏃" },
+                { label: "Disciplina", emoji: "🎯" },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  className={`h-12 rounded-xl text-sm font-bold border transition-all ${
+                    goals.includes(o.label)
+                      ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
+                      : "bg-card border-border hover:border-primary/40"
+                  }`}
+                  onClick={() => {
+                    if (goals.includes(o.label)) setGoals(goals.filter((g) => g !== o.label));
+                    else setGoals([...goals, o.label]);
+                  }}
+                  data-testid={`button-goal-${o.label}`}
+                >
+                  {o.emoji} {o.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-      
-      <Button className="w-full h-16 text-lg font-bold rounded-2xl mt-4 bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={handleNext}>
-        Otimizar Algoritmo <Zap size={18} className="ml-2" />
+
+      <Button
+        className="w-full h-14 text-lg font-bold rounded-2xl mt-6 shrink-0"
+        onClick={handleNext}
+        disabled={!name.trim()}
+        data-testid="button-onboarding-personalize"
+      >
+        Continuar <ArrowRight className="ml-2" size={18} />
       </Button>
     </motion.div>
   );
 };
 
-const Notifications = ({ onNext }: { onNext: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-    className="space-y-8 text-center py-12"
-  >
-    <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto animate-bounce shadow-xl shadow-primary/5">
-      <Bell size={48} />
-    </div>
-    <div className="space-y-4">
-      <h2 className="text-3xl font-display font-bold">Não perca o ritmo</h2>
-      <p className="text-muted-foreground px-4 text-lg">
-        Lembretes diários para você nunca esquecer sua sequência de treinos.
-      </p>
-    </div>
-    <Button className="w-full h-16 text-lg font-bold rounded-2xl mt-8 shadow-lg shadow-primary/20" onClick={onNext}>
-      Ativar Notificações
-    </Button>
-    <Button variant="ghost" className="w-full" onClick={onNext}>Pular por enquanto</Button>
-  </motion.div>
-);
+const InstallPWA = ({ onNext }: { onNext: () => void }) => {
+  const { canInstall, isInstalled, install, isIOS } = usePwaInstall();
 
-// Remove Auth component since it's in login now
-// Adjust step counts
-
-const Final = ({ onComplete }: { onComplete: () => void }) => {
-  useEffect(() => {
-    const shareData = {
-      title: 'Convite FitStake',
-      text: 'Crie sua conta no FitStake com meu link e ganhe R$ 10 de bônus no seu primeiro desafio!',
-      url: 'https://fitstake.app/invite/alex_costa'
-    };
-    if (navigator.share) {
-      setTimeout(() => navigator.share(shareData).catch(console.error), 800);
+  const handleInstall = async () => {
+    if (canInstall) {
+      await install();
     }
-  }, []);
+    onNext();
+  };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-      className="space-y-8 flex flex-col items-center text-center justify-center h-full"
-    >
-      <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-4 border border-green-500/20">
-        <CheckCircle2 size={48} />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
-        <p className="text-muted-foreground text-lg">Sua jornada para a consistência começa agora.</p>
-      </div>
-      <div className="w-full space-y-3 pt-8">
-        <Button className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={() => {
-          localStorage.setItem("fitstake-onboarding-done", "true");
-          onComplete();
-        }}>
-          Explorar Desafios
-        </Button>
-        <div className="bg-card border border-border rounded-2xl p-4 text-left">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-              <Users size={20} />
-            </div>
-            <div>
-              <p className="font-bold text-sm">Treinar com amigos é 3x mais eficaz</p>
-              <p className="text-[10px] text-muted-foreground leading-tight">Envie seu link. Se seu amigo criar uma conta através dele, ambos ganham R$ 10 de bônus no primeiro desafio.</p>
+    <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-8">
+      <div />
+
+      <div className="space-y-6">
+        <motion.div
+          initial={{ y: -10 }}
+          animate={{ y: [0, -8, 0] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          className="w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary mx-auto border border-primary/20 shadow-2xl shadow-primary/10"
+        >
+          <Smartphone size={48} />
+        </motion.div>
+
+        <div className="space-y-3">
+          <h2 className="text-2xl font-display font-bold">
+            {isInstalled ? "App instalado!" : "Instale o FitStake"}
+          </h2>
+          <p className="text-muted-foreground text-sm px-4 leading-relaxed">
+            {isInstalled
+              ? "Você já tem o FitStake instalado. Tudo pronto para começar!"
+              : "Adicione à tela inicial para a melhor experiência. Acesso rápido, notificações e modo offline."}
+          </p>
+        </div>
+
+        {!isInstalled && isIOS && (
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-left mx-2">
+            <p className="text-xs font-bold text-center text-muted-foreground uppercase tracking-widest">No iPhone / iPad:</p>
+            <div className="space-y-2">
+              {[
+                { icon: Share, text: "Toque no botão Compartilhar" },
+                { icon: Plus, text: 'Selecione "Adicionar à Tela de Início"' },
+                { icon: CheckCircle2, text: "Confirme tocando em Adicionar" },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <step.icon size={16} />
+                  </div>
+                  <p className="text-sm">{step.text}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <Button variant="outline" className="w-full h-12 font-bold rounded-xl border-primary text-primary hover:bg-primary/5" onClick={() => {
-            const shareData = {
-              title: 'Convite FitStake',
-              text: 'Crie sua conta no FitStake com meu link e ganhe R$ 10 de bônus no seu primeiro desafio!',
-              url: 'https://fitstake.app/invite/alex_costa'
-            };
-            if (navigator.share) {
-              navigator.share(shareData).catch(console.error);
-            } else {
-              alert("Link copiado! Seu amigo precisa baixar o app e criar a conta pelo seu link para vocês ganharem o bônus.");
-            }
-          }}>
-            Compartilhar Link de Convite
+        )}
+
+        {!isInstalled && !isIOS && canInstall && (
+          <Button
+            className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20"
+            onClick={handleInstall}
+            data-testid="button-install-pwa"
+          >
+            <Download className="mr-2" size={20} /> Instalar App
           </Button>
-        </div>
+        )}
+      </div>
+
+      <div className="w-full space-y-3">
+        {(isInstalled || (!canInstall && !isIOS)) && (
+          <Button
+            className="w-full h-14 text-lg font-bold rounded-2xl"
+            onClick={onNext}
+            data-testid="button-onboarding-install-next"
+          >
+            Continuar <ArrowRight className="ml-2" size={18} />
+          </Button>
+        )}
+        {!isInstalled && (canInstall || isIOS) && (
+          <Button variant="ghost" className="w-full text-muted-foreground" onClick={onNext}>
+            Pular por enquanto
+          </Button>
+        )}
       </div>
     </motion.div>
   );
 };
 
-// --- Main Container ---
+const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
+  const requestNotifications = async () => {
+    if ("Notification" in window) {
+      await Notification.requestPermission();
+    }
+    onNext();
+  };
+
+  return (
+    <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-8">
+      <div />
+
+      <div className="space-y-6">
+        <motion.div
+          animate={{ rotate: [0, -10, 10, -10, 0] }}
+          transition={{ repeat: Infinity, duration: 2, repeatDelay: 2 }}
+          className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto border border-primary/20"
+        >
+          <Bell size={48} />
+        </motion.div>
+        <div className="space-y-3">
+          <h2 className="text-2xl font-display font-bold">Não perca o ritmo</h2>
+          <p className="text-muted-foreground text-sm px-6 leading-relaxed">
+            Receba lembretes para fazer check-in, alertas de novos desafios e avisos importantes da comunidade.
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full space-y-3">
+        <Button
+          className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-primary/20"
+          onClick={requestNotifications}
+          data-testid="button-onboarding-notifications"
+        >
+          Ativar Notificações
+        </Button>
+        <Button variant="ghost" className="w-full text-muted-foreground" onClick={onNext}>
+          Pular
+        </Button>
+      </div>
+    </motion.div>
+  );
+};
+
+const Final = ({ onComplete }: { onComplete: () => void }) => (
+  <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-8">
+    <div />
+
+    <div className="space-y-6">
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+        className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto border border-green-500/20"
+      >
+        <CheckCircle2 size={48} />
+      </motion.div>
+
+      <div className="space-y-2">
+        <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
+        <p className="text-muted-foreground text-base px-4">Sua jornada para a consistência começa agora.</p>
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-4 mx-2 text-left">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Users size={20} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">Convide amigos</p>
+            <p className="text-[10px] text-muted-foreground">Treinar com amigos é 3x mais eficaz</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full h-10 font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs"
+          onClick={() => {
+            if (navigator.share) {
+              navigator.share({
+                title: "Convite FitStake",
+                text: "Entre no FitStake comigo! Desafios esportivos com dinheiro real.",
+                url: window.location.origin,
+              }).catch(() => {});
+            }
+          }}
+          data-testid="button-share-invite"
+        >
+          <ExternalLink size={14} className="mr-2" /> Compartilhar Link
+        </Button>
+      </div>
+    </div>
+
+    <Button
+      className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20"
+      onClick={() => {
+        localStorage.setItem("fitstake-onboarding-done", "true");
+        onComplete();
+      }}
+      data-testid="button-onboarding-complete"
+    >
+      Explorar Desafios <ArrowRight className="ml-2" size={18} />
+    </Button>
+  </motion.div>
+);
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const totalSteps = 7; // Changed from 8 to 7 since we removed Auth
+  const totalSteps = 7;
 
   const next = () => {
     if (step < totalSteps) setStep(step + 1);
@@ -376,24 +465,30 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-[100dvh] max-w-md mx-auto flex flex-col p-6 relative overflow-hidden bg-background">
-      {/* Background Decor */}
-      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-primary/5 blur-[100px] pointer-events-none" />
-      
-      {/* Header with Back & Progress */}
-      <div className="flex items-center justify-between mb-8 z-10">
+    <div className="h-[100dvh] max-w-md mx-auto flex flex-col p-6 relative overflow-hidden bg-background">
+      <div className="absolute top-[-15%] right-[-15%] w-[350px] h-[350px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[250px] h-[250px] rounded-full bg-primary/3 blur-[100px] pointer-events-none" />
+
+      <div className="flex items-center justify-between mb-4 z-10 shrink-0">
         {step > 1 && step < totalSteps ? (
-          <button onClick={back} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
-            <ChevronLeft size={24} />
+          <button onClick={back} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors" data-testid="button-onboarding-back">
+            <ChevronLeft size={22} />
           </button>
-        ) : <div className="w-10" />}
-        
+        ) : (
+          <div className="w-10" />
+        )}
+
         <div className="flex gap-1.5">
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div 
-              key={i} 
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i + 1 === step ? 'w-8 bg-primary shadow-[0_0_8px_rgba(34,197,94,0.4)]' : i + 1 < step ? 'w-1.5 bg-primary/40' : 'w-1.5 bg-muted'
+            <motion.div
+              key={i}
+              layout
+              className={`h-1.5 rounded-full transition-colors duration-300 ${
+                i + 1 === step
+                  ? "w-8 bg-primary shadow-[0_0_8px_rgba(34,197,94,0.4)]"
+                  : i + 1 < step
+                  ? "w-3 bg-primary/50"
+                  : "w-1.5 bg-muted"
               }`}
             />
           ))}
@@ -401,24 +496,17 @@ export default function Onboarding() {
         <div className="w-10" />
       </div>
 
-      <div className="flex-1 flex flex-col justify-center relative z-10">
+      <div className="flex-1 flex flex-col relative z-10 min-h-0">
         <AnimatePresence mode="wait">
           {step === 1 && <Welcome key="1" onNext={next} />}
-          {step === 2 && <ValueProp key="2" onNext={next} />}
-          {step === 3 && <SocialProof key="3" onNext={next} />}
-          {step === 4 && <HowItWorks key="4" onNext={next} />}
-          {step === 5 && <Personalization key="5" onNext={next} />}
-          {step === 6 && <Notifications key="6" onNext={next} />}
+          {step === 2 && <HowItWorks key="2" onNext={next} />}
+          {step === 3 && <Stats key="3" onNext={next} />}
+          {step === 4 && <Personalization key="4" onNext={next} />}
+          {step === 5 && <InstallPWA key="5" onNext={next} />}
+          {step === 6 && <NotificationsStep key="6" onNext={next} />}
           {step === 7 && <Final key="7" onComplete={next} />}
         </AnimatePresence>
       </div>
-
-      {/* Footer Info */}
-      {step === 1 && (
-        <div className="pb-6 text-center space-y-2 opacity-50 z-10">
-          <p className="text-[10px] font-bold uppercase tracking-widest">FitStake Accountability System</p>
-        </div>
-      )}
     </div>
   );
 }

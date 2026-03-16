@@ -2,6 +2,13 @@
 
 Fitness/sports challenge web app with financial stakes (Pix payments). Users create challenges with monetary entry fees, invite friends, track progress, and win from the prize pool. Platform takes 10% fee.
 
+## PWA
+- `client/public/manifest.json` — Web App Manifest (standalone, portrait, green theme)
+- `client/public/sw.js` — Service Worker (cache-first for static, network-first with offline fallback)
+- `client/src/hooks/use-pwa-install.ts` — PWA install prompt hook (supports Android + iOS instructions)
+- PWA meta tags in `client/index.html` (apple-mobile-web-app-capable, theme-color, manifest link)
+- Service worker registered in `client/src/main.tsx`
+
 ## Tech Stack
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - **Backend**: Express.js + TypeScript

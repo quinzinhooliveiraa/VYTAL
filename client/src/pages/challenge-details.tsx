@@ -372,7 +372,7 @@ export default function ChallengeDetails() {
                 <p className="text-center text-sm text-muted-foreground py-8">Nenhum participante ainda</p>
               )}
               {[...participants].sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).map((p: any, i: number) => (
-                <div key={p.userId} className={`flex items-center gap-4 p-5 ${p.userId === user?.id ? 'bg-primary/5' : ''} ${!p.isActive ? 'opacity-50 grayscale' : ''}`}>
+                <div key={p.userId} className={`flex items-center gap-4 p-5 cursor-pointer hover:bg-muted/50 transition-colors ${p.userId === user?.id ? 'bg-primary/5' : ''} ${!p.isActive ? 'opacity-50 grayscale' : ''}`} onClick={() => p.user?.username && p.userId !== user?.id && setLocation(`/user/${p.user.username}`)} data-testid={`participant-${p.userId}`}>
                   <span className="w-6 font-display font-bold text-muted-foreground text-center">{i + 1}</span>
                   <Avatar className="w-12 h-12 border-2 border-border shadow-sm">
                     <AvatarImage src={p.user?.avatar} />
@@ -380,6 +380,7 @@ export default function ChallengeDetails() {
                   </Avatar>
                   <div className="flex-1">
                     <p className="font-bold text-sm">{p.user?.name || "Usuário"}{p.userId === user?.id ? " (Você)" : ""}</p>
+                    {p.user?.username && p.userId !== user?.id && <p className="text-[10px] text-muted-foreground">@{p.user.username}</p>}
                     {!p.isActive && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Desistiu</Badge>}
                   </div>
                   <div className="text-right">
@@ -569,7 +570,7 @@ export default function ChallengeDetails() {
               <div className="space-y-4">
                 <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1">Participantes</h4>
                 {participants.map((p: any) => (
-                  <div key={p.userId} className={`bg-card border border-border rounded-xl p-3 flex items-center gap-3 ${!p.isActive ? 'opacity-50' : ''}`}>
+                  <div key={p.userId} className={`bg-card border border-border rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary/50 transition-colors ${!p.isActive ? 'opacity-50' : ''}`} onClick={() => p.user?.username && p.userId !== user?.id && setLocation(`/user/${p.user.username}`)}>
                     <Avatar className="w-10 h-10 border border-border">
                       <AvatarImage src={p.user?.avatar} />
                       <AvatarFallback>{(p.user?.name || "?").charAt(0)}</AvatarFallback>

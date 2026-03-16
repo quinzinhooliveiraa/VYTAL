@@ -72,6 +72,8 @@ export default function CreateChallenge() {
   const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
   const [combinationSpec, setCombinationSpec] = useState("");
   const [maxMissedDays, setMaxMissedDays] = useState("3");
+  const [skipWeekends, setSkipWeekends] = useState(false);
+  const [restDaysAllowed, setRestDaysAllowed] = useState("0");
   const [bannerPreview, setBannerPreview] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -92,6 +94,8 @@ export default function CreateChallenge() {
       if (draft.splitPercentages) setSplitPercentages(draft.splitPercentages);
       if (draft.combinationSpec) setCombinationSpec(draft.combinationSpec);
       if (draft.maxMissedDays) setMaxMissedDays(draft.maxMissedDays);
+      if (draft.skipWeekends !== undefined) setSkipWeekends(draft.skipWeekends);
+      if (draft.restDaysAllowed) setRestDaysAllowed(draft.restDaysAllowed);
       if (draft.bannerUrl) { setBannerUrl(draft.bannerUrl); setBannerPreview(draft.bannerUrl); }
       if (draft.isPublic !== undefined) setIsPublic(draft.isPublic);
       if (draft.step) setStep(draft.step);
@@ -104,7 +108,7 @@ export default function CreateChallenge() {
     modalidade, scoringSystem, validationType,
     challengeName, challengeDesc, startDate, durationDays,
     numMembers, entryValue, splitPrize, splitPercentages,
-    combinationSpec, maxMissedDays, bannerUrl, isPublic, step,
+    combinationSpec, maxMissedDays, skipWeekends, restDaysAllowed, bannerUrl, isPublic, step,
   });
 
   const handleRechargeAndSave = () => {
@@ -139,6 +143,8 @@ export default function CreateChallenge() {
           validationType,
           goalTarget: scoringSystem === "corrida" && combinationSpec ? parseInt(combinationSpec) : null,
           maxMissedDays: scoringSystem === "survival" ? parseInt(maxMissedDays) : 0,
+          skipWeekends,
+          restDaysAllowed: parseInt(restDaysAllowed) || 0,
           image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
           createdBy: "placeholder",
@@ -708,6 +714,71 @@ export default function CreateChallenge() {
                 <p className="text-[10px] text-orange-500/70 mt-2">
                   Diferente do Check-in Diário (0 falhas), aqui o participante tem margem para faltar até {maxMissedDays} dia{parseInt(maxMissedDays) !== 1 ? "s" : ""}.
                 </p>
+              </div>
+            )}
+
+            {(scoringSystem === "checkin" || scoringSystem === "survival") && (
+              <div className="space-y-3 p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 animate-in zoom-in-95">
+                <Label className="text-sm font-bold text-blue-500 mb-1 block">Configurações de Folga</Label>
+
+                <div className="flex items-center justify-between p-3 bg-card rounded-xl border border-border">
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">Pular Finais de Semana</p>
+                    <p className="text-[10px] text-muted-foreground">Sábado e domingo não contam como faltas</p>
+                  </div>
+                  <Switch
+                    checked={skipWeekends}
+                    onCheckedChange={setSkipWeekends}
+                    className="data-[state=checked]:bg-blue-500"
+                    data-testid="switch-skip-weekends"
+                  />
+                </div>
+
+                <div className="p-3 bg-card rounded-xl border border-border space-y-2">
+                  <div>
+                    <p className="text-sm font-bold">Dias de Descanso</p>
+                    <p className="text-[10px] text-muted-foreground">Cada participante pode usar esses dias de folga sem penalidade</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {["0", "1", "2", "3", "5"].map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setRestDaysAllowed(v)}
+                        className={`flex-1 h-10 rounded-xl border-2 font-bold text-sm transition-all ${
+                          restDaysAllowed === v 
+                            ? "border-blue-500 bg-blue-500/20 text-blue-500" 
+                            : "border-border bg-background hover:bg-muted text-foreground"
+                        }`}
+                        data-testid={`button-rest-days-${v}`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Personalizado:</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={restDaysAllowed}
+                      onChange={(e) => setRestDaysAllowed(e.target.value)}
+                      className="h-8 w-20 rounded-lg px-2 text-sm text-center"
+                      data-testid="input-rest-days-allowed"
+                    />
+                    <span className="text-xs text-muted-foreground">dias</span>
+                  </div>
+                </div>
+
+                {(skipWeekends || parseInt(restDaysAllowed) > 0) && (
+                  <p className="text-[10px] text-blue-500/70">
+                    {skipWeekends && parseInt(restDaysAllowed) > 0
+                      ? `Finais de semana liberados + ${restDaysAllowed} dia${parseInt(restDaysAllowed) !== 1 ? "s" : ""} de descanso por participante.`
+                      : skipWeekends
+                      ? "Finais de semana (sáb/dom) não contam como falta."
+                      : `Cada participante tem ${restDaysAllowed} dia${parseInt(restDaysAllowed) !== 1 ? "s" : ""} de descanso para usar quando quiser.`}
+                  </p>
+                )}
               </div>
             )}
 

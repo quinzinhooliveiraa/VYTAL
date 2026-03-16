@@ -1092,7 +1092,7 @@ export async function registerRoutes(
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
       if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode editar" });
 
-      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate", "maxParticipants"];
+      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate", "maxParticipants", "skipWeekends", "restDaysAllowed"];
       const updates: any = {};
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -1226,7 +1226,14 @@ export async function registerRoutes(
         const cType = challenge.type;
         if (cType !== "checkin" && cType !== "survival") continue;
 
+        const todayDate = new Date(today);
+        const dayOfWeek = todayDate.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if ((challenge as any).skipWeekends && isWeekend) continue;
+
         const maxMissed = cType === "checkin" ? 0 : ((challenge as any).maxMissedDays ?? 3);
+        const restDaysAllowed = (challenge as any).restDaysAllowed || 0;
         const participants = await storage.getChallengeParticipants(challenge.id);
         const activeParticipants = participants.filter((p: any) => p.isActive !== false);
 
@@ -1234,6 +1241,15 @@ export async function registerRoutes(
           if (p.isAdmin) continue;
           const lastCheckin = (p as any).lastCheckInDate;
           if (lastCheckin === today) continue;
+
+          const restDaysUsed = (p as any).restDaysUsed || 0;
+          if (restDaysAllowed > 0 && restDaysUsed < restDaysAllowed) {
+            await storage.updateChallengeParticipant(p.id, {
+              restDaysUsed: restDaysUsed + 1,
+              lastCheckInDate: today,
+            } as any);
+            continue;
+          }
 
           const currentMissed = ((p as any).missedDays || 0) + 1;
           await storage.updateChallengeParticipant(p.id, {
@@ -1251,6 +1267,42 @@ export async function registerRoutes(
       res.json({ processed: activeChallenges.length, eliminated: totalEliminated, date: today });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao processar missed days" });
+    }
+  });
+
+  // ====== REST DAY ======
+
+  app.post("/api/challenges/:id/use-rest-day", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challenge = await storage.getChallenge(req.params.id);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+
+      const restDaysAllowed = (challenge as any).restDaysAllowed || 0;
+      if (restDaysAllowed <= 0) return res.status(400).json({ message: "Este desafio não permite dias de descanso" });
+
+      const participant = await storage.getParticipant(req.params.id, userId);
+      if (!participant) return res.status(404).json({ message: "Você não participa deste desafio" });
+      if (!participant.isActive) return res.status(400).json({ message: "Você já foi eliminado" });
+
+      const restDaysUsed = (participant as any).restDaysUsed || 0;
+      if (restDaysUsed >= restDaysAllowed) {
+        return res.status(400).json({ message: `Você já usou todos os ${restDaysAllowed} dias de descanso` });
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      await storage.updateChallengeParticipant(participant.id, {
+        restDaysUsed: restDaysUsed + 1,
+        lastCheckInDate: today,
+      } as any);
+
+      res.json({ 
+        message: "Dia de descanso registrado!", 
+        restDaysUsed: restDaysUsed + 1, 
+        restDaysRemaining: restDaysAllowed - restDaysUsed - 1 
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

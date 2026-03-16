@@ -40,7 +40,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - `client/src/App.tsx` — Root with auth-based routing
 
 ## Database Tables
-- **Core**: users (with cpf, phone fields), challenges (with isPrivate), challengeParticipants, challengeJoinRequests (pending/approved/rejected), checkIns (with status active/completed, checkedOutAt, isIndoor, locationName, endLocationName, flagged, flagReason), messages, follows, communities, communityMembers, challengeMessages
+- **Core**: users (with cpf, phone fields), challenges (with isPrivate, skipWeekends, restDaysAllowed), challengeParticipants (with restDaysUsed), challengeJoinRequests (pending/approved/rejected), checkIns (with status active/completed, checkedOutAt, isIndoor, locationName, endLocationName, flagged, flagReason), messages, follows, communities, communityMembers, challengeMessages
 - **Financial**: wallets (balance + locked_balance per user), transactions (with status, external_id, idempotency_key, metadata)
 - **Support**: supportTickets (id, userId, type[feedback/suporte/ideia], message, status[open/resolved/closed], adminNotes, createdAt)
 - **Legacy**: walletTransactions (kept for backward compatibility)

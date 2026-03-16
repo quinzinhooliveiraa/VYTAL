@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ export default function ChallengeDetails() {
   const [editRules, setEditRules] = useState("");
   const [editPrivate, setEditPrivate] = useState(false);
   const [editMaxParticipants, setEditMaxParticipants] = useState(50);
+  const [editSkipWeekends, setEditSkipWeekends] = useState(false);
+  const [editRestDaysAllowed, setEditRestDaysAllowed] = useState(0);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedNewMod, setSelectedNewMod] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -203,6 +205,22 @@ export default function ChallengeDetails() {
     },
   });
 
+  const useRestDayMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/use-rest-day`);
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.message);
+      return d;
+    },
+    onSuccess: (data) => {
+      toast({ title: "Dia de descanso!", description: `${data.restDaysRemaining} dia${data.restDaysRemaining !== 1 ? "s" : ""} restante${data.restDaysRemaining !== 1 ? "s" : ""}` });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
   const startEdit = () => {
     if (!challenge) return;
     setEditTitle(challenge.title || "");
@@ -210,6 +228,8 @@ export default function ChallengeDetails() {
     setEditRules(challenge.rules || "");
     setEditPrivate(challenge.isPrivate || false);
     setEditMaxParticipants(challenge.maxParticipants || 50);
+    setEditSkipWeekends((challenge as any).skipWeekends || false);
+    setEditRestDaysAllowed((challenge as any).restDaysAllowed || 0);
     setEditMode(true);
   };
 
@@ -220,6 +240,8 @@ export default function ChallengeDetails() {
       rules: editRules,
       isPrivate: editPrivate,
       maxParticipants: editMaxParticipants,
+      skipWeekends: editSkipWeekends,
+      restDaysAllowed: editRestDaysAllowed,
     });
   };
 
@@ -434,6 +456,26 @@ export default function ChallengeDetails() {
                     <Button className="w-full h-14 rounded-2xl font-bold bg-foreground text-background dark:bg-white dark:text-black mt-2 shadow-xl" onClick={() => setLocation(`/check-in/${id}`)} data-testid="button-checkin">
                       <Camera className="mr-2" size={20} /> Fazer Check-in Hoje
                     </Button>
+                    {((challenge as any).restDaysAllowed || 0) > 0 && (() => {
+                      const myP = participants?.find((p: any) => p.userId === user?.id);
+                      const used = (myP as any)?.restDaysUsed || 0;
+                      const allowed = (challenge as any).restDaysAllowed || 0;
+                      const remaining = allowed - used;
+                      return remaining > 0 ? (
+                        <Button
+                          variant="outline"
+                          className="w-full h-12 rounded-2xl font-bold border-blue-500/30 text-blue-500 hover:bg-blue-500/10 mt-1"
+                          onClick={() => useRestDayMutation.mutate()}
+                          disabled={useRestDayMutation.isPending}
+                          data-testid="button-use-rest-day"
+                        >
+                          {useRestDayMutation.isPending ? <Loader2 className="animate-spin mr-2" size={16} /> : <Coffee className="mr-2" size={16} />}
+                          Usar Dia de Descanso ({remaining}/{allowed})
+                        </Button>
+                      ) : (
+                        <p className="text-center text-xs text-muted-foreground mt-1">Todos os {allowed} dias de descanso já foram usados</p>
+                      );
+                    })()}
                   </>
                 ) : (
                   <div className="flex items-center gap-3 text-muted-foreground">
@@ -452,6 +494,12 @@ export default function ChallengeDetails() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
                 <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : hasStarted ? `${daysLeft} dias restantes` : "Ainda não começou"}</span></div>
                 <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{activeParticipants.length} participantes ativos</span></div>
+                {(challenge as any).skipWeekends && (
+                  <div className="flex items-center gap-3"><Coffee size={16} className="text-blue-500" /> <span>Finais de semana liberados</span></div>
+                )}
+                {((challenge as any).restDaysAllowed || 0) > 0 && (
+                  <div className="flex items-center gap-3"><Coffee size={16} className="text-blue-500" /> <span>{(challenge as any).restDaysAllowed} dia{(challenge as any).restDaysAllowed !== 1 ? "s" : ""} de descanso por participante</span></div>
+                )}
                 {cType === "corrida" && challenge.goalTarget && (
                   <div className="flex items-center gap-3"><Trophy size={16} className="text-yellow-500" /> <span>Meta: {challenge.goalTarget} {cVType === "distancia" ? "km" : cVType === "tempo" ? "min" : cVType === "repeticoes" ? "reps" : "pontos"}</span></div>
                 )}
@@ -852,6 +900,32 @@ export default function ChallengeDetails() {
                       </div>
                       <Switch checked={editPrivate} onCheckedChange={setEditPrivate} className="data-[state=checked]:bg-orange-500" data-testid="switch-edit-private" />
                     </div>
+                    {(challenge.type === "checkin" || challenge.type === "survival") && (
+                      <>
+                        <div className="flex items-center justify-between p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                          <div className="flex-1">
+                            <p className="text-sm font-bold">Pular Finais de Semana</p>
+                            <p className="text-[10px] text-muted-foreground">Sáb/Dom não contam como faltas</p>
+                          </div>
+                          <Switch checked={editSkipWeekends} onCheckedChange={setEditSkipWeekends} className="data-[state=checked]:bg-blue-500" data-testid="switch-edit-skip-weekends" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
+                            <Clock size={12} /> Dias de Descanso por Participante
+                          </label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={30}
+                            value={editRestDaysAllowed}
+                            onChange={e => setEditRestDaysAllowed(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="rounded-xl"
+                            data-testid="input-edit-rest-days"
+                          />
+                          <p className="text-[10px] text-muted-foreground">Dias de folga que cada participante pode usar sem penalidade</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
@@ -859,6 +933,18 @@ export default function ChallengeDetails() {
                       {challenge.isPrivate ? <Lock size={14} /> : <Unlock size={14} />}
                       <span>{challenge.isPrivate ? "Desafio Privado" : "Desafio Público"}</span>
                     </div>
+                    {(challenge as any).skipWeekends && (
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <Clock size={14} />
+                        <span>Finais de semana liberados</span>
+                      </div>
+                    )}
+                    {((challenge as any).restDaysAllowed || 0) > 0 && (
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <Clock size={14} />
+                        <span>{(challenge as any).restDaysAllowed} dia{(challenge as any).restDaysAllowed !== 1 ? "s" : ""} de descanso</span>
+                      </div>
+                    )}
                     {challenge.description && <p className="text-muted-foreground text-xs">{challenge.description}</p>}
                   </div>
                 )}

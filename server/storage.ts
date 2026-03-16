@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, or, desc, sql, ne, ilike } from "drizzle-orm";
+import { eq, and, or, desc, sql, ne, ilike, inArray } from "drizzle-orm";
 import {
   users, challenges, challengeParticipants, checkIns,
   messages, follows, communities, communityMembers, walletTransactions,
@@ -143,7 +143,7 @@ export class DatabaseStorage implements IStorage {
     
     const ids = participations.map(p => p.challengeId);
     const challs = await db.select().from(challenges)
-      .where(sql`${challenges.id} = ANY(${ids})`)
+      .where(inArray(challenges.id, ids))
       .orderBy(desc(challenges.createdAt));
 
     const counts = await db.select({
@@ -151,7 +151,7 @@ export class DatabaseStorage implements IStorage {
       count: sql<number>`count(*)::int`,
       activeCount: sql<number>`count(*) filter (where ${challengeParticipants.isActive} = true)::int`,
     }).from(challengeParticipants)
-      .where(sql`${challengeParticipants.challengeId} = ANY(${ids})`)
+      .where(inArray(challengeParticipants.challengeId, ids))
       .groupBy(challengeParticipants.challengeId);
 
     const countMap = new Map(counts.map(c => [c.challengeId, c]));

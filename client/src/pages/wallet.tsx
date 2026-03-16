@@ -1,4 +1,5 @@
-import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, QrCode, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -254,40 +255,43 @@ export default function Wallet() {
           </DialogHeader>
 
           {pixData ? (
-            <div className="space-y-4 py-4">
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                  <QrCode size={32} />
-                </div>
+            <div className="space-y-5 py-4">
+              <div className="text-center space-y-2">
                 <p className="font-bold text-lg">Pague o Pix</p>
-                <p className="text-sm text-muted-foreground">Escaneie o QR Code ou copie o código</p>
+                <p className="text-sm text-muted-foreground">Escaneie o QR Code abaixo com o app do seu banco</p>
               </div>
 
-              {pixData.qrCodeBase64 && (
-                <div className="flex justify-center">
-                  <img src={`data:image/png;base64,${pixData.qrCodeBase64}`} alt="QR Code Pix" className="w-48 h-48 rounded-xl border border-border" />
+              <div className="flex justify-center">
+                <div className="bg-white p-4 rounded-2xl shadow-md">
+                  <QRCodeSVG
+                    value={pixData.url || pixData.qrCode || ""}
+                    size={200}
+                    level="H"
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                  />
                 </div>
-              )}
+              </div>
 
-              {pixData.qrCode && (
-                <div className="bg-muted rounded-xl p-3 flex items-center justify-between border border-border">
-                  <p className="font-mono text-[9px] text-muted-foreground truncate mr-2">{pixData.qrCode}</p>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0 text-primary"
-                    onClick={() => navigator.clipboard.writeText(pixData.qrCode!)}
-                    data-testid="button-copy-pix"
-                  >
-                    <Copy size={16} />
-                  </Button>
-                </div>
-              )}
+              <div className="bg-muted rounded-xl p-3 flex items-center justify-between border border-border">
+                <p className="font-mono text-[9px] text-muted-foreground truncate mr-2">{pixData.url || pixData.qrCode}</p>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0 text-primary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(pixData.url || pixData.qrCode || "");
+                  }}
+                  data-testid="button-copy-pix"
+                >
+                  <Copy size={16} />
+                </Button>
+              </div>
 
               {pixData.url && (
                 <Button
                   variant="outline"
-                  className="w-full rounded-xl"
+                  className="w-full h-11 rounded-xl font-semibold"
                   onClick={() => window.open(pixData.url, "_blank")}
                 >
                   Abrir link de pagamento
@@ -299,7 +303,7 @@ export default function Wallet() {
               </p>
 
               <Button
-                className="w-full rounded-xl"
+                className="w-full h-11 rounded-xl font-bold"
                 onClick={() => { setPixData(null); setDepositOpen(false); }}
               >
                 Fechar

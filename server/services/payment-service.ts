@@ -92,8 +92,7 @@ export class PaymentService {
     const data = await this.request("POST", "/withdraw/create", {
       amount: amountInCents,
       pixKey,
-      pixKeyType,
-      description,
+      notes: description,
     });
 
     const withdraw = data.data || data;
@@ -101,6 +100,11 @@ export class PaymentService {
       id: withdraw.id,
       status: withdraw.status || "PENDING",
     };
+  }
+
+  async getWithdrawStatus(withdrawId: string): Promise<string> {
+    const data = await this.request("GET", `/withdraw/get?id=${withdrawId}`);
+    return data.data?.status || data.status || "PENDING";
   }
 
   isConfigured(): boolean {

@@ -596,6 +596,7 @@ export async function registerRoutes(
           result = await webhookService.processPaymentConfirmed(data.id || data.billing?.id, data);
           break;
         case "withdraw.completed":
+        case "withdraw.paid":
           result = await webhookService.processWithdrawCompleted(data.id, data);
           break;
         case "withdraw.failed":

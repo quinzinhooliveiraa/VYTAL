@@ -25,6 +25,7 @@ export default function Wallet() {
   const [pixData, setPixData] = useState<{ qrCode?: string; qrCodeBase64?: string; url?: string; transactionId?: string } | null>(null);
   const [pixPaid, setPixPaid] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [withdrawSuccess, setWithdrawSuccess] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -125,9 +126,7 @@ export default function Wallet() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
-      setWithdrawOpen(false);
-      setWithdrawAmount("");
-      setPixKey("");
+      setWithdrawSuccess(true);
     },
   });
 
@@ -416,91 +415,124 @@ export default function Wallet() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+      <Dialog open={withdrawOpen} onOpenChange={(open) => {
+        setWithdrawOpen(open);
+        if (!open) { setWithdrawSuccess(false); setWithdrawAmount(""); setPixKey(""); }
+      }}>
         <DialogContent className="rounded-3xl max-w-[380px]">
-          <DialogHeader>
-            <DialogTitle className="font-display">Sacar via Pix</DialogTitle>
-            <DialogDescription>
-              Disponível: {formatBRL(availableBalance)}. Mínimo R$ 30,00.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold">Valor do saque</Label>
-              <Input
-                type="number"
-                placeholder="R$ 0,00"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="h-12 rounded-xl text-lg font-bold"
-                min={30}
-                max={availableBalance}
-                data-testid="input-withdraw-amount"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold">Tipo de chave</Label>
-              <Select value={pixKeyType} onValueChange={setPixKeyType}>
-                <SelectTrigger className="h-12 rounded-xl" data-testid="select-pix-key-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CPF">CPF</SelectItem>
-                  <SelectItem value="CNPJ">CNPJ</SelectItem>
-                  <SelectItem value="EMAIL">E-mail</SelectItem>
-                  <SelectItem value="PHONE">Telefone</SelectItem>
-                  <SelectItem value="RANDOM">Chave aleatória</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold">Chave Pix</Label>
-              <Input
-                placeholder={pixKeyType === "CPF" ? "000.000.000-00" : pixKeyType === "EMAIL" ? "email@exemplo.com" : "Sua chave Pix"}
-                value={pixKey}
-                onChange={(e) => setPixKey(e.target.value)}
-                className="h-12 rounded-xl"
-                data-testid="input-pix-key"
-              />
-            </div>
-
-            <div className="px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-700 dark:text-yellow-400 flex items-start gap-2">
-              <Clock size={14} className="shrink-0 mt-0.5" />
-              <p>Saques são processados de forma assíncrona. O valor pode levar alguns minutos para ser creditado.</p>
-            </div>
-
-            <DialogFooter>
+          {withdrawSuccess ? (
+            <div className="text-center space-y-4 py-8">
+              <div className="w-20 h-20 mx-auto bg-primary/15 rounded-full flex items-center justify-center">
+                <Clock className="text-primary" size={40} />
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-xl">Saque solicitado!</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatBRL(Number(withdrawAmount))} será enviado para sua chave Pix
+                </p>
+              </div>
+              <div className="px-3 py-2 rounded-lg bg-muted text-[11px] text-muted-foreground text-left space-y-1">
+                <p><span className="font-bold">Chave:</span> {pixKey}</p>
+                <p><span className="font-bold">Tipo:</span> {pixKeyType}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O processamento pode levar alguns minutos. Você será notificado quando o Pix for enviado.
+              </p>
               <Button
                 className="w-full h-12 rounded-xl font-bold"
-                disabled={
-                  !withdrawAmount ||
-                  Number(withdrawAmount) < 30 ||
-                  Number(withdrawAmount) > availableBalance ||
-                  !pixKey ||
-                  withdrawMutation.isPending
-                }
-                onClick={() => withdrawMutation.mutate({ amount: Number(withdrawAmount), pixKey, pixKeyType })}
-                data-testid="button-confirm-withdraw"
+                onClick={() => { setWithdrawOpen(false); setWithdrawSuccess(false); setWithdrawAmount(""); setPixKey(""); }}
+                data-testid="button-close-withdraw-success"
               >
-                {withdrawMutation.isPending ? (
-                  <Loader2 className="animate-spin mr-2" size={18} />
-                ) : (
-                  <ArrowUpRight className="mr-2" size={18} />
-                )}
-                Sacar {withdrawAmount ? formatBRL(Number(withdrawAmount)) : ""}
+                Voltar para carteira
               </Button>
-            </DialogFooter>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display">Sacar via Pix</DialogTitle>
+                <DialogDescription>
+                  Disponível: {formatBRL(availableBalance)}. Mínimo R$ 30,00.
+                </DialogDescription>
+              </DialogHeader>
 
-            {withdrawMutation.isError && (
-              <p className="text-destructive text-xs text-center flex items-center justify-center gap-1">
-                <AlertCircle size={14} />
-                {(withdrawMutation.error as any)?.message || "Erro ao sacar"}
-              </p>
-            )}
-          </div>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">Valor do saque</Label>
+                  <Input
+                    type="number"
+                    placeholder="R$ 0,00"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="h-12 rounded-xl text-lg font-bold"
+                    min={30}
+                    max={availableBalance}
+                    data-testid="input-withdraw-amount"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">Tipo de chave</Label>
+                  <Select value={pixKeyType} onValueChange={setPixKeyType}>
+                    <SelectTrigger className="h-12 rounded-xl" data-testid="select-pix-key-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CPF">CPF</SelectItem>
+                      <SelectItem value="CNPJ">CNPJ</SelectItem>
+                      <SelectItem value="EMAIL">E-mail</SelectItem>
+                      <SelectItem value="PHONE">Telefone</SelectItem>
+                      <SelectItem value="RANDOM">Chave aleatória</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">Chave Pix</Label>
+                  <Input
+                    placeholder={pixKeyType === "CPF" ? "000.000.000-00" : pixKeyType === "EMAIL" ? "email@exemplo.com" : "Sua chave Pix"}
+                    value={pixKey}
+                    onChange={(e) => setPixKey(e.target.value)}
+                    className="h-12 rounded-xl"
+                    data-testid="input-pix-key"
+                  />
+                </div>
+
+                <div className="px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-700 dark:text-yellow-400 flex items-start gap-2">
+                  <Info size={14} className="shrink-0 mt-0.5" />
+                  <p>Taxa de R$ 0,80 por saque. O valor é debitado do seu saldo e enviado via Pix.</p>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    className="w-full h-12 rounded-xl font-bold"
+                    disabled={
+                      !withdrawAmount ||
+                      Number(withdrawAmount) < 30 ||
+                      Number(withdrawAmount) > availableBalance ||
+                      !pixKey ||
+                      withdrawMutation.isPending
+                    }
+                    onClick={() => withdrawMutation.mutate({ amount: Number(withdrawAmount), pixKey, pixKeyType })}
+                    data-testid="button-confirm-withdraw"
+                  >
+                    {withdrawMutation.isPending ? (
+                      <Loader2 className="animate-spin mr-2" size={18} />
+                    ) : (
+                      <ArrowUpRight className="mr-2" size={18} />
+                    )}
+                    Sacar {withdrawAmount ? formatBRL(Number(withdrawAmount)) : ""}
+                  </Button>
+                </DialogFooter>
+
+                {withdrawMutation.isError && (
+                  <p className="text-destructive text-xs text-center flex items-center justify-center gap-1">
+                    <AlertCircle size={14} />
+                    {(withdrawMutation.error as any)?.message || "Erro ao sacar"}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

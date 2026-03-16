@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User, Check } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User, Check, Pencil } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,13 +21,19 @@ export default function Wallet() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [pixKeyType, setPixKeyType] = useState("CPF");
-  const [cpfInput, setCpfInput] = useState("");
-  const [phoneInput, setPhoneInput] = useState("");
+  const [cpfInput, setCpfInput] = useState(user?.cpf || "");
+  const [phoneInput, setPhoneInput] = useState(user?.phone || "");
   const [pixData, setPixData] = useState<{ qrCode?: string; qrCodeBase64?: string; url?: string; transactionId?: string } | null>(null);
   const [pixPaid, setPixPaid] = useState(false);
   const [copied, setCopied] = useState(false);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  const openEditPaymentData = () => {
+    setCpfInput(user?.cpf || "");
+    setPhoneInput(user?.phone || "");
+    setCpfDialogOpen(true);
+  };
 
   useEffect(() => {
     if (pixData?.transactionId && !pixPaid) {
@@ -263,6 +269,26 @@ export default function Wallet() {
         <p>Valores em desafios ficam <strong>bloqueados</strong> até o resultado. Só o saldo disponível pode ser sacado. Taxa de <strong>10%</strong> apenas sobre prêmios.</p>
       </div>
 
+      {user?.cpf && (
+        <button
+          onClick={openEditPaymentData}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors"
+          data-testid="button-edit-payment-data"
+        >
+          <div className="flex items-center gap-3">
+            <User size={16} className="text-muted-foreground" />
+            <div className="text-left">
+              <p className="text-xs font-bold">Dados de pagamento</p>
+              <p className="text-[10px] text-muted-foreground">
+                CPF: {user.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.***.**$4")}
+                {user.phone ? ` · Tel: ***${user.phone.slice(-4)}` : ""}
+              </p>
+            </div>
+          </div>
+          <Pencil size={14} className="text-muted-foreground" />
+        </button>
+      )}
+
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm flex items-center gap-2"><History size={18} /> Histórico</h3>
@@ -488,13 +514,23 @@ export default function Wallet() {
               <p className="text-xs text-muted-foreground">
                 O processamento pode levar alguns minutos. Você será notificado quando o Pix for enviado.
               </p>
-              <Button
-                className="w-full h-12 rounded-xl font-bold"
-                onClick={() => { setWithdrawOpen(false); setWithdrawSuccess(false); setWithdrawAmount(""); setPixKey(""); }}
-                data-testid="button-close-withdraw-success"
-              >
-                Voltar para carteira
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full h-12 rounded-xl font-bold"
+                  onClick={() => { setWithdrawOpen(false); setWithdrawSuccess(false); setWithdrawAmount(""); setPixKey(""); }}
+                  data-testid="button-close-withdraw-success"
+                >
+                  Voltar para carteira
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full h-10 rounded-xl text-xs text-muted-foreground"
+                  onClick={() => { openEditPaymentData(); }}
+                  data-testid="button-edit-data-after-withdraw"
+                >
+                  <Pencil size={14} className="mr-1.5" /> Editar dados de pagamento
+                </Button>
+              </div>
             </div>
           ) : (
             <>
@@ -570,6 +606,7 @@ export default function Wallet() {
                     className="h-12 rounded-xl"
                     data-testid="input-pix-key"
                   />
+                  <p className="text-[10px] text-muted-foreground">Confira a chave antes de confirmar. Saques enviados não podem ser desfeitos.</p>
                 </div>
 
                 {Number(withdrawAmount) >= 30 && (
@@ -626,9 +663,14 @@ export default function Wallet() {
       <Dialog open={cpfDialogOpen} onOpenChange={setCpfDialogOpen}>
         <DialogContent className="rounded-3xl max-w-[380px]">
           <DialogHeader>
-            <DialogTitle className="font-display">Dados para pagamento</DialogTitle>
+            <DialogTitle className="font-display">
+              {user?.cpf ? "Editar dados de pagamento" : "Dados para pagamento"}
+            </DialogTitle>
             <DialogDescription>
-              Para usar Pix, precisamos do seu CPF e telefone. Seus dados são protegidos.
+              {user?.cpf
+                ? "Atualize seu CPF e telefone. Seus dados são protegidos."
+                : "Para usar Pix, precisamos do seu CPF e telefone. Seus dados são protegidos."
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -657,7 +699,14 @@ export default function Wallet() {
               />
             </div>
 
-            <DialogFooter>
+            {saveCpfMutation.isError && (
+              <p className="text-destructive text-xs text-center flex items-center justify-center gap-1">
+                <AlertCircle size={14} />
+                {(saveCpfMutation.error as any)?.message || "Erro ao salvar dados"}
+              </p>
+            )}
+
+            <DialogFooter className="flex flex-col gap-2 sm:flex-col">
               <Button
                 className="w-full h-12 rounded-xl font-bold"
                 disabled={cpfInput.length !== 11 || phoneInput.length < 10 || saveCpfMutation.isPending}
@@ -667,10 +716,19 @@ export default function Wallet() {
                 {saveCpfMutation.isPending ? (
                   <Loader2 className="animate-spin mr-2" size={18} />
                 ) : (
-                  <User className="mr-2" size={18} />
+                  <Check className="mr-2" size={18} />
                 )}
-                Salvar e continuar
+                {user?.cpf ? "Atualizar dados" : "Salvar e continuar"}
               </Button>
+              {user?.cpf && (
+                <Button
+                  variant="ghost"
+                  className="w-full h-10 rounded-xl text-muted-foreground text-xs"
+                  onClick={() => setCpfDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+              )}
             </DialogFooter>
           </div>
         </DialogContent>

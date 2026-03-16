@@ -2,15 +2,30 @@ import { Link, useLocation } from "wouter";
 import { Home, Compass, PlusSquare, MessageCircle, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 export function BottomNav() {
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const { data: conversations = [] } = useQuery({
+    queryKey: ["/api/messages/conversations"],
+    queryFn: async () => {
+      const res = await fetch("/api/messages/conversations", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!user,
+    refetchInterval: 15000,
+  });
+
+  const totalUnread = conversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
 
   const navItems = [
     { href: "/dashboard", icon: Home, label: "Início" },
     { href: "/explore", icon: Compass, label: "Explorar" },
     { href: "/create", icon: PlusSquare, label: "Criar" },
-    { href: "/chat-hub", icon: MessageCircle, label: "Chats", badge: 3 },
+    { href: "/chat-hub", icon: MessageCircle, label: "Chats", badge: totalUnread > 0 ? totalUnread : undefined },
     { href: "/profile", icon: User, label: "Perfil" },
   ];
 
@@ -42,7 +57,7 @@ export function BottomNav() {
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                   {item.badge && (
                     <div className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center border-2 border-background">
-                      {item.badge}
+                      {item.badge > 9 ? "9+" : item.badge}
                     </div>
                   )}
                 </div>

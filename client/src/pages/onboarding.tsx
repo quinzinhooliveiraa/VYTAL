@@ -24,6 +24,9 @@ import {
   Target,
   Check,
   ChevronDown,
+  AlertTriangle,
+  ExternalLink,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,22 +124,22 @@ const Step1Terms = ({ onNext }: { onNext: () => void }) => {
   );
 };
 
-const Step2Overview = ({ onNext }: { onNext: () => void }) => {
+const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
   const steps = [
-    { icon: Zap, color: "text-yellow-500 bg-yellow-500/10", title: "Aposte em você", text: "Deposite via Pix. Seu dinheiro + o dos outros formam o pote." },
-    { icon: Camera, color: "text-purple-500 bg-purple-500/10", title: "Check-in ao vivo", text: "Prove que treinou com câmera ao vivo e GPS." },
-    { icon: Shield, color: "text-orange-500 bg-orange-500/10", title: "Moderação justa", text: "A comunidade valida. Quem trapaceia é banido." },
-    { icon: Trophy, color: "text-primary bg-primary/10", title: "Lucre!", text: "Quem persiste divide o dinheiro dos desistentes." },
+    { icon: Zap, color: "text-yellow-500 bg-yellow-500/10", title: "Aposte em você", text: "Deposite via Pix. Seu dinheiro + o dos outros formam o pote de prêmio." },
+    { icon: Camera, color: "text-purple-500 bg-purple-500/10", title: "Check-in ao vivo", text: "Prove que treinou com câmera ao vivo e GPS. Sem foto da galeria." },
+    { icon: Shield, color: "text-orange-500 bg-orange-500/10", title: "Moderação justa", text: "A comunidade valida os check-ins. Quem trapaceia é banido." },
+    { icon: Trophy, color: "text-primary bg-primary/10", title: "Lucre!", text: "Quem persiste divide o dinheiro dos desistentes. Você sai no lucro!" },
   ];
 
   return (
     <motion.div {...slideIn} className="flex flex-col h-full justify-between">
-      <div className="space-y-5 flex-1 overflow-y-auto pb-4">
+      <div className="space-y-4 flex-1 overflow-y-auto pb-4">
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-primary/10 rounded-[1.5rem] flex items-center justify-center text-primary mx-auto border border-primary/20">
             <Activity size={32} strokeWidth={2.5} />
           </div>
-          <h2 className="text-2xl font-display font-bold">Bem-vindo ao VYTAL</h2>
+          <h2 className="text-2xl font-display font-bold">Como funciona</h2>
           <p className="text-sm text-muted-foreground px-2">
             Desafios esportivos com dinheiro real.<br />Quem desiste, paga. Quem persiste, lucra.
           </p>
@@ -162,10 +165,18 @@ const Step2Overview = ({ onNext }: { onNext: () => void }) => {
           ))}
         </div>
 
-        <div className="p-2.5 bg-red-500/5 border border-red-500/15 rounded-xl text-center">
-          <p className="text-[10px] text-red-500/80 font-medium">
-            Taxa de 10% sobre o pote final para custos operacionais.
-          </p>
+        <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
+              <AlertTriangle size={16} className="text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400">Taxa operacional</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                A VYTAL cobra <strong className="text-foreground">10% sobre o pote final</strong> de cada desafio para custos de operação, manutenção e moderação da plataforma.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -260,8 +271,8 @@ const Step3Personalize = ({ onNext }: { onNext: () => void }) => {
   );
 };
 
-const Step4Setup = ({ onComplete }: { onComplete: () => void }) => {
-  const { canInstall, isInstalled, install } = usePwaInstall();
+const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
+  const { canInstall, isInstalled, install, isIOS } = usePwaInstall();
   const [installing, setInstalling] = useState(false);
   const [notifState, setNotifState] = useState<"idle" | "granted" | "denied">(
     typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted" ? "granted" : "idle"
@@ -290,106 +301,191 @@ const Step4Setup = ({ onComplete }: { onComplete: () => void }) => {
     }
   };
 
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const showIosInstructions = isIOS && !isInstalled;
+  const showAndroidInstructions = !isIOS && !canInstall && !isInstalled;
+
   return (
-    <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-4">
-      <div />
-
-      <div className="space-y-6 w-full">
-        <div className="flex items-center justify-center">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 200 }}
-            className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20"
-          >
-            <CheckCircle2 size={40} />
-          </motion.div>
+    <motion.div {...slideIn} className="flex flex-col h-full justify-between">
+      <div className="space-y-4 flex-1 overflow-y-auto pb-4">
+        <div className="text-center space-y-1">
+          <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto border border-blue-500/20">
+            <Smartphone size={28} />
+          </div>
+          <h2 className="text-2xl font-display font-bold">Configure o app</h2>
+          <p className="text-xs text-muted-foreground">Para a melhor experiência possível.</p>
         </div>
 
-        <div className="space-y-2">
-          <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
-          <p className="text-muted-foreground text-sm px-4">
-            Sua jornada para a consistência começa agora.
-          </p>
-        </div>
-
-        <div className="space-y-2 px-2">
-          {(canInstall || !isInstalled) && (
-            <button
-              onClick={handleInstall}
-              disabled={installing || isInstalled}
-              className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all disabled:opacity-60"
-              data-testid="button-install-pwa"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                {isInstalled ? <Check size={20} className="text-green-500" /> : <Smartphone size={20} className="text-blue-500" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold">{isInstalled ? "App instalado" : "Instalar na tela inicial"}</p>
-                <p className="text-[11px] text-muted-foreground">Acesso rápido e performance nativa</p>
-              </div>
-              {!isInstalled && <Download size={16} className="text-muted-foreground shrink-0" />}
-            </button>
-          )}
-
+        <div className="space-y-2.5">
           <button
             onClick={handleNotifications}
             disabled={notifState !== "idle"}
-            className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all disabled:opacity-60"
+            className={`w-full flex items-center gap-3 p-4 bg-card border rounded-2xl text-left transition-all ${
+              notifState === "granted" ? "border-green-500/30 bg-green-500/5" : "border-border hover:border-primary/30"
+            }`}
             data-testid="button-onboarding-notifications"
           >
-            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              notifState === "granted" ? "bg-green-500/10" : "bg-yellow-500/10"
+            }`}>
               {notifState === "granted" ? <Check size={20} className="text-green-500" /> : <Bell size={20} className="text-yellow-500" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold">{notifState === "granted" ? "Notificações ativadas" : "Ativar notificações"}</p>
-              <p className="text-[11px] text-muted-foreground">Lembretes de check-in e prêmios</p>
+              <p className="text-sm font-bold">{notifState === "granted" ? "Notificações ativadas!" : "Ativar notificações"}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {notifState === "granted"
+                  ? "Você receberá alertas de check-in e prêmios."
+                  : notifState === "denied"
+                  ? "Você pode ativar depois nas configurações."
+                  : "Lembretes de check-in, desafios e prêmios."}
+              </p>
             </div>
-            {notifState === "idle" && <Bell size={16} className="text-muted-foreground shrink-0" />}
           </button>
 
-          <button
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({
-                  title: "Convite VYTAL",
-                  text: "Entre no VYTAL comigo! Desafios esportivos com dinheiro real.",
-                  url: window.location.origin,
-                }).catch(() => {});
-              }
-            }}
-            className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
-            data-testid="button-share-invite"
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-              <Users size={20} className="text-purple-500" />
+          {canInstall && !isInstalled && (
+            <button
+              onClick={handleInstall}
+              disabled={installing}
+              className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
+              data-testid="button-install-pwa"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Download size={20} className="text-blue-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold">{installing ? "Instalando..." : "Instalar na tela inicial"}</p>
+                <p className="text-[11px] text-muted-foreground">Acesso instantâneo, performance nativa</p>
+              </div>
+            </button>
+          )}
+
+          {isInstalled && (
+            <div className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/20 rounded-2xl">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                <Check size={20} className="text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-green-600 dark:text-green-400">App instalado!</p>
+                <p className="text-[11px] text-muted-foreground">O VYTAL já está na sua tela inicial.</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold">Convide amigos</p>
-              <p className="text-[11px] text-muted-foreground">Treinar com amigos é 3x mais eficaz</p>
+          )}
+
+          {showIosInstructions && (
+            <div className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-bold text-center">Como instalar no iPhone / iPad</p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 text-[10px] font-bold">1</div>
+                  <p className="text-xs text-muted-foreground">Toque no botão de <strong className="text-foreground">Compartilhar</strong> (ícone de quadrado com seta) na barra do Safari</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 text-[10px] font-bold">2</div>
+                  <p className="text-xs text-muted-foreground">Role e toque em <strong className="text-foreground">"Adicionar à Tela de Início"</strong></p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0 text-[10px] font-bold">3</div>
+                  <p className="text-xs text-muted-foreground">Toque em <strong className="text-foreground">"Adicionar"</strong> para confirmar</p>
+                </div>
+              </div>
             </div>
-          </button>
+          )}
+
+          {showAndroidInstructions && (
+            <div className="bg-card border border-blue-500/20 rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-bold text-center">Como instalar o app</p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 text-[10px] font-bold">1</div>
+                  <p className="text-xs text-muted-foreground">Toque nos <strong className="text-foreground">3 pontos (⋮)</strong> no canto superior do navegador</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 text-[10px] font-bold">2</div>
+                  <p className="text-xs text-muted-foreground">Toque em <strong className="text-foreground">"Instalar aplicativo"</strong> ou <strong className="text-foreground">"Adicionar à tela inicial"</strong></p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <Button
-        className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-        onClick={() => {
-          localStorage.setItem("fitstake-onboarding-done", "true");
-          onComplete();
-        }}
-        data-testid="button-onboarding-complete"
+        className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
+        onClick={onNext}
+        data-testid="button-onboarding-setup-next"
       >
-        Explorar Desafios <ArrowRight className="ml-2" size={18} />
+        Continuar <ArrowRight className="ml-2" size={18} />
       </Button>
     </motion.div>
   );
 };
 
+const Step5Final = ({ onComplete }: { onComplete: () => void }) => (
+  <motion.div {...slideIn} className="flex flex-col items-center text-center h-full justify-between py-4">
+    <div />
+
+    <div className="space-y-6 w-full">
+      <div className="flex items-center justify-center">
+        <motion.div
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 200 }}
+          className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20"
+        >
+          <CheckCircle2 size={40} />
+        </motion.div>
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
+        <p className="text-muted-foreground text-sm px-4">
+          Sua jornada para a consistência começa agora.
+        </p>
+      </div>
+
+      <div className="px-2">
+        <button
+          onClick={() => {
+            if (navigator.share) {
+              navigator.share({
+                title: "Convite VYTAL",
+                text: "Entre no VYTAL comigo! Desafios esportivos com dinheiro real.",
+                url: window.location.origin,
+              }).catch(() => {});
+            }
+          }}
+          className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
+          data-testid="button-share-invite"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+            <Users size={20} className="text-purple-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Convide amigos</p>
+            <p className="text-[11px] text-muted-foreground">Treinar com amigos é 3x mais eficaz</p>
+          </div>
+          <ExternalLink size={14} className="text-muted-foreground shrink-0" />
+        </button>
+      </div>
+    </div>
+
+    <Button
+      className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+      onClick={() => {
+        localStorage.setItem("fitstake-onboarding-done", "true");
+        onComplete();
+      }}
+      data-testid="button-onboarding-complete"
+    >
+      Explorar Desafios <ArrowRight className="ml-2" size={18} />
+    </Button>
+  </motion.div>
+);
+
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 5;
 
   const next = () => {
     if (step < totalSteps) setStep(step + 1);
@@ -435,9 +531,10 @@ export default function Onboarding() {
       <div className="flex-1 flex flex-col relative z-10 min-h-0">
         <AnimatePresence mode="wait">
           {step === 1 && <Step1Terms key="1" onNext={next} />}
-          {step === 2 && <Step2Overview key="2" onNext={next} />}
+          {step === 2 && <Step2HowItWorks key="2" onNext={next} />}
           {step === 3 && <Step3Personalize key="3" onNext={next} />}
-          {step === 4 && <Step4Setup key="4" onComplete={next} />}
+          {step === 4 && <Step4NotifPwa key="4" onNext={next} />}
+          {step === 5 && <Step5Final key="5" onComplete={next} />}
         </AnimatePresence>
       </div>
     </div>

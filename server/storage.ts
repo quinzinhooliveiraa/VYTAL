@@ -3,12 +3,13 @@ import { eq, and, or, desc, sql, ne, ilike } from "drizzle-orm";
 import {
   users, challenges, challengeParticipants, checkIns,
   messages, follows, communities, communityMembers, walletTransactions,
-  challengeMessages,
+  challengeMessages, supportTickets,
   type User, type InsertUser, type Challenge, type InsertChallenge,
   type CheckIn, type InsertCheckIn, type Message, type InsertMessage,
   type Follow, type InsertFollow, type Community, type InsertCommunity,
   type CommunityMember, type WalletTransaction, type InsertWalletTransaction,
-  type ChallengeParticipant, type ChallengeMessage, type InsertChallengeMessage
+  type ChallengeParticipant, type ChallengeMessage, type InsertChallengeMessage,
+  type SupportTicket, type InsertSupportTicket
 } from "@shared/schema";
 
 export interface IStorage {
@@ -69,6 +70,11 @@ export interface IStorage {
   getWalletBalance(userId: string): Promise<number>;
   getTransactions(userId: string, limit?: number): Promise<WalletTransaction[]>;
   createTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction>;
+
+  // Support
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  getSupportTickets(): Promise<(SupportTicket & { userName: string; userEmail: string })[]>;
+  updateSupportTicketStatus(id: string, status: string, adminNotes?: string): Promise<void>;
 
   // Stats
   getUserStats(userId: string): Promise<{
@@ -432,6 +438,36 @@ export class DatabaseStorage implements IStorage {
       totalEarned: Number(earningsResult?.total || 0),
       checkInCount: checkInResult?.count || 0,
     };
+  }
+
+  // Support
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const [created] = await db.insert(supportTickets).values(ticket).returning();
+    return created;
+  }
+
+  async getSupportTickets() {
+    const rows = await db.select({
+      id: supportTickets.id,
+      userId: supportTickets.userId,
+      type: supportTickets.type,
+      message: supportTickets.message,
+      status: supportTickets.status,
+      adminNotes: supportTickets.adminNotes,
+      createdAt: supportTickets.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+    })
+      .from(supportTickets)
+      .innerJoin(users, eq(supportTickets.userId, users.id))
+      .orderBy(desc(supportTickets.createdAt));
+    return rows;
+  }
+
+  async updateSupportTicketStatus(id: string, status: string, adminNotes?: string): Promise<void> {
+    const updates: any = { status };
+    if (adminNotes !== undefined) updates.adminNotes = adminNotes;
+    await db.update(supportTickets).set(updates).where(eq(supportTickets.id, id));
   }
 }
 

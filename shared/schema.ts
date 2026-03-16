@@ -106,6 +106,16 @@ export const challengeMessages = pgTable("challenge_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
+  message: text("message").notNull(),
+  status: text("status").default("open").notNull(),
+  adminNotes: text("admin_notes").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Legacy table - kept for backward compatibility
 export const walletTransactions = pgTable("wallet_transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -151,6 +161,7 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertFollowSchema = createInsertSchema(follows).omit({ id: true, createdAt: true });
 export const insertCommunitySchema = createInsertSchema(communities).omit({ id: true, createdAt: true });
 export const insertChallengeMessageSchema = createInsertSchema(challengeMessages).omit({ id: true, createdAt: true });
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, status: true, adminNotes: true });
 export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWalletSchema = createInsertSchema(wallets).omit({ id: true, createdAt: true, updatedAt: true });
@@ -172,6 +183,8 @@ export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
 export type CommunityMember = typeof communityMembers.$inferSelect;
 export type ChallengeMessage = typeof challengeMessages.$inferSelect;
 export type InsertChallengeMessage = z.infer<typeof insertChallengeMessageSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type WalletTransaction = typeof walletTransactions.$inferSelect;
 export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
 export type Wallet = typeof wallets.$inferSelect;

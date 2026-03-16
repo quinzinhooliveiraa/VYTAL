@@ -702,6 +702,48 @@ export async function registerRoutes(
     }
   });
 
+  // ====== SUPPORT TICKETS ======
+
+  app.post("/api/support", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { type, message } = req.body;
+
+      if (!type || !message?.trim()) {
+        return res.status(400).json({ message: "Tipo e mensagem são obrigatórios" });
+      }
+      if (!["feedback", "suporte", "ideia"].includes(type)) {
+        return res.status(400).json({ message: "Tipo inválido" });
+      }
+
+      const ticket = await storage.createSupportTicket({ userId, type, message: message.trim() });
+      res.status(201).json(ticket);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao enviar" });
+    }
+  });
+
+  app.get("/api/support/mine", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const all = await storage.getSupportTickets();
+    res.json(all.filter(t => t.userId === userId));
+  });
+
+  // ====== AVATAR UPLOAD ======
+
+  app.post("/api/users/avatar", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { avatar } = req.body;
+      if (!avatar) return res.status(400).json({ message: "Avatar é obrigatório" });
+      const updated = await storage.updateUser(userId, { avatar });
+      if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
+      res.json({ avatar: updated.avatar });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar avatar" });
+    }
+  });
+
   // ====== ADMIN ======
 
   const requireAdmin = async (req: any, res: any, next: any) => {
@@ -872,6 +914,25 @@ export async function registerRoutes(
       await database.delete(wallets).where(eq(wallets.userId, req.params.id));
       await database.delete(usersTable).where(eq(usersTable.id, req.params.id));
       res.json({ success: true, message: "Usuário removido" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/support", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const tickets = await storage.getSupportTickets();
+      res.json(tickets);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/admin/support/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { status, adminNotes } = req.body;
+      await storage.updateSupportTicketStatus(req.params.id, status, adminNotes);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

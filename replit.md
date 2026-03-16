@@ -26,8 +26,9 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - `client/src/App.tsx` — Root with auth-based routing
 
 ## Database Tables
-- **Core**: users (with cpf, phone fields), challenges, challengeParticipants, checkIns, messages, follows, communities, communityMembers
+- **Core**: users (with cpf, phone fields), challenges, challengeParticipants, checkIns, messages, follows, communities, communityMembers, challengeMessages
 - **Financial**: wallets (balance + locked_balance per user), transactions (with status, external_id, idempotency_key, metadata)
+- **Support**: supportTickets (id, userId, type[feedback/suporte/ideia], message, status[open/resolved/closed], adminNotes, createdAt)
 - **Legacy**: walletTransactions (kept for backward compatibility)
 
 ## Financial System
@@ -47,12 +48,15 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Messages**: GET `/api/messages/conversations`, GET `/api/messages/:username`, POST `/api/messages`
 - **Follows**: GET/POST/DELETE `/api/follows/:username`, GET `/api/follows/status/:username`, `/api/follows/followers`, `/api/follows/following`
 - **Communities**: GET `/api/communities`, POST `/api/communities`, GET `/api/communities/mine`, POST `/api/communities/:id/join`, DELETE `/api/communities/:id/leave`
-- **Admin**: GET `/api/admin/stats` (platform fees, deposits, withdrawals, user balances), GET `/api/admin/transactions` (all txs). Requires `isAdmin: true` on user.
+- **Support**: POST `/api/support` (create ticket), GET `/api/support/mine` (user's tickets)
+- **Avatar**: POST `/api/users/avatar` (save cropped avatar)
+- **Admin**: GET `/api/admin/stats`, `/api/admin/transactions`, `/api/admin/users`, `/api/admin/suspicious`, `/api/admin/support`, PATCH `/api/admin/support/:id`. Requires `isAdmin: true`.
 
 ## Admin Panel
 - Route: `/admin` (accessible from profile page via shield icon, only visible for admin users)
-- Shows platform revenue (10% fees), total deposits/withdrawals, user balances, and transaction history
-- Admin user: quinzinhooliveiraa@gmail.com (isAdmin=true in DB)
+- Tabs: Resumo, Transações, Usuários, Alertas, Suporte
+- Shows platform revenue (10% fees), total deposits/withdrawals, user balances, transaction history, support tickets
+- Admin emails: quinzinhooliveiraa@gmail.com and oliveirasocial74@gmail.com (isAdmin=true in DB)
 - **Wallet**: GET `/api/wallet/balance` (returns balance, lockedBalance, availableBalance), GET `/api/wallet/transactions`, POST `/api/wallet/deposit`, POST `/api/wallet/withdraw`, GET `/api/wallet/deposit/:id/status`
 - **Webhooks**: POST `/api/webhooks/abacatepay`
 

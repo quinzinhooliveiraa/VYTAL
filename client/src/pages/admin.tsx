@@ -4,7 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft, DollarSign, TrendingUp, Users, ArrowDownLeft, ArrowUpRight,
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
-  Trophy, ChevronRight, Loader2, Bell, BellOff, Volume2
+  Trophy, ChevronRight, Loader2, Bell, BellOff, Volume2, MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
-type Tab = "overview" | "transactions" | "users" | "suspicious";
+type Tab = "overview" | "transactions" | "users" | "suspicious" | "support";
 
 const playMoneySound = () => {
   try {
@@ -108,6 +108,30 @@ export default function Admin() {
       return res.ok ? res.json() : { highVolume: [], failedTxs: [], rapidDeposits: [] };
     },
     enabled: tab === "suspicious",
+  });
+
+  const { data: supportTickets = [] } = useQuery({
+    queryKey: ["/api/admin/support"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/support", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: tab === "support",
+    refetchInterval: 15000,
+  });
+
+  const updateTicketMutation = useMutation({
+    mutationFn: async ({ id, status, adminNotes }: { id: string; status: string; adminNotes?: string }) => {
+      const res = await fetch(`/api/admin/support/${id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, adminNotes }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support"] });
+    },
   });
 
   useEffect(() => {
@@ -207,6 +231,7 @@ export default function Admin() {
     { key: "transactions", label: "Transações", icon: Activity },
     { key: "users", label: "Usuários", icon: Users },
     { key: "suspicious", label: "Alertas", icon: AlertTriangle },
+    { key: "support", label: "Suporte", icon: MessageSquare },
   ];
 
   return (
@@ -407,6 +432,64 @@ export default function Admin() {
               ))}
               {suspicious.failedTxs?.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma falha</p>}
             </div>
+          </div>
+        )}
+
+        {tab === "support" && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{supportTickets.length} ticket(s)</p>
+            {supportTickets.length === 0 && (
+              <p className="text-center text-muted-foreground text-sm py-10">Nenhum ticket de suporte</p>
+            )}
+            {supportTickets.map((ticket: any) => (
+              <div key={ticket.id} className={`bg-card border rounded-2xl p-4 space-y-3 ${
+                ticket.status === "open" ? "border-yellow-500/30" : ticket.status === "resolved" ? "border-green-500/30" : "border-border"
+              }`} data-testid={`ticket-${ticket.id}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-[9px] px-2 py-0.5 ${
+                        ticket.type === "feedback" ? "bg-blue-500/20 text-blue-500 border-none" :
+                        ticket.type === "suporte" ? "bg-red-500/20 text-red-500 border-none" :
+                        "bg-purple-500/20 text-purple-500 border-none"
+                      }`}>{ticket.type === "feedback" ? "Feedback" : ticket.type === "suporte" ? "Suporte" : "Ideia"}</Badge>
+                      <Badge className={`text-[9px] px-2 py-0.5 ${
+                        ticket.status === "open" ? "bg-yellow-500/20 text-yellow-500 border-none" :
+                        ticket.status === "resolved" ? "bg-green-500/20 text-green-500 border-none" :
+                        "bg-muted text-muted-foreground border-none"
+                      }`}>{ticket.status === "open" ? "Aberto" : ticket.status === "resolved" ? "Resolvido" : "Fechado"}</Badge>
+                    </div>
+                    <p className="text-xs font-bold mt-2">{ticket.userName}</p>
+                    <p className="text-[10px] text-muted-foreground">{ticket.userEmail}</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(ticket.createdAt)}</p>
+                </div>
+                <p className="text-sm bg-muted/50 rounded-xl p-3">{ticket.message}</p>
+                {ticket.status === "open" && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 h-8 text-xs rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => updateTicketMutation.mutate({ id: ticket.id, status: "resolved" })}
+                      disabled={updateTicketMutation.isPending}
+                      data-testid={`button-resolve-${ticket.id}`}
+                    >
+                      Resolver
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 h-8 text-xs rounded-xl"
+                      onClick={() => updateTicketMutation.mutate({ id: ticket.id, status: "closed" })}
+                      disabled={updateTicketMutation.isPending}
+                      data-testid={`button-close-${ticket.id}`}
+                    >
+                      Fechar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

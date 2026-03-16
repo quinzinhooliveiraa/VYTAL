@@ -802,12 +802,12 @@ export default function CreateChallenge() {
               )}
             </div>
 
-            <div className="p-4 rounded-2xl bg-accent/10 border border-accent/20">
+            <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/15">
               <div className="flex gap-3">
-                <Info size={18} className="text-accent shrink-0 flex-shrink-0" />
+                <Info size={18} className="text-blue-500 shrink-0 flex-shrink-0" />
                 <div className="text-xs space-y-1">
-                  <p className="font-bold text-accent">Regra dos 10%</p>
-                  <p className="text-muted-foreground">10% vai para a plataforma. 90% para os vencedores.</p>
+                  <p className="font-bold text-blue-600 dark:text-blue-400">Como funciona o pote</p>
+                  <p className="text-muted-foreground">10% vai para manutenção da plataforma. Os outros 90% vão direto para os vencedores!</p>
                 </div>
               </div>
             </div>

@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   ExternalLink,
   Plus,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -205,16 +206,16 @@ const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl"
+          className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-2xl"
         >
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
-              <AlertTriangle size={16} className="text-yellow-500" />
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Info size={16} className="text-blue-500" />
             </div>
             <div>
-              <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400">Taxa operacional</p>
+              <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Taxa operacional</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                A VYTAL cobra <strong className="text-foreground">10% sobre o pote final</strong> de cada desafio para custos de operação, manutenção e moderação da plataforma.
+                A VYTAL destina <strong className="text-foreground">10% do pote final</strong> para manutenção e moderação. Os outros <strong className="text-foreground">90% vão para os vencedores</strong>!
               </p>
             </div>
           </div>

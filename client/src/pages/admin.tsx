@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
-type Tab = "overview" | "transactions" | "users" | "suspicious" | "support";
+type Tab = "overview" | "transactions" | "users" | "challenges" | "suspicious" | "support";
 
 const playMoneySound = () => {
   try {
@@ -57,7 +57,7 @@ export default function Admin() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
-  const [confirmDialog, setConfirmDialog] = useState<{ type: string; userId: string; userName: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ type: string; userId?: string; userName?: string; challengeId?: string; challengeName?: string } | null>(null);
   const [txFilter, setTxFilter] = useState<string>("all");
   const [txOwner, setTxOwner] = useState<"all" | "mine" | "others">("all");
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
@@ -99,6 +99,28 @@ export default function Admin() {
       return res.ok ? res.json() : [];
     },
     enabled: tab === "users",
+  });
+
+  const { data: adminChallenges = [] } = useQuery({
+    queryKey: ["/api/admin/challenges"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/challenges", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: tab === "challenges",
+  });
+
+  const deleteChallengeM = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/challenges/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).message);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setConfirmDialog(null);
+    },
   });
 
   const { data: suspicious } = useQuery({
@@ -230,6 +252,7 @@ export default function Admin() {
     { key: "overview", label: "Resumo", icon: TrendingUp },
     { key: "transactions", label: "Transações", icon: Activity },
     { key: "users", label: "Usuários", icon: Users },
+    { key: "challenges", label: "Desafios", icon: Trophy },
     { key: "suspicious", label: "Alertas", icon: AlertTriangle },
     { key: "support", label: "Suporte", icon: MessageSquare },
   ];
@@ -412,6 +435,45 @@ export default function Admin() {
           </div>
         )}
 
+        {tab === "challenges" && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">{adminChallenges.length} desafios no total</p>
+            {adminChallenges.map((c: any) => {
+              const isEnded = c.endDate && new Date(c.endDate) < new Date();
+              const statusLabel = isEnded ? "Finalizado" : c.status === "active" ? "Ativo" : c.status;
+              const statusColor = isEnded ? "text-muted-foreground" : "text-green-500";
+              return (
+                <div key={c.id} className="bg-card border border-border rounded-xl p-3" data-testid={`admin-challenge-${c.id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-bold truncate">{c.title}</p>
+                        <span className={`text-[9px] font-bold ${statusColor}`}>{statusLabel}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Criado por: {c.creatorName}</p>
+                      <p className="text-[10px] text-muted-foreground">{c.participantCount} participantes | Entrada: R$ {Number(c.entryFee || 0).toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {c.sport} | {c.type || "checkin"} | {c.validationType || "foto"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{formatDate(c.createdAt)}</p>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive shrink-0"
+                      onClick={() => setConfirmDialog({ type: "delete-challenge", challengeId: c.id, challengeName: c.title })}
+                      data-testid={`btn-delete-challenge-${c.id}`}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {adminChallenges.length === 0 && <p className="text-center text-xs text-muted-foreground py-8">Nenhum desafio criado</p>}
+          </div>
+        )}
+
         {tab === "suspicious" && suspicious && (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -529,26 +591,29 @@ export default function Admin() {
               {confirmDialog?.type === "toggle-admin" && "Alterar permissão"}
               {confirmDialog?.type === "block" && "Bloquear usuário"}
               {confirmDialog?.type === "delete" && "Apagar usuário"}
+              {confirmDialog?.type === "delete-challenge" && "Apagar desafio"}
             </DialogTitle>
             <DialogDescription>
               {confirmDialog?.type === "toggle-admin" && `Alternar admin para ${confirmDialog?.userName}?`}
               {confirmDialog?.type === "block" && `Bloquear ${confirmDialog?.userName}? A conta será desativada.`}
               {confirmDialog?.type === "delete" && `Apagar ${confirmDialog?.userName}? Isso remove todos os dados e transações. Essa ação é irreversível.`}
+              {confirmDialog?.type === "delete-challenge" && `Apagar "${confirmDialog?.challengeName}"? Todos os participantes, check-ins e mensagens serão removidos. Essa ação é irreversível.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
             <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setConfirmDialog(null)}>Cancelar</Button>
             <Button
-              className={`flex-1 rounded-xl ${confirmDialog?.type === "delete" ? "bg-destructive hover:bg-destructive/90" : ""}`}
+              className={`flex-1 rounded-xl ${(confirmDialog?.type === "delete" || confirmDialog?.type === "delete-challenge") ? "bg-destructive hover:bg-destructive/90" : ""}`}
               onClick={() => {
                 if (!confirmDialog) return;
-                if (confirmDialog.type === "toggle-admin") toggleAdminMutation.mutate(confirmDialog.userId);
-                if (confirmDialog.type === "block") blockUserMutation.mutate(confirmDialog.userId);
-                if (confirmDialog.type === "delete") deleteUserMutation.mutate(confirmDialog.userId);
+                if (confirmDialog.type === "toggle-admin") toggleAdminMutation.mutate(confirmDialog.userId!);
+                if (confirmDialog.type === "block") blockUserMutation.mutate(confirmDialog.userId!);
+                if (confirmDialog.type === "delete") deleteUserMutation.mutate(confirmDialog.userId!);
+                if (confirmDialog.type === "delete-challenge") deleteChallengeM.mutate(confirmDialog.challengeId!);
               }}
-              disabled={toggleAdminMutation.isPending || blockUserMutation.isPending || deleteUserMutation.isPending}
+              disabled={toggleAdminMutation.isPending || blockUserMutation.isPending || deleteUserMutation.isPending || deleteChallengeM.isPending}
             >
-              {(toggleAdminMutation.isPending || blockUserMutation.isPending || deleteUserMutation.isPending) ? (
+              {(toggleAdminMutation.isPending || blockUserMutation.isPending || deleteUserMutation.isPending || deleteChallengeM.isPending) ? (
                 <Loader2 className="animate-spin" size={16} />
               ) : "Confirmar"}
             </Button>

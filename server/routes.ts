@@ -1884,6 +1884,45 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/challenges", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { challenges: challengesTable, challengeParticipants, users: usersTable } = await import("@shared/schema");
+      const { desc, eq, count } = await import("drizzle-orm");
+
+      const allChallenges = await database.select().from(challengesTable).orderBy(desc(challengesTable.createdAt));
+      const result = await Promise.all(allChallenges.map(async (c: any) => {
+        const [partCount] = await database.select({ count: count() }).from(challengeParticipants).where(eq(challengeParticipants.challengeId, c.id));
+        const [creator] = await database.select({ name: usersTable.name, username: usersTable.username }).from(usersTable).where(eq(usersTable.id, c.createdBy));
+        return { ...c, participantCount: partCount?.count || 0, creatorName: creator?.name || creator?.username || "?" };
+      }));
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/challenges/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { challenges: challengesTable, challengeParticipants, checkIns, challengeMessages, challengeJoinRequests } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [challenge] = await database.select().from(challengesTable).where(eq(challengesTable.id, req.params.id));
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+
+      await database.delete(challengeMessages).where(eq(challengeMessages.challengeId, req.params.id));
+      await database.delete(challengeJoinRequests).where(eq(challengeJoinRequests.challengeId, req.params.id));
+      await database.delete(checkIns).where(eq(checkIns.challengeId, req.params.id));
+      await database.delete(challengeParticipants).where(eq(challengeParticipants.challengeId, req.params.id));
+      await database.delete(challengesTable).where(eq(challengesTable.id, req.params.id));
+
+      res.json({ success: true, message: "Desafio removido com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");

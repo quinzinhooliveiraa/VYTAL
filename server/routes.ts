@@ -11,6 +11,11 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 
+const ADMIN_EMAILS = [
+  "oliveirasocial74@gmail.com",
+  "quinzinhooliveiraa@gmail.com",
+];
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -54,10 +59,12 @@ export async function registerRoutes(
       if (existingUsername) return res.status(400).json({ message: "Username já em uso" });
 
       const hashedPassword = await bcrypt.hash(data.password, 10);
+      const isAdmin = ADMIN_EMAILS.includes(data.email.toLowerCase());
       const user = await storage.createUser({
         ...data,
         password: hashedPassword,
-      });
+        isAdmin,
+      } as any);
 
       (req.session as any).userId = user.id;
       const { password, ...safeUser } = user;

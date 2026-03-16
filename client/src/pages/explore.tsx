@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import { Search, Users, Trophy, Clock, SlidersHorizontal, Flame, Sparkles, TrendingUp, Calendar, Loader2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Search, Users, Trophy, Clock, SlidersHorizontal, Flame, Sparkles, TrendingUp, Calendar, Loader2, UserPlus, Bell } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Drawer,
   DrawerClose,
@@ -16,8 +17,10 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const MODALIDADES = ["Todos", "Corrida", "Academia", "Crossfit", "Ciclismo", "Natação", "Funcional", "Yoga", "HIIT", "Personalizado"];
 
@@ -35,15 +38,17 @@ const sportImages: Record<string, string> = {
 const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Explorar() {
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [selectedModality, setSelectedModality] = useState("Todos");
   const [sortBy, setSortBy] = useState("trending");
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: allChallenges = [], isLoading } = useQuery({
-    queryKey: ["/api/challenges"],
+    queryKey: ["/api/challenges/explore"],
     queryFn: async () => {
-      const res = await fetch("/api/challenges", { credentials: "include" });
+      const res = await fetch("/api/challenges/explore", { credentials: "include" });
       return res.ok ? res.json() : [];
     },
   });
@@ -57,10 +62,28 @@ export default function Explorar() {
     enabled: !!user,
   });
 
+  const followMutation = useMutation({
+    mutationFn: async (username: string) => {
+      const res = await apiRequest("POST", `/api/follows/${username}`);
+      return res.json();
+    },
+    onSuccess: (_, username) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/follows/status", username] });
+      toast({ title: "Seguindo!", description: "Você receberá notificações dos próximos desafios." });
+    },
+  });
+
   const myIds = new Set(myChallenges.map((c: any) => c.id));
-  const availableChallenges = allChallenges.filter((c: any) =>
-    c.isActive && c.status === "active" && !myIds.has(c.id)
+
+  const pendingChallenges = allChallenges.filter((c: any) =>
+    c.status === "pending" && !myIds.has(c.id)
   );
+
+  const activeChallenges = allChallenges.filter((c: any) =>
+    c.status === "active" && !myIds.has(c.id)
+  );
+
+  const availableChallenges = [...pendingChallenges, ...activeChallenges];
 
   const filteredChallenges = availableChallenges.filter((c: any) => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -71,10 +94,102 @@ export default function Explorar() {
   });
 
   const sortedChallenges = [...filteredChallenges].sort((a: any, b: any) => {
+    if (a.status === "pending" && b.status !== "pending") return -1;
+    if (a.status !== "pending" && b.status === "pending") return 1;
     if (sortBy === "new") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortBy === "challenging") return Number(b.entryFee) - Number(a.entryFee);
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  const renderChallengeCard = (challenge: any, i: number) => {
+    const img = sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
+    const isPending = challenge.status === "pending";
+    const daysLeft = challenge.startDate
+      ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() + (challenge.duration || 30) * 86400000 - Date.now()) / 86400000))
+      : 0;
+    const startsIn = challenge.startDate
+      ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() - Date.now()) / 86400000))
+      : 0;
+
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ delay: i * 0.05 }}
+        key={challenge.id}
+      >
+        <Link href={`/challenge/${challenge.id}`}>
+          <div className={`glass-card rounded-[2rem] overflow-hidden cursor-pointer group hover:border-primary/30 transition-all active:scale-[0.98] ${isPending ? 'border-yellow-500/30' : ''}`} data-testid={`card-challenge-${challenge.id}`}>
+            {isPending && (
+              <div className="px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-yellow-600 dark:text-yellow-400 flex items-center gap-1.5">
+                  <Sparkles size={12} /> Vagas Abertas — {startsIn > 0 ? `Começa em ${startsIn}d` : "Início em breve"}
+                </span>
+                <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-[9px] border-none">Pendente</Badge>
+              </div>
+            )}
+            <div className="flex p-3 gap-4">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
+                <img src={img} alt={challenge.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              </div>
+              <div className="flex-1 flex flex-col justify-between py-1">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-display font-bold text-base leading-tight group-hover:text-primary transition-colors">{challenge.title}</h3>
+                    <p className="font-bold text-primary text-sm shrink-0 ml-2">{formatBRL(Number(challenge.entryFee))}</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary" className="bg-muted/50 text-[10px] h-5 py-0 border-none font-semibold capitalize">{challenge.sport}</Badge>
+                    {challenge.startDate && (
+                      <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
+                        <Calendar size={10} /> {new Date(challenge.startDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+                  <span className="flex items-center gap-1"><Users size={12} className="text-primary" />{challenge.maxParticipants || "∞"}</span>
+                  <span className="flex items-center gap-1 font-bold text-foreground"><Trophy size={12} className="text-yellow-500" />{formatBRL(Number(challenge.entryFee) * (challenge.maxParticipants || 10))}</span>
+                  <span className="flex items-center gap-1"><Clock size={12} />{isPending ? `${challenge.duration}d` : `${daysLeft}d`}</span>
+                </div>
+              </div>
+            </div>
+
+            {isPending && challenge.creator && (
+              <div className="px-4 pb-3 flex items-center justify-between">
+                <div
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocation(`/user/${challenge.creator.username}`); }}
+                >
+                  <Avatar className="w-6 h-6 border border-border">
+                    {challenge.creator.avatar && <AvatarImage src={challenge.creator.avatar} />}
+                    <AvatarFallback className="text-[9px]">{(challenge.creator.name || "?").charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-[11px] text-muted-foreground">por <strong className="text-foreground">{challenge.creator.name}</strong></span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2.5 rounded-lg text-[10px] font-bold text-primary hover:bg-primary/10 gap-1"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    followMutation.mutate(challenge.creator.username);
+                  }}
+                  data-testid={`button-follow-creator-${challenge.id}`}
+                >
+                  <Bell size={11} /> Seguir
+                </Button>
+              </div>
+            )}
+          </div>
+        </Link>
+      </motion.div>
+    );
+  };
 
   return (
     <div className="p-6 pb-32 space-y-8">
@@ -185,55 +300,7 @@ export default function Explorar() {
 
           <div className="space-y-4">
             <AnimatePresence mode="popLayout">
-              {sortedChallenges.map((challenge: any, i: number) => {
-                const img = sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
-                const daysLeft = challenge.startDate
-                  ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() + (challenge.duration || 30) * 86400000 - Date.now()) / 86400000))
-                  : 0;
-
-                return (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.05 }}
-                    key={challenge.id}
-                  >
-                    <Link href={`/challenge/${challenge.id}`}>
-                      <div className="glass-card rounded-[2rem] overflow-hidden cursor-pointer group hover:border-primary/30 transition-all active:scale-[0.98]" data-testid={`card-challenge-${challenge.id}`}>
-                        <div className="flex p-3 gap-4">
-                          <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
-                            <img src={img} alt={challenge.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                          </div>
-                          <div className="flex-1 flex flex-col justify-between py-1">
-                            <div>
-                              <div className="flex justify-between items-start">
-                                <h3 className="font-display font-bold text-base leading-tight group-hover:text-primary transition-colors">{challenge.title}</h3>
-                                <p className="font-bold text-primary text-sm shrink-0 ml-2">{formatBRL(Number(challenge.entryFee))}</p>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="secondary" className="bg-muted/50 text-[10px] h-5 py-0 border-none font-semibold capitalize">{challenge.sport}</Badge>
-                                {challenge.startDate && (
-                                  <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
-                                    <Calendar size={10} /> {new Date(challenge.startDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
-                              <span className="flex items-center gap-1"><Users size={12} className="text-primary" />{challenge.maxParticipants || "∞"}</span>
-                              <span className="flex items-center gap-1 font-bold text-foreground"><Trophy size={12} className="text-yellow-500" />{formatBRL(Number(challenge.entryFee) * (challenge.maxParticipants || 10))}</span>
-                              <span className="flex items-center gap-1"><Clock size={12} />{daysLeft}d</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
+              {sortedChallenges.map((challenge: any, i: number) => renderChallengeCard(challenge, i))}
             </AnimatePresence>
           </div>
         </section>

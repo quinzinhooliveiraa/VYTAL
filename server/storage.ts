@@ -137,6 +137,19 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  async getExploreChallenges(limit = 50): Promise<Challenge[]> {
+    return db.select().from(challenges)
+      .where(
+        and(
+          eq(challenges.isActive, true),
+          eq(challenges.isPrivate, false),
+          or(eq(challenges.status, "pending"), eq(challenges.status, "active"))
+        )
+      )
+      .orderBy(desc(challenges.createdAt))
+      .limit(limit);
+  }
+
   async getUserChallenges(userId: string): Promise<any[]> {
     const participations = await db.select({
       challengeId: challengeParticipants.challengeId,

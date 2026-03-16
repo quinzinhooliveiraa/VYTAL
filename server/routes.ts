@@ -411,6 +411,18 @@ export async function registerRoutes(
     res.json(challenges);
   });
 
+  app.get("/api/challenges/explore", async (req, res) => {
+    const challenges = await storage.getExploreChallenges();
+    const withCreator = await Promise.all(challenges.map(async (c) => {
+      const creator = await storage.getUser(c.createdBy);
+      return {
+        ...c,
+        creator: creator ? { id: creator.id, name: creator.name, username: creator.username, avatar: creator.avatar } : null,
+      };
+    }));
+    res.json(withCreator);
+  });
+
   app.get("/api/challenges/mine", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
     const challenges = await storage.getUserChallenges(userId);

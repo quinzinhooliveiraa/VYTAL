@@ -429,7 +429,7 @@ export default function Wallet() {
         setWithdrawOpen(open);
         if (!open) { setWithdrawSuccess(false); setWithdrawAmount(""); setPixKey(""); }
       }}>
-        <DialogContent className="rounded-3xl max-w-[380px]">
+        <DialogContent className="rounded-3xl max-w-[380px] max-h-[90vh] overflow-y-auto">
           {withdrawSuccess ? (
             <div className="text-center space-y-4 py-8">
               <div className="w-20 h-20 mx-auto bg-primary/15 rounded-full flex items-center justify-center">
@@ -549,7 +549,7 @@ export default function Wallet() {
                   </div>
                 )}
 
-                <DialogFooter className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 pt-2">
                   <Button
                     className="w-full h-12 rounded-xl font-bold"
                     disabled={
@@ -584,7 +584,7 @@ export default function Wallet() {
                   >
                     Simular Saque (Teste - sem Pix real)
                   </Button>
-                </DialogFooter>
+                </div>
 
                 {withdrawMutation.isError && (
                   <p className="text-destructive text-xs text-center flex items-center justify-center gap-1">

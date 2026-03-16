@@ -775,7 +775,7 @@ export async function registerRoutes(
   app.post("/api/check-ins/start", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
-      const { challengeId, photoUrl, latitude, longitude, isIndoor } = req.body;
+      const { challengeId, photoUrl, backPhotoUrl, latitude, longitude, isIndoor } = req.body;
 
       const participant = await storage.getParticipant(challengeId, userId);
       if (!participant) return res.status(400).json({ message: "Você não está neste desafio" });
@@ -789,6 +789,7 @@ export async function registerRoutes(
         userId,
         status: "active",
         photoUrl: photoUrl || "",
+        backPhotoUrl: backPhotoUrl || "",
         latitude: latitude || null,
         longitude: longitude || null,
         isIndoor: isIndoor || false,
@@ -804,7 +805,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const { checkInId } = req.params;
-      const { endPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace } = req.body;
+      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace } = req.body;
 
       const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, checkInId));
       if (!checkIn) return res.status(404).json({ message: "Check-in não encontrado" });
@@ -818,6 +819,7 @@ export async function registerRoutes(
       const [updated] = await db.update(checkIns).set({
         status: "completed",
         endPhotoUrl: endPhotoUrl || "",
+        endBackPhotoUrl: endBackPhotoUrl || "",
         endLatitude: endLatitude || null,
         endLongitude: endLongitude || null,
         distanceKm: distanceKm || null,

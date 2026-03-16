@@ -36,6 +36,7 @@ export const challenges = pgTable("challenges", {
   rules: text("rules").default(""),
   image: text("image").default(""),
   goalTarget: integer("goal_target"),
+  maxMissedDays: integer("max_missed_days").default(0),
   isActive: boolean("is_active").default(true),
   status: text("status").default("active"),
   isPrivate: boolean("is_private").default(false),

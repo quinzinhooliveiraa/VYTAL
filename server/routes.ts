@@ -968,6 +968,51 @@ export async function registerRoutes(
     }
   });
 
+  // ====== DAILY MISSED DAYS ENFORCEMENT ======
+
+  app.post("/api/admin/process-missed-days", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) return res.status(403).json({ message: "Admin only" });
+
+      const allChallenges = await storage.getChallenges();
+      const activeChallenges = allChallenges.filter((c: any) => c.status === "active" && c.isActive);
+      const today = new Date().toISOString().slice(0, 10);
+      let totalEliminated = 0;
+
+      for (const challenge of activeChallenges) {
+        const cType = challenge.type;
+        if (cType !== "checkin" && cType !== "survival") continue;
+
+        const maxMissed = cType === "checkin" ? 0 : ((challenge as any).maxMissedDays ?? 3);
+        const participants = await storage.getChallengeParticipants(challenge.id);
+        const activeParticipants = participants.filter((p: any) => p.isActive !== false);
+
+        for (const p of activeParticipants) {
+          if (p.isAdmin) continue;
+          const lastCheckin = (p as any).lastCheckInDate;
+          if (lastCheckin === today) continue;
+
+          const currentMissed = ((p as any).missedDays || 0) + 1;
+          await storage.updateChallengeParticipant(p.id, {
+            missedDays: currentMissed,
+            lastCheckInDate: today,
+          } as any);
+
+          if (currentMissed > maxMissed) {
+            await storage.updateChallengeParticipant(p.id, { isActive: false } as any);
+            totalEliminated++;
+          }
+        }
+      }
+
+      res.json({ processed: activeChallenges.length, eliminated: totalEliminated, date: today });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao processar missed days" });
+    }
+  });
+
   // ====== CHECK-INS ======
 
   app.post("/api/upload/challenge-banner", requireAuth, async (req, res) => {

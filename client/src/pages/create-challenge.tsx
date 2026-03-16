@@ -47,6 +47,7 @@ export default function CreateChallenge() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
   const [combinationSpec, setCombinationSpec] = useState("");
+  const [maxMissedDays, setMaxMissedDays] = useState("3");
   const [bannerPreview, setBannerPreview] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -77,6 +78,7 @@ export default function CreateChallenge() {
           duration: parseInt(durationDays),
           validationType,
           goalTarget: scoringSystem === "corrida" && combinationSpec ? parseInt(combinationSpec) : null,
+          maxMissedDays: scoringSystem === "survival" ? parseInt(maxMissedDays) : 0,
           image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
           createdBy: "placeholder",
@@ -414,12 +416,12 @@ export default function CreateChallenge() {
                   id: "checkin", 
                   title: "Check-in Diário", 
                   icon: Camera, 
-                  description: "Quem treinar todos os dias divide o prêmio.",
+                  description: "Disciplina total: faltou 1 dia, está fora.",
                   details: [
                     "Cada participante precisa fazer check-in (selfie + foto do ambiente) todo dia",
-                    "Quem faltar um dia é eliminado e perde a entrada",
-                    "No final, quem sobrou divide o prêmio igualmente",
-                    "Pontuação: 1 ponto por check-in completado"
+                    "Tolerância ZERO: faltou 1 dia = eliminado automaticamente",
+                    "Quem completar todos os dias divide o prêmio igualmente",
+                    "Formato mais rigoroso — só os disciplinados sobrevivem"
                   ],
                   methods: ["foto"]
                 },
@@ -453,12 +455,12 @@ export default function CreateChallenge() {
                   id: "survival", 
                   title: "Sobrevivência", 
                   icon: Flame, 
-                  description: "O último a permanecer ativo leva tudo.",
+                  description: "Mais flexível: tolera algumas falhas antes de eliminar.",
                   details: [
                     "Todos começam ativos e precisam fazer check-in regularmente",
-                    "Quem faltar um dia é eliminado automaticamente",
-                    "O prêmio vai inteiro para o último sobrevivente",
-                    "Se mais de um sobreviver até o fim, dividem igualmente"
+                    "Você define quantas falhas são permitidas (ex: 2 ou 3 dias)",
+                    "Acumulou mais falhas que o limite = eliminado automaticamente",
+                    "O prêmio vai para os sobreviventes (último leva tudo ou dividem)"
                   ],
                   methods: ["foto", "tempo"]
                 }
@@ -490,6 +492,26 @@ export default function CreateChallenge() {
                 </button>
               ))}
             </div>
+
+            {(scoringSystem === "checkin" || scoringSystem === "survival") && (
+              <div className="p-4 bg-muted/50 rounded-2xl border border-border animate-in fade-in">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Comparação rápida</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`p-3 rounded-xl border-2 ${scoringSystem === "checkin" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+                    <p className="text-xs font-bold mb-1">Check-in Diário</p>
+                    <p className="text-[10px] text-muted-foreground">Falhas: <strong className="text-destructive">0 (zero)</strong></p>
+                    <p className="text-[10px] text-muted-foreground">Faltou 1 dia = eliminado</p>
+                    <p className="text-[10px] text-muted-foreground">Prêmio: divisão igual</p>
+                  </div>
+                  <div className={`p-3 rounded-xl border-2 ${scoringSystem === "survival" ? "border-orange-500 bg-orange-500/10" : "border-border bg-card"}`}>
+                    <p className="text-xs font-bold mb-1">Sobrevivência</p>
+                    <p className="text-[10px] text-muted-foreground">Falhas: <strong className="text-orange-500">configurável</strong></p>
+                    <p className="text-[10px] text-muted-foreground">Tolera X dias de folga</p>
+                    <p className="text-[10px] text-muted-foreground">Prêmio: sobreviventes</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {scoringSystem && (
               <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 animate-in zoom-in-95">
@@ -545,6 +567,47 @@ export default function CreateChallenge() {
                       onChange={(e) => setCombinationSpec(e.target.value)}
                       className="h-10 rounded-xl px-3 text-sm"
                     />
+                  </div>
+                )}
+
+                {scoringSystem === "survival" && (
+                  <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl animate-in zoom-in-95">
+                    <Label className="text-sm font-bold text-orange-500 mb-2 block">Falhas Permitidas</Label>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Quantos dias o participante pode faltar antes de ser eliminado? (Check-in Diário = 0)
+                    </p>
+                    <div className="flex items-center gap-3">
+                      {["1", "2", "3", "5"].map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => setMaxMissedDays(v)}
+                          className={`flex-1 h-12 rounded-xl border-2 font-bold text-lg transition-all ${
+                            maxMissedDays === v 
+                              ? "border-orange-500 bg-orange-500/20 text-orange-500" 
+                              : "border-border bg-card hover:bg-muted text-foreground"
+                          }`}
+                          data-testid={`button-missed-days-${v}`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Personalizado:</span>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={maxMissedDays}
+                        onChange={(e) => setMaxMissedDays(e.target.value)}
+                        className="h-8 w-20 rounded-lg px-2 text-sm text-center"
+                        data-testid="input-max-missed-days"
+                      />
+                      <span className="text-xs text-muted-foreground">dias</span>
+                    </div>
+                    <p className="text-[10px] text-orange-500/70 mt-2">
+                      Diferente do Check-in Diário (0 falhas), aqui o participante tem margem para faltar até {maxMissedDays} dia{parseInt(maxMissedDays) !== 1 ? "s" : ""}.
+                    </p>
                   </div>
                 )}
 

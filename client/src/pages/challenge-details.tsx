@@ -475,7 +475,7 @@ export default function ChallengeDetails() {
                 <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
                   {cType === "checkin" && (<>
                     <p>Cada participante precisa fazer check-in <strong className="text-foreground">todos os dias</strong> — selfie + foto do ambiente para comprovação.</p>
-                    <p>Quem <strong className="text-destructive">faltar um dia é eliminado</strong> e perde a entrada.</p>
+                    <p>Tolerância <strong className="text-destructive">ZERO</strong>: faltou <strong className="text-destructive">1 dia = eliminado automaticamente</strong>.</p>
                     <p>No final, quem completou todos os dias <strong className="text-green-500">divide o prêmio igualmente</strong>.</p>
                   </>)}
                   {cType === "corrida" && (<>
@@ -490,8 +490,8 @@ export default function ChallengeDetails() {
                   </>)}
                   {cType === "survival" && (<>
                     <p>Todos começam ativos e precisam fazer check-in <strong className="text-foreground">regularmente</strong>.</p>
-                    <p>Quem <strong className="text-destructive">faltar é eliminado automaticamente</strong>.</p>
-                    <p>O prêmio vai inteiro para o <strong className="text-green-500">último sobrevivente</strong>. Se mais de um sobreviver, dividem igualmente.</p>
+                    <p>Tolerância de <strong className="text-orange-500">{(challenge as any).maxMissedDays || 3} falha{((challenge as any).maxMissedDays || 3) !== 1 ? "s" : ""}</strong>: acumulou mais que isso = <strong className="text-destructive">eliminado</strong>.</p>
+                    <p>O prêmio vai para os <strong className="text-green-500">sobreviventes</strong>. Se mais de um sobreviver, dividem igualmente.</p>
                   </>)}
                 </div>
                 <div className="pt-2 border-t border-border">

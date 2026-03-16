@@ -739,6 +739,23 @@ export async function registerRoutes(
 
   // ====== CHECK-INS ======
 
+  app.post("/api/upload/checkin-photo", requireAuth, async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => chunks.push(chunk));
+      req.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        const filename = `${randomUUID()}.jpg`;
+        const uploadDir = path.join(process.cwd(), "server/uploads/checkins");
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadDir, filename), buffer);
+        res.json({ url: `/uploads/checkins/${filename}` });
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao fazer upload da foto" });
+    }
+  });
+
   app.post("/api/check-ins", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;

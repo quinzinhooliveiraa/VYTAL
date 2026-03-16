@@ -437,15 +437,19 @@ export async function registerRoutes(
   });
 
   app.get("/api/challenges/explore", async (req, res) => {
-    const challenges = await storage.getExploreChallenges();
-    const withCreator = await Promise.all(challenges.map(async (c) => {
+    const allChallenges = await storage.getExploreChallenges();
+    const withDetails = await Promise.all(allChallenges.map(async (c) => {
       const creator = await storage.getUser(c.createdBy);
+      const participants = await storage.getChallengeParticipants(c.id);
+      const activeCount = participants.filter((p: any) => p.isActive !== false).length;
       return {
         ...c,
+        participantCount: participants.length,
+        activeParticipantCount: activeCount,
         creator: creator ? { id: creator.id, name: creator.name, username: creator.username, avatar: creator.avatar } : null,
       };
     }));
-    res.json(withCreator);
+    res.json(withDetails);
   });
 
   app.get("/api/challenges/mine", requireAuth, async (req, res) => {
@@ -470,7 +474,7 @@ export async function registerRoutes(
       if (existing) joinRequestStatus = existing.status;
     }
 
-    const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : true;
+    const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : false;
 
     const visibleParticipants = isParticipant || isCreator
       ? participants
@@ -563,8 +567,9 @@ export async function registerRoutes(
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
 
-      const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : true;
-      if (hasStarted) return res.status(400).json({ message: "Este desafio já começou. Não é possível pedir para entrar." });
+      const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : false;
+      if (hasStarted && challenge.status === "active") return res.status(400).json({ message: "Este desafio já começou. Não é possível pedir para entrar." });
+      if (challenge.status === "completed" || challenge.status === "finalized") return res.status(400).json({ message: "Este desafio já foi finalizado." });
 
       const existing = await storage.getParticipant(challengeId, userId);
       if (existing) return res.status(400).json({ message: "Você já está neste desafio" });
@@ -638,6 +643,12 @@ export async function registerRoutes(
       if (!request || request.challengeId !== challengeId) return res.status(404).json({ message: "Solicitação não encontrada" });
       if (request.status !== "pending") return res.status(400).json({ message: "Solicitação já foi processada" });
 
+      const currentParticipants = await storage.getChallengeParticipants(challengeId);
+      const activeCount = currentParticipants.filter((p: any) => p.isActive !== false).length;
+      if (challenge.maxParticipants && activeCount >= challenge.maxParticipants) {
+        return res.status(400).json({ message: `Limite de ${challenge.maxParticipants} participantes atingido. Aumente o limite nas configurações do desafio antes de aprovar.` });
+      }
+
       await db.update(challengeJoinRequests).set({
         status: "approved",
         reviewedAt: new Date(),
@@ -702,7 +713,7 @@ export async function registerRoutes(
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
       if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode editar" });
 
-      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate"];
+      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate", "maxParticipants"];
       const updates: any = {};
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];

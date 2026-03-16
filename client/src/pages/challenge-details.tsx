@@ -30,6 +30,7 @@ export default function ChallengeDetails() {
   const [editDescription, setEditDescription] = useState("");
   const [editRules, setEditRules] = useState("");
   const [editPrivate, setEditPrivate] = useState(false);
+  const [editMaxParticipants, setEditMaxParticipants] = useState(50);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -187,6 +188,7 @@ export default function ChallengeDetails() {
     setEditDescription(challenge.description || "");
     setEditRules(challenge.rules || "");
     setEditPrivate(challenge.isPrivate || false);
+    setEditMaxParticipants(challenge.maxParticipants || 50);
     setEditMode(true);
   };
 
@@ -196,6 +198,7 @@ export default function ChallengeDetails() {
       description: editDescription,
       rules: editRules,
       isPrivate: editPrivate,
+      maxParticipants: editMaxParticipants,
     });
   };
 
@@ -283,7 +286,7 @@ export default function ChallengeDetails() {
       <div className="px-6 mt-6 space-y-6">
         {!isParticipant && !isCreator && !isChallengeEnded && (
           <div className="border border-primary/20 bg-primary/5 rounded-3xl p-6 space-y-4">
-            {hasStarted ? (
+            {hasStarted && challenge.status === "active" ? (
               <>
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <Lock size={20} />
@@ -715,6 +718,20 @@ export default function ChallengeDetails() {
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-muted-foreground uppercase">Regras</label>
                       <textarea value={editRules} onChange={e => setEditRules(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 focus:border-primary outline-none min-h-[80px] resize-none text-sm" data-testid="input-edit-rules" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
+                        <Users size={12} /> Máx. Participantes
+                      </label>
+                      <Input
+                        type="number"
+                        min={2}
+                        max={500}
+                        value={editMaxParticipants}
+                        onChange={e => setEditMaxParticipants(Math.max(2, parseInt(e.target.value) || 2))}
+                        className="rounded-xl"
+                        data-testid="input-edit-max-participants"
+                      />
                     </div>
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                       <div className="flex items-center gap-2">

@@ -98,7 +98,14 @@ export default function Explorar() {
     if (a.status !== "pending" && b.status === "pending") return 1;
     if (sortBy === "new") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortBy === "challenging") return Number(b.entryFee) - Number(a.entryFee);
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortBy === "participants") {
+      const aCount = a.activeParticipantCount || a.participantCount || 0;
+      const bCount = b.activeParticipantCount || b.participantCount || 0;
+      return bCount - aCount;
+    }
+    const aScore = (a.activeParticipantCount || a.participantCount || 0) * 2 + Number(a.entryFee || 0);
+    const bScore = (b.activeParticipantCount || b.participantCount || 0) * 2 + Number(b.entryFee || 0);
+    return bScore - aScore;
   });
 
   const renderChallengeCard = (challenge: any, i: number) => {
@@ -151,8 +158,8 @@ export default function Explorar() {
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
-                  <span className="flex items-center gap-1"><Users size={12} className="text-primary" />{challenge.maxParticipants || "∞"}</span>
-                  <span className="flex items-center gap-1 font-bold text-foreground"><Trophy size={12} className="text-yellow-500" />{formatBRL(Number(challenge.entryFee) * (challenge.maxParticipants || 10))}</span>
+                  <span className="flex items-center gap-1"><Users size={12} className="text-primary" />{challenge.activeParticipantCount || challenge.participantCount || 0}/{challenge.maxParticipants || "∞"}</span>
+                  <span className="flex items-center gap-1 font-bold text-foreground"><Trophy size={12} className="text-yellow-500" />{formatBRL(Number(challenge.entryFee) * (challenge.activeParticipantCount || challenge.participantCount || 1))}</span>
                   <span className="flex items-center gap-1"><Clock size={12} />{isPending ? `${challenge.duration}d` : `${daysLeft}d`}</span>
                 </div>
               </div>
@@ -212,7 +219,7 @@ export default function Explorar() {
                   <p className="text-sm font-semibold">Ordenar por</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: "trending", label: "Mais Recentes", icon: Flame },
+                      { id: "trending", label: "Em Alta", icon: Flame },
                       { id: "challenging", label: "Mais Caros", icon: Trophy },
                       { id: "new", label: "Novos", icon: Sparkles },
                       { id: "participants", label: "Participantes", icon: Users },

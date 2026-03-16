@@ -95,6 +95,8 @@ export default function CheckIn() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [indoorMode, setIndoorMode] = useState(false);
+  const [manualDistanceKm, setManualDistanceKm] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -103,6 +105,7 @@ export default function CheckIn() {
 
   const sport = challenge?.sport || "";
   const isGymType = /academia|gym|muscula|crossfit|yoga|pilates|luta|box|mma|jiu/i.test(sport);
+  const canHaveDistance = /corr|run|caminh|walk|ciclism|bike|pedal|esteira|treadmill/i.test(sport) || !isGymType;
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -264,7 +267,7 @@ export default function CheckIn() {
       stopCamera();
       setPhase("tracking");
       setStartTime(Date.now());
-      if (!isGymType) {
+      if (!isGymType && !indoorMode) {
         startGpsTracking();
       }
     } catch (err) {
@@ -313,8 +316,9 @@ export default function CheckIn() {
       ]);
 
       const durationMins = Math.max(1, Math.round(elapsedSeconds / 60));
-      const calories = estimateCalories(durationMins, distanceKm, sport);
-      const pace = !isGymType && distanceKm > 0.01 ? formatPace(durationMins, distanceKm) : null;
+      const finalDistance = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) : distanceKm;
+      const calories = estimateCalories(durationMins, finalDistance, sport);
+      const pace = canHaveDistance && finalDistance > 0.01 ? formatPace(durationMins, finalDistance) : null;
 
       await apiRequest("POST", "/api/check-ins", {
         challengeId: id,
@@ -324,7 +328,7 @@ export default function CheckIn() {
         longitude: startCoords?.lng?.toString() || null,
         endLatitude: endCoords?.lat?.toString() || null,
         endLongitude: endCoords?.lng?.toString() || null,
-        distanceKm: distanceKm.toFixed(3),
+        distanceKm: finalDistance.toFixed(3),
         durationMins,
         caloriesBurned: calories,
         avgPace: pace,
@@ -355,10 +359,12 @@ export default function CheckIn() {
     setDistanceKm(0);
     setElapsedSeconds(0);
     setStartTime(null);
+    setManualDistanceKm("");
   };
 
   const durationMins = Math.max(1, Math.round(elapsedSeconds / 60));
-  const calories = estimateCalories(durationMins, distanceKm, sport);
+  const effectiveDistance = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) || 0 : distanceKm;
+  const calories = estimateCalories(durationMins, effectiveDistance, sport);
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-black text-white">
@@ -477,11 +483,27 @@ export default function CheckIn() {
             </div>
           </div>
 
-          {gpsError && (
+          {gpsError && !indoorMode && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2 max-w-xs">
               <AlertTriangle size={16} className="text-red-400 shrink-0" />
               <p className="text-xs text-red-300">{gpsError}</p>
             </div>
+          )}
+
+          {canHaveDistance && (
+            <button
+              onClick={() => setIndoorMode(!indoorMode)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border max-w-xs w-full transition-all ${indoorMode ? "bg-orange-500/15 border-orange-500/40" : "bg-white/5 border-white/10"}`}
+              data-testid="button-indoor-mode"
+            >
+              <div className={`w-10 h-6 rounded-full relative transition-colors ${indoorMode ? "bg-orange-500" : "bg-white/20"}`}>
+                <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all ${indoorMode ? "left-[18px]" : "left-0.5"}`} />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium">{indoorMode ? "Modo Indoor ativado" : "Modo Indoor"}</p>
+                <p className="text-[10px] text-white/50">Esteira, bike ergométrica, piscina coberta</p>
+              </div>
+            </button>
           )}
 
           <div className="w-full max-w-xs space-y-3">
@@ -497,15 +519,15 @@ export default function CheckIn() {
               <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
                 <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">2</div>
                 <div>
-                  <p className="text-sm font-medium">{isGymType ? "Treina normalmente" : "Atividade com GPS"}</p>
-                  <p className="text-[11px] text-white/50">{isGymType ? "O cronômetro e calorias contam automaticamente" : "GPS rastreia km, pace e calorias em tempo real"}</p>
+                  <p className="text-sm font-medium">{isGymType ? "Treina normalmente" : indoorMode ? "Atividade indoor" : "Atividade com GPS"}</p>
+                  <p className="text-[11px] text-white/50">{isGymType ? "O cronômetro e calorias contam automaticamente" : indoorMode ? "Cronômetro conta; você informa a distância no final" : "GPS rastreia km, pace e calorias em tempo real"}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
                 <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">3</div>
                 <div>
                   <p className="text-sm font-medium">Selfie de fim</p>
-                  <p className="text-[11px] text-white/50">Confirma que completou a atividade</p>
+                  <p className="text-[11px] text-white/50">{indoorMode ? "Tire uma foto do painel da esteira/bike e informe os km" : "Confirma que completou a atividade"}</p>
                 </div>
               </div>
             </div>
@@ -514,7 +536,7 @@ export default function CheckIn() {
           <Button
             className="w-full max-w-xs h-14 rounded-2xl font-bold text-lg bg-primary text-primary-foreground shadow-[0_0_30px_rgba(34,197,94,0.3)]"
             onClick={handleStartPhase}
-            disabled={!!gpsError}
+            disabled={!!gpsError && !indoorMode}
             data-testid="button-start-checkin"
           >
             <Play className="mr-2" size={20} /> Iniciar Check-in
@@ -538,20 +560,27 @@ export default function CheckIn() {
               <p className="text-xs text-white/50 mt-1 uppercase tracking-wider">Tempo de atividade</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
-              {!isGymType && (
+            <div className={`grid gap-4 w-full max-w-sm ${(canHaveDistance && !isGymType) ? "grid-cols-3" : "grid-cols-2"}`}>
+              {canHaveDistance && !isGymType && !indoorMode && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
                   <Ruler size={18} className="text-blue-400 mx-auto mb-2" />
                   <p className="text-2xl font-bold" data-testid="text-distance">{distanceKm.toFixed(2)}</p>
                   <p className="text-[10px] text-white/50 uppercase">km</p>
                 </div>
               )}
-              <div className={`bg-white/5 rounded-2xl p-4 border border-white/10 text-center ${isGymType ? "col-span-2" : ""}`}>
+              {canHaveDistance && !isGymType && indoorMode && (
+                <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30 text-center">
+                  <Ruler size={18} className="text-orange-400 mx-auto mb-2" />
+                  <p className="text-xs text-orange-300 font-medium">Indoor</p>
+                  <p className="text-[10px] text-white/50">Informar km ao final</p>
+                </div>
+              )}
+              <div className={`bg-white/5 rounded-2xl p-4 border border-white/10 text-center ${(isGymType || (!canHaveDistance)) ? "col-span-1" : ""}`}>
                 <Flame size={18} className="text-orange-400 mx-auto mb-2" />
                 <p className="text-2xl font-bold" data-testid="text-calories">{calories}</p>
                 <p className="text-[10px] text-white/50 uppercase">kcal</p>
               </div>
-              {!isGymType && (
+              {canHaveDistance && !isGymType && !indoorMode && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
                   <Navigation size={18} className="text-green-400 mx-auto mb-2" />
                   <p className="text-2xl font-bold" data-testid="text-pace">{distanceKm > 0.01 ? formatPace(durationMins, distanceKm) : "--"}</p>
@@ -620,7 +649,7 @@ export default function CheckIn() {
                   <p className="text-[10px] text-white/50 uppercase">Calorias</p>
                 </div>
               </div>
-              {!isGymType && (
+              {canHaveDistance && !isGymType && !indoorMode && (
                 <>
                   <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">
                     <Ruler size={20} className="text-blue-400 shrink-0" />
@@ -637,6 +666,33 @@ export default function CheckIn() {
                     </div>
                   </div>
                 </>
+              )}
+              {canHaveDistance && !isGymType && indoorMode && (
+                <div className="col-span-2 bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ruler size={16} className="text-orange-400" />
+                    <p className="text-xs text-orange-300 font-bold uppercase">Distância (Indoor)</p>
+                  </div>
+                  <p className="text-[10px] text-white/50 mb-2">Informe a distância mostrada no painel do equipamento</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={manualDistanceKm}
+                      onChange={(e) => setManualDistanceKm(e.target.value)}
+                      className="flex-1 h-12 bg-black/50 border border-orange-500/30 rounded-xl px-4 text-xl font-bold text-orange-400 placeholder:text-white/20 focus:outline-none focus:border-orange-500"
+                      data-testid="input-manual-distance"
+                    />
+                    <span className="text-lg font-bold text-orange-400">km</span>
+                  </div>
+                  {manualDistanceKm && parseFloat(manualDistanceKm) > 0 && (
+                    <p className="text-xs text-white/40 mt-2">
+                      Pace: {formatPace(durationMins, parseFloat(manualDistanceKm))} min/km
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

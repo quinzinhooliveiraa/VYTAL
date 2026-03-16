@@ -932,7 +932,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const { checkInId } = req.params;
-      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace } = req.body;
+      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace, indoorProofPhotoUrl } = req.body;
 
       const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, checkInId));
       if (!checkIn) return res.status(404).json({ message: "Check-in não encontrado" });
@@ -958,6 +958,12 @@ export async function registerRoutes(
         }
       }
 
+      if (checkIn.isIndoor && distanceKm && !indoorProofPhotoUrl) {
+        flagged = true;
+        flagReason = flagReason ? flagReason + " | " : "";
+        flagReason += "Indoor sem foto de comprovação do equipamento";
+      }
+
       const [updated] = await db.update(checkIns).set({
         status: "completed",
         endPhotoUrl: endPhotoUrl || "",
@@ -969,6 +975,7 @@ export async function registerRoutes(
         durationMins,
         caloriesBurned: caloriesBurned || null,
         avgPace: avgPace || null,
+        indoorProofPhotoUrl: indoorProofPhotoUrl || "",
         flagged,
         flagReason,
         checkedOutAt: now,

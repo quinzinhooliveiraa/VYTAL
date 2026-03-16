@@ -107,7 +107,7 @@ export default function CheckIn() {
 
   const activeCheckIn = activeCheckIns?.find((c: any) => c.challengeId === id);
 
-  type Phase = "ready" | "camera-front" | "camera-back" | "in-progress" | "camera-end-front" | "camera-end-back" | "review" | "submitting" | "done";
+  type Phase = "ready" | "camera-front" | "camera-back" | "in-progress" | "camera-end-front" | "camera-end-back" | "camera-indoor-proof" | "review" | "submitting" | "done";
   const [phase, setPhase] = useState<Phase>("ready");
   const [captureStep, setCaptureStep] = useState<"front" | "back">("front");
 
@@ -120,6 +120,8 @@ export default function CheckIn() {
   const [endFrontPreview, setEndFrontPreview] = useState("");
   const [endBackBlob, setEndBackBlob] = useState<Blob | null>(null);
   const [endBackPreview, setEndBackPreview] = useState("");
+  const [indoorProofBlob, setIndoorProofBlob] = useState<Blob | null>(null);
+  const [indoorProofPreview, setIndoorProofPreview] = useState("");
 
   const [currentCheckInId, setCurrentCheckInId] = useState<string | null>(null);
   const [checkInStartTime, setCheckInStartTime] = useState<Date | null>(null);
@@ -356,10 +358,27 @@ export default function CheckIn() {
       );
 
       if (isEnd) {
-        setPhase("review");
+        if (indoorMode && !isGymType) {
+          setPhase("camera-indoor-proof");
+          startCamera("environment");
+        } else {
+          setPhase("review");
+        }
       } else {
         await handleSubmitCheckIn(blob);
       }
+    } catch {
+      toast({ title: "Erro ao capturar foto", variant: "destructive" });
+    }
+  };
+
+  const handleCaptureIndoorProof = async () => {
+    try {
+      const blob = await capturePhotoAsync();
+      setIndoorProofBlob(blob);
+      setIndoorProofPreview(URL.createObjectURL(blob));
+      stopCamera();
+      setPhase("review");
     } catch {
       toast({ title: "Erro ao capturar foto", variant: "destructive" });
     }
@@ -416,13 +435,23 @@ export default function CheckIn() {
       toast({ title: "Complete as fotos de check-out", variant: "destructive" });
       return;
     }
+    if (indoorMode && !isGymType && !indoorProofBlob) {
+      toast({ title: "Tire a foto do painel do equipamento", variant: "destructive" });
+      return;
+    }
 
     setPhase("submitting");
     try {
-      const [endPhotoUrl, endBackPhotoUrl] = await Promise.all([
+      const uploads: Promise<string>[] = [
         uploadPhoto(endFrontBlob),
         uploadPhoto(endBackBlob),
-      ]);
+      ];
+      if (indoorProofBlob) uploads.push(uploadPhoto(indoorProofBlob));
+      const uploadResults = await Promise.all(uploads);
+      const endPhotoUrl = uploadResults[0];
+      const endBackPhotoUrl = uploadResults[1];
+      const indoorProofPhotoUrl = uploadResults[2] || null;
+
       const dMins = Math.max(1, Math.round(elapsedSeconds / 60));
       const finalDist = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) : distanceKm;
       const cal = estimateCalories(dMins, finalDist, sport);
@@ -431,6 +460,7 @@ export default function CheckIn() {
       await apiRequest("POST", `/api/check-ins/${currentCheckInId}/checkout`, {
         endPhotoUrl,
         endBackPhotoUrl,
+        indoorProofPhotoUrl,
         endLatitude: endCoords?.lat?.toString() || null,
         endLongitude: endCoords?.lng?.toString() || null,
         distanceKm: finalDist > 0 ? finalDist.toFixed(3) : null,
@@ -453,7 +483,7 @@ export default function CheckIn() {
   const effectiveDistance = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) || 0 : distanceKm;
   const calories = estimateCalories(durationMins, effectiveDistance, sport);
 
-  const isCameraPhase = phase === "camera-front" || phase === "camera-back" || phase === "camera-end-front" || phase === "camera-end-back";
+  const isCameraPhase = phase === "camera-front" || phase === "camera-back" || phase === "camera-end-front" || phase === "camera-end-back" || phase === "camera-indoor-proof";
   const isCheckIn = phase === "camera-front" || phase === "camera-back";
   const isFrontCamera = phase === "camera-front" || phase === "camera-end-front";
 
@@ -537,28 +567,45 @@ export default function CheckIn() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 mb-3">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-xs font-bold uppercase tracking-wider">
-                {isCheckIn ? "Check-in" : "Check-out"} • {isFrontCamera ? "Selfie" : "Ambiente"}
+                {phase === "camera-indoor-proof"
+                  ? "Check-out • Painel do Equipamento"
+                  : `${isCheckIn ? "Check-in" : "Check-out"} • ${isFrontCamera ? "Selfie" : "Ambiente"}`}
               </span>
             </div>
             <h2 className="text-xl font-bold mb-1 drop-shadow-lg">
-              {isFrontCamera ? "Tire sua selfie" : "Mostre o ambiente"}
+              {phase === "camera-indoor-proof"
+                ? "Foto do painel"
+                : isFrontCamera ? "Tire sua selfie" : "Mostre o ambiente"}
             </h2>
             <p className="text-xs text-white/70">
-              {isFrontCamera
-                ? "Mostre seu rosto para confirmar presença"
-                : "Aponte a câmera para o local onde está"}
+              {phase === "camera-indoor-proof"
+                ? "Fotografe o painel do equipamento mostrando a distância percorrida"
+                : isFrontCamera
+                  ? "Mostre seu rosto para confirmar presença"
+                  : "Aponte a câmera para o local onde está"}
             </p>
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 pb-10 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`w-3 h-3 rounded-full ${isFrontCamera ? "bg-primary" : "bg-white/30"}`} />
-              <div className={`w-3 h-3 rounded-full ${!isFrontCamera ? "bg-primary" : "bg-white/30"}`} />
-            </div>
+            {phase !== "camera-indoor-proof" && (
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-3 h-3 rounded-full ${isFrontCamera ? "bg-primary" : "bg-white/30"}`} />
+                <div className={`w-3 h-3 rounded-full ${!isFrontCamera ? "bg-primary" : "bg-white/30"}`} />
+              </div>
+            )}
+            {phase === "camera-indoor-proof" && (
+              <div className="flex items-center gap-2 mb-2">
+                <div className="px-3 py-1 rounded-full bg-orange-500/30 border border-orange-500/50">
+                  <span className="text-xs font-bold text-orange-400">3/3 — Comprovação Indoor</span>
+                </div>
+              </div>
+            )}
             <button
               className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 active:scale-90 transition-transform"
               onClick={() => {
-                if (isFrontCamera) {
+                if (phase === "camera-indoor-proof") {
+                  handleCaptureIndoorProof();
+                } else if (isFrontCamera) {
                   handleCaptureFront(!isCheckIn);
                 } else {
                   handleCaptureBack(!isCheckIn);
@@ -572,7 +619,11 @@ export default function CheckIn() {
             </button>
             <div className="flex items-center gap-1.5 text-xs text-white/60">
               <SwitchCamera size={12} />
-              <span>{isFrontCamera ? "1/2 — Selfie" : "2/2 — Ambiente"}</span>
+              <span>
+                {phase === "camera-indoor-proof"
+                  ? "3/3 — Painel do equipamento"
+                  : isFrontCamera ? "1/2 — Selfie" : "2/2 — Ambiente"}
+              </span>
             </div>
           </div>
         </div>
@@ -820,30 +871,61 @@ export default function CheckIn() {
                 </>
               )}
               {!isGymType && indoorMode && (
-                <div className="col-span-2 bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Ruler size={16} className="text-orange-400" />
-                    <p className="text-xs text-orange-300 font-bold uppercase">Distância (Indoor)</p>
-                  </div>
-                  <p className="text-[10px] text-white/50 mb-2">Informe a distância do painel do equipamento</p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={manualDistanceKm}
-                      onChange={(e) => setManualDistanceKm(e.target.value)}
-                      className="flex-1 h-12 bg-black/50 border border-orange-500/30 rounded-xl px-4 text-xl font-bold text-orange-400 placeholder:text-white/20 focus:outline-none focus:border-orange-500"
-                      data-testid="input-manual-distance"
-                    />
-                    <span className="text-lg font-bold text-orange-400">km</span>
-                  </div>
-                  {manualDistanceKm && parseFloat(manualDistanceKm) > 0 && (
-                    <p className="text-xs text-white/40 mt-2">
-                      Pace: {formatPace(durationMins, parseFloat(manualDistanceKm))} min/km
-                    </p>
+                <div className="col-span-2 space-y-3">
+                  {indoorProofPreview && (
+                    <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Camera size={16} className="text-orange-400" />
+                        <p className="text-xs text-orange-300 font-bold uppercase">Foto do Painel</p>
+                      </div>
+                      <div className="relative rounded-xl overflow-hidden border border-orange-500/30">
+                        <img
+                          src={indoorProofPreview}
+                          alt="Painel do equipamento"
+                          className="w-full h-40 object-cover"
+                          data-testid="img-indoor-proof"
+                        />
+                        <button
+                          className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5"
+                          onClick={() => {
+                            setIndoorProofBlob(null);
+                            setIndoorProofPreview("");
+                            setPhase("camera-indoor-proof");
+                            startCamera("environment");
+                          }}
+                          data-testid="button-retake-indoor-proof"
+                        >
+                          <Camera size={14} className="text-white" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-white/40 mt-2 text-center">Comprovação de distância no equipamento</p>
+                    </div>
                   )}
+                  <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Ruler size={16} className="text-orange-400" />
+                      <p className="text-xs text-orange-300 font-bold uppercase">Distância (Indoor)</p>
+                    </div>
+                    <p className="text-[10px] text-white/50 mb-2">Informe a distância exibida no painel do equipamento</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={manualDistanceKm}
+                        onChange={(e) => setManualDistanceKm(e.target.value)}
+                        className="flex-1 h-12 bg-black/50 border border-orange-500/30 rounded-xl px-4 text-xl font-bold text-orange-400 placeholder:text-white/20 focus:outline-none focus:border-orange-500"
+                        data-testid="input-manual-distance"
+                      />
+                      <span className="text-lg font-bold text-orange-400">km</span>
+                    </div>
+                    {manualDistanceKm && parseFloat(manualDistanceKm) > 0 && (
+                      <p className="text-xs text-white/40 mt-2">
+                        Pace: {formatPace(durationMins, parseFloat(manualDistanceKm))} min/km
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -863,6 +945,7 @@ export default function CheckIn() {
               onClick={() => {
                 setEndFrontBlob(null); setEndFrontPreview("");
                 setEndBackBlob(null); setEndBackPreview("");
+                setIndoorProofBlob(null); setIndoorProofPreview("");
                 setPhase("in-progress");
               }}
               data-testid="button-redo"

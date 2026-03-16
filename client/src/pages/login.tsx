@@ -249,7 +249,8 @@ export default function Login() {
           <Button
             variant="outline"
             className="w-full h-14 rounded-2xl bg-card border-border shadow-sm font-semibold text-sm gap-3 hover:bg-accent"
-            onClick={handleSocialLogin}
+            onClick={handleGoogleLogin}
+            disabled={socialLoading}
             data-testid="button-apple-login"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

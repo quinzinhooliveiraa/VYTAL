@@ -193,26 +193,40 @@ export default function Settings() {
                 checked={notifPrefs.pushEnabled && pushPermission === "granted"}
                 onCheckedChange={async (checked) => {
                   if (checked && pushPermission !== "granted") {
-                    if (!("Notification" in window)) {
-                      toast({ title: "Indisponível", description: "Seu navegador não suporta notificações push.", variant: "destructive" });
+                    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+                      toast({ title: "Indisponível", description: "Seu navegador não suporta notificações push. Tente abrir o app diretamente no navegador.", variant: "destructive" });
                       return;
                     }
-                    const result = await Notification.requestPermission();
-                    setPushPermission(result);
-                    if (result === "granted") {
-                      const { subscribeToPush } = await import("@/lib/push-notifications");
-                      await subscribeToPush();
-                      const updated = { ...ALL_ON_PREFS };
-                      setNotifPrefs(updated);
-                      saveNotifPrefs(updated);
-                      toast({ title: "Ativado!", description: "Notificações push habilitadas." });
-                    } else {
-                      toast({ title: "Bloqueado", description: "Ative nas configurações do navegador.", variant: "destructive" });
+                    if (pushPermission === "denied") {
+                      toast({ title: "Permissão bloqueada", description: "As notificações foram bloqueadas anteriormente. Vá nas configurações do seu navegador para reativar.", variant: "destructive" });
+                      return;
+                    }
+                    try {
+                      const result = await Notification.requestPermission();
+                      setPushPermission(result);
+                      if (result === "granted") {
+                        const { subscribeToPush } = await import("@/lib/push-notifications");
+                        const success = await subscribeToPush();
+                        if (success) {
+                          const updated = { ...ALL_ON_PREFS };
+                          setNotifPrefs(updated);
+                          saveNotifPrefs(updated);
+                          toast({ title: "Ativado!", description: "Notificações push habilitadas com sucesso." });
+                        } else {
+                          toast({ title: "Erro", description: "Não foi possível registrar as notificações. Tente novamente.", variant: "destructive" });
+                        }
+                      } else {
+                        toast({ title: "Bloqueado", description: "Ative as notificações nas configurações do seu navegador.", variant: "destructive" });
+                      }
+                    } catch (err) {
+                      console.error("Push subscription error:", err);
+                      toast({ title: "Erro", description: "Falha ao ativar notificações. Tente novamente.", variant: "destructive" });
                     }
                   } else if (!checked) {
                     const updated = { ...ALL_OFF_PREFS };
                     setNotifPrefs(updated);
                     saveNotifPrefs(updated);
+                    toast({ title: "Desativado", description: "Notificações push desabilitadas." });
                   }
                 }}
                 className="data-[state=checked]:bg-primary"

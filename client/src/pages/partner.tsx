@@ -133,7 +133,7 @@ export default function Partner() {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background">
+    <div className="min-h-[100dvh] flex flex-col bg-background max-w-md mx-auto">
       <header className="px-6 pt-6 pb-4 flex items-center gap-3">
         <Button variant="ghost" size="icon" className="rounded-full -ml-2" onClick={() => step > 0 ? setStep(step - 1) : setLocation("/dashboard")} data-testid="button-back">
           <ChevronLeft size={24} />
@@ -263,7 +263,7 @@ export default function Partner() {
         </AnimatePresence>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 pb-24 bg-gradient-to-t from-background via-background to-transparent z-40">
+      <div className="fixed bottom-0 left-0 right-0 p-6 pb-24 bg-gradient-to-t from-background via-background to-transparent z-40 max-w-md mx-auto">
         {isForm ? (
           <Button
             className="w-full h-14 rounded-2xl font-bold text-base shadow-xl shadow-blue-500/20 bg-blue-500 hover:bg-blue-600 text-white"

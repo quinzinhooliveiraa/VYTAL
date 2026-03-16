@@ -344,6 +344,24 @@ export default function ChallengeDetails() {
                   <p className="text-xs text-muted-foreground">O moderador recusou sua participação neste desafio.</p>
                 </div>
               </div>
+            ) : !user ? (
+              <>
+                <h3 className="font-display font-bold text-lg">Quer participar?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Crie sua conta ou faça login para entrar neste desafio. Taxa de entrada: <strong>{formatBRL(entryFee)}</strong>
+                </p>
+                <Button
+                  className="w-full h-14 rounded-2xl font-bold bg-primary text-primary-foreground shadow-xl shadow-primary/20"
+                  onClick={() => {
+                    sessionStorage.setItem("vytal-redirect", `/challenge/${id}`);
+                    setLocation("/login");
+                  }}
+                  data-testid="button-login-to-join"
+                >
+                  <UserPlus className="mr-2" size={20} />
+                  Criar Conta / Entrar
+                </Button>
+              </>
             ) : (
               <>
                 <h3 className="font-display font-bold text-lg">Quer participar?</h3>

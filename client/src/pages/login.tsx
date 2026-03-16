@@ -45,7 +45,9 @@ export default function Login() {
           return;
         }
         localStorage.setItem("fitstake-onboarding-done", "true");
-        setLocation("/dashboard");
+        const savedRedirect = sessionStorage.getItem("vytal-redirect");
+        sessionStorage.removeItem("vytal-redirect");
+        setLocation(savedRedirect || "/dashboard");
       } else {
         if (!name.trim()) {
           setError("Insira seu nome.");
@@ -79,7 +81,9 @@ export default function Login() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       localStorage.setItem("fitstake-onboarding-done", "true");
-      setLocation("/dashboard");
+      const savedRedirect = sessionStorage.getItem("vytal-redirect");
+      sessionStorage.removeItem("vytal-redirect");
+      setLocation(savedRedirect || "/dashboard");
     } catch (err: any) {
       setError(err.message || "Código 2FA inválido.");
     } finally {

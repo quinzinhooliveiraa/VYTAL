@@ -71,7 +71,18 @@ function Router() {
     );
   }
 
+  if (!isAuthenticated && location.startsWith("/challenge/")) {
+    return (
+      <Switch>
+        <Route path="/challenge/:id" component={ChallengeDetails} />
+      </Switch>
+    );
+  }
+
   if (!isAuthenticated) {
+    if (location !== "/" && location !== "/login") {
+      sessionStorage.setItem("vytal-redirect", location);
+    }
     return <Redirect to="/login" />;
   }
 

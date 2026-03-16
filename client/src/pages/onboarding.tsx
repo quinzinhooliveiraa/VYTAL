@@ -634,12 +634,25 @@ const Personalization = ({ onNext }: { onNext: () => void }) => {
 
 const InstallPWA = ({ onNext }: { onNext: () => void }) => {
   const { canInstall, isInstalled, install, isIOS } = usePwaInstall();
+  const [showContinue, setShowContinue] = useState(false);
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(() => {
+    if (isInstalled) {
+      setShowContinue(true);
+    } else {
+      const timer = setTimeout(() => setShowContinue(true), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [isInstalled]);
 
   const handleInstall = async () => {
     if (canInstall) {
+      setInstalling(true);
       await install();
+      setInstalling(false);
+      setShowContinue(true);
     }
-    onNext();
   };
 
   const benefits = [
@@ -649,18 +662,22 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
     { icon: Timer, title: "Mais rápido", desc: "Performance nativa", color: "text-purple-500 bg-purple-500/10" },
   ];
 
+  const isAndroid = !isIOS && typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+
   return (
     <motion.div {...slideIn} className="flex flex-col h-full justify-between py-4">
       <div className="space-y-5 flex-1 overflow-y-auto">
         <div className="text-center space-y-4">
           <div className="relative flex items-center justify-center">
+            <PulseRing delay={0} size="w-24 h-24" />
+            <PulseRing delay={1.5} size="w-24 h-24" />
             <motion.div
               initial={{ y: -10 }}
               animate={{ y: [0, -8, 0] }}
               transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
               className="w-20 h-20 bg-primary/10 rounded-[1.8rem] flex items-center justify-center text-primary border border-primary/20 shadow-2xl shadow-primary/10 relative z-10"
             >
-              <Smartphone size={40} />
+              {isInstalled ? <Check size={40} strokeWidth={3} /> : <Smartphone size={40} />}
               {isInstalled && (
                 <motion.div
                   initial={{ scale: 0 }}
@@ -671,32 +688,16 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
                 </motion.div>
               )}
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-              className="absolute left-[calc(50%-80px)] top-2"
-            >
-              <Download size={16} className="text-primary/40" />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7 }}
-              className="absolute right-[calc(50%-80px)] top-2"
-            >
-              <Sparkles size={16} className="text-yellow-500/40" />
-            </motion.div>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-2xl font-display font-bold">
-              {isInstalled ? "App instalado! ✓" : "Instale o VYTAL"}
+              {isInstalled ? "App instalado!" : "Instale o VYTAL"}
             </h2>
             <p className="text-muted-foreground text-sm px-4 leading-relaxed">
               {isInstalled
                 ? "Você já tem o VYTAL instalado. Tudo pronto para começar!"
-                : "Adicione à tela inicial para a melhor experiência."}
+                : "Para a melhor experiência, instale o app na sua tela inicial."}
             </p>
           </div>
         </div>
@@ -721,72 +722,181 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
           ))}
         </div>
 
-        {!isInstalled && isIOS && (
+        {!isInstalled && canInstall && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-card border border-border rounded-2xl p-4 space-y-3"
-          >
-            <p className="text-xs font-bold text-center text-muted-foreground uppercase tracking-widest">No iPhone / iPad:</p>
-            <div className="space-y-2">
-              {[
-                { icon: Share, text: "Toque no botão Compartilhar", num: "1" },
-                { icon: Plus, text: '"Adicionar à Tela de Início"', num: "2" },
-                { icon: CheckCircle2, text: "Confirme tocando em Adicionar", num: "3" },
-              ].map((step, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 + i * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 relative">
-                    <step.icon size={16} />
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-[8px] text-primary-foreground font-bold rounded-full flex items-center justify-center">
-                      {step.num}
-                    </span>
-                  </div>
-                  <p className="text-sm">{step.text}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {!isInstalled && !isIOS && canInstall && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.5 }}
           >
             <Button
               className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20"
               onClick={handleInstall}
+              disabled={installing}
               data-testid="button-install-pwa"
             >
-              <Download className="mr-2" size={20} /> Instalar App
+              {installing ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                  <Download size={20} className="mr-2" />
+                </motion.div>
+              ) : (
+                <Download className="mr-2" size={20} />
+              )}
+              {installing ? "Instalando..." : "Instalar App Agora"}
             </Button>
+          </motion.div>
+        )}
+
+        {!isInstalled && isIOS && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-card border border-primary/20 rounded-2xl p-5 space-y-4"
+          >
+            <div className="flex items-center gap-2 justify-center">
+              <div className="w-6 h-6 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <Smartphone size={14} className="text-blue-500" />
+              </div>
+              <p className="text-sm font-bold">Como instalar no iPhone / iPad</p>
+            </div>
+
+            <div className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.7 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 relative border border-blue-500/20">
+                  <ExternalLink size={20} />
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">1</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Toque no botão de Compartilhar</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">O ícone de quadrado com seta na barra inferior do Safari</p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.9 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 relative border border-green-500/20">
+                  <Plus size={20} />
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">2</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">"Adicionar à Tela de Início"</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Role para baixo no menu e toque nesta opção</p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.1 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0 relative border border-yellow-500/20">
+                  <CheckCircle2 size={20} />
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">3</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Toque em "Adicionar"</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Confirme e o VYTAL aparecerá na sua tela inicial</p>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+
+        {!isInstalled && !isIOS && !canInstall && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-card border border-primary/20 rounded-2xl p-5 space-y-4"
+          >
+            <div className="flex items-center gap-2 justify-center">
+              <div className="w-6 h-6 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <Smartphone size={14} className="text-blue-500" />
+              </div>
+              <p className="text-sm font-bold">Como instalar no seu celular</p>
+            </div>
+
+            <div className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.7 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0 relative border border-blue-500/20">
+                  <ExternalLink size={20} />
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">1</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Abra o menu do navegador</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Toque nos 3 pontos no canto superior direito</p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.9 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0 relative border border-green-500/20">
+                  <Download size={20} />
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">2</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">"Instalar aplicativo"</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Ou "Adicionar à tela inicial"</p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.1 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0 relative border border-yellow-500/20">
+                  <CheckCircle2 size={20} />
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">3</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Confirme a instalação</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">O VYTAL aparecerá na sua tela inicial</p>
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </div>
 
       <div className="w-full space-y-3 shrink-0 mt-4">
-        {(isInstalled || (!canInstall && !isIOS)) && (
-          <Button
-            className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-primary/20"
-            onClick={onNext}
-            data-testid="button-onboarding-install-next"
-          >
-            Continuar <ArrowRight className="ml-2" size={18} />
-          </Button>
-        )}
-        {!isInstalled && (canInstall || isIOS) && (
-          <Button variant="ghost" className="w-full text-muted-foreground" onClick={onNext}>
-            Pular por enquanto
-          </Button>
-        )}
+        <AnimatePresence>
+          {showContinue && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Button
+                className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-primary/20"
+                onClick={onNext}
+                data-testid="button-onboarding-install-next"
+              >
+                Continuar <ArrowRight className="ml-2" size={18} />
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
@@ -799,11 +909,17 @@ const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
       : "unsupported"
   );
   const [requesting, setRequesting] = useState(false);
+  const [showSkip, setShowSkip] = useState(false);
+
+  useEffect(() => {
+    if (permState !== "default") return;
+    const timer = setTimeout(() => setShowSkip(true), 6000);
+    return () => clearTimeout(timer);
+  }, [permState]);
 
   const requestNotifications = async () => {
     if (!("Notification" in window)) {
       setPermState("unsupported");
-      onNext();
       return;
     }
 
@@ -816,14 +932,14 @@ const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
         try {
           if ("serviceWorker" in navigator) {
             const registration = await navigator.serviceWorker.ready;
-            const subscription = await registration.pushManager.subscribe({
+            await registration.pushManager.subscribe({
               userVisibleOnly: true,
               applicationServerKey: undefined,
             }).catch(() => null);
           }
         } catch (e) {}
 
-        new Notification("VYTAL Ativado! 🎯", {
+        new Notification("VYTAL Ativado!", {
           body: "Você receberá lembretes de check-in e alertas de desafios.",
           icon: "/icons/icon-192x192.png",
         });
@@ -867,38 +983,66 @@ const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
 
           <div className="space-y-2">
             <h2 className="text-2xl font-display font-bold">
-              {permState === "granted" ? "Notificações ativadas!" : permState === "denied" ? "Notificações bloqueadas" : "Não perca o ritmo"}
+              {permState === "granted" ? "Notificações ativadas!" : permState === "denied" ? "Notificações bloqueadas" : "Ative as notificações"}
             </h2>
             <p className="text-muted-foreground text-sm px-4 leading-relaxed">
               {permState === "granted"
                 ? "Perfeito! Você receberá todos os alertas importantes."
                 : permState === "denied"
                 ? "Você pode ativar depois nas configurações do navegador."
-                : "Receba lembretes para check-in, alertas de novos desafios e avisos da comunidade."}
+                : "Sem notificações você pode perder check-ins, prazos de desafios e prêmios."}
             </p>
           </div>
         </div>
 
-        {permState !== "granted" && (
-          <div className="grid grid-cols-2 gap-2">
-            {notifFeatures.map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.08 }}
-                className="bg-card border border-border rounded-xl p-3 flex flex-col items-center text-center gap-2"
-              >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${f.color}`}>
-                  <f.icon size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold">{f.title}</p>
-                  <p className="text-[10px] text-muted-foreground">{f.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+        {permState === "default" && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {notifFeatures.map((f, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.08 }}
+                  className="bg-card border border-border rounded-xl p-3 flex flex-col items-center text-center gap-2"
+                >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${f.color}`}>
+                    <f.icon size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold">{f.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{f.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3"
+            >
+              <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
+                <AlertTriangle size={16} className="text-yellow-500" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400">Importante</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Ao clicar, seu dispositivo vai pedir permissão. Toque em "Permitir" para receber alertas.</p>
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {permState === "denied" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 text-center space-y-2"
+          >
+            <p className="text-sm font-bold text-red-500">Permissão negada</p>
+            <p className="text-xs text-muted-foreground">Para ativar depois, vá nas configurações do navegador e permita notificações para este site.</p>
+          </motion.div>
         )}
 
         {permState === "granted" && (
@@ -939,9 +1083,15 @@ const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
               )}
               {requesting ? "Aguardando permissão..." : "Ativar Notificações"}
             </Button>
-            <Button variant="ghost" className="w-full text-muted-foreground" onClick={onNext}>
-              Pular
-            </Button>
+            <AnimatePresence>
+              {showSkip && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+                  <Button variant="ghost" className="w-full text-muted-foreground text-sm" onClick={onNext}>
+                    Continuar sem notificações
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
         {(permState === "granted" || permState === "denied" || permState === "unsupported") && (

@@ -581,6 +581,71 @@ export async function registerRoutes(
     }
   });
 
+  // ====== ADMIN ======
+
+  const requireAdmin = async (req: any, res: any, next: any) => {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ message: "Não autenticado" });
+    const user = await storage.getUser(userId);
+    if (!user || !user.isAdmin) return res.status(403).json({ message: "Acesso negado" });
+    next();
+  };
+
+  app.get("/api/admin/stats", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { transactions, wallets } = await import("@shared/schema");
+      const { sql, eq } = await import("drizzle-orm");
+
+      const [feeResult] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(eq(transactions.type, "platform_fee"));
+
+      const [depositResult] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(eq(transactions.type, "deposit"));
+
+      const [withdrawResult] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(eq(transactions.type, "withdraw_request"));
+
+      const [walletResult] = await database.select({
+        totalBalance: sql<string>`COALESCE(SUM(balance), 0)`,
+        totalLocked: sql<string>`COALESCE(SUM(locked_balance), 0)`,
+      }).from(wallets);
+
+      const [userCount] = await database.select({
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(sql`type = 'deposit' AND status = 'completed'`);
+
+      res.json({
+        platformFees: { total: Number(feeResult.total), count: Number(feeResult.count) },
+        deposits: { total: Number(depositResult.total), count: Number(depositResult.count) },
+        withdrawals: { total: Number(withdrawResult.total), count: Number(withdrawResult.count) },
+        usersBalance: { total: Number(walletResult.totalBalance), locked: Number(walletResult.totalLocked) },
+        netRevenue: Number(feeResult.total),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/transactions", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { transactions } = await import("@shared/schema");
+      const { desc } = await import("drizzle-orm");
+
+      const allTxs = await database.select().from(transactions).orderBy(desc(transactions.createdAt)).limit(100);
+      res.json(allTxs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ====== WEBHOOKS ======
 
   app.post("/api/webhooks/abacatepay", async (req, res) => {

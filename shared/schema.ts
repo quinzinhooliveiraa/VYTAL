@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   publicEarnings: boolean("public_earnings").default(true),
   isPrivate: boolean("is_private").default(false),
   online: boolean("online").default(false),
+  isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -1,4 +1,4 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight, XCircle, Map, Clock } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, PlusCircle, Zap, Activity, History, ArrowUpRight, XCircle, Map, Clock, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -76,6 +76,13 @@ export default function Profile() {
       <header className="px-6 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-50 border-b border-border/50">
         <h1 className="text-xl font-bold flex items-center gap-2">{profileName.toLowerCase().replace(' ', '_')} <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
         <div className="flex gap-2">
+          {user?.isAdmin && (
+            <Link href="/admin">
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" data-testid="button-admin">
+                <Shield size={22} />
+              </Button>
+            </Link>
+          )}
           <Link href="/settings">
             <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
               <Settings size={22} />

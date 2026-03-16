@@ -47,6 +47,12 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Messages**: GET `/api/messages/conversations`, GET `/api/messages/:username`, POST `/api/messages`
 - **Follows**: GET/POST/DELETE `/api/follows/:username`, GET `/api/follows/status/:username`, `/api/follows/followers`, `/api/follows/following`
 - **Communities**: GET `/api/communities`, POST `/api/communities`, GET `/api/communities/mine`, POST `/api/communities/:id/join`, DELETE `/api/communities/:id/leave`
+- **Admin**: GET `/api/admin/stats` (platform fees, deposits, withdrawals, user balances), GET `/api/admin/transactions` (all txs). Requires `isAdmin: true` on user.
+
+## Admin Panel
+- Route: `/admin` (accessible from profile page via shield icon, only visible for admin users)
+- Shows platform revenue (10% fees), total deposits/withdrawals, user balances, and transaction history
+- Admin user: quinzinhooliveiraa@gmail.com (isAdmin=true in DB)
 - **Wallet**: GET `/api/wallet/balance` (returns balance, lockedBalance, availableBalance), GET `/api/wallet/transactions`, POST `/api/wallet/deposit`, POST `/api/wallet/withdraw`, GET `/api/wallet/deposit/:id/status`
 - **Webhooks**: POST `/api/webhooks/abacatepay`
 

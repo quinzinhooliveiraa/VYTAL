@@ -1,35 +1,12 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Map, Clock, Activity } from "lucide-react";
+import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 
-const ACTIVE_CHALLENGES = [
-  {
-    id: 1,
-    title: "Projeto Verão 2024",
-    prizePool: "R$ 6.200",
-    daysLeft: 12,
-    progress: 3,
-    goal: 5,
-    needsCheckin: true,
-    isModerator: true,
-    streak: 5,
-  },
-  {
-    id: 2,
-    title: "100km em 30 Dias",
-    prizePool: "R$ 17.100",
-    daysLeft: 30,
-    progress: 10,
-    goal: 30,
-    needsCheckin: false,
-    isModerator: false,
-    streak: 10,
-  }
-];
+const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -44,6 +21,14 @@ export default function Dashboard() {
     },
   });
 
+  const { data: myChallenges = [] } = useQuery({
+    queryKey: ["/api/challenges/mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/challenges/mine", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
   const userName = user?.name || "Seu Nome";
   const initials = userName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
   const avatarUrl = user?.avatar || localStorage.getItem("fitstake-user-avatar");
@@ -51,18 +36,19 @@ export default function Dashboard() {
   const bal = Number(walletData?.balance || 0);
   const locked = Number(walletData?.lockedBalance || 0);
   const avail = Number(walletData?.availableBalance || 0);
-  const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const totalInvested = fmtBRL(locked);
   const totalEarned = fmtBRL(bal);
   const availableBalance = fmtBRL(avail);
 
-  const moderationAlerts = [
-    { id: 1, challenge: "Projeto Verão 2024", pending: 3 }
-  ];
+  const activeChallenges = myChallenges.filter((c: any) =>
+    c.myParticipation?.isActive !== false &&
+    c.status !== "completed" && c.status !== "finalized"
+  );
+
+  const moderationChallenges = activeChallenges.filter((c: any) => c.createdBy === user?.id);
 
   return (
     <div className="p-6 pb-32 space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
       <header className="flex justify-between items-center pt-4">
         <div className="space-y-1">
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Bem-vindo de volta</p>
@@ -70,7 +56,7 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-3">
           <Link href="/wallet">
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-14 h-14 rounded-2xl border border-border bg-card flex items-center justify-center text-foreground cursor-pointer shadow-sm"
@@ -79,7 +65,7 @@ export default function Dashboard() {
             </motion.div>
           </Link>
           <Link href="/profile">
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-primary/20 bg-card flex items-center justify-center font-bold text-xl cursor-pointer shadow-lg shadow-black/10"
@@ -90,9 +76,8 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Resumo Financeiro - Premium Branding */}
       <div className="grid grid-cols-1 gap-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-zinc-900 dark:bg-zinc-900 text-white rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden border border-white/5"
@@ -100,15 +85,15 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <TrendingUp size={120} />
           </div>
-          
+
           <div className="flex justify-between items-start mb-8 relative z-10">
             <div>
-              <p className="text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Saldo Total</p>
-              <h2 className="text-5xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,133,0.3)]">{availableBalance}</h2>
+              <p className="text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Saldo Disponível</p>
+              <h2 className="text-5xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,133,0.3)]" data-testid="text-dashboard-available">{availableBalance}</h2>
             </div>
-            <div className="w-12 h-12"></div> {/* Placeholder to keep layout balanced */}
+            <div className="w-12 h-12"></div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/10 relative z-10">
             <div>
               <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Em Desafios</p>
@@ -124,15 +109,14 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Moderation Alerts */}
-      {moderationAlerts.length > 0 && (
+      {moderationChallenges.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-accent flex items-center gap-2 px-1">
-            <ShieldAlert size={14} /> Alertas de Moderação
+            <ShieldAlert size={14} /> Seus Desafios (Moderador)
           </h2>
-          {moderationAlerts.map(alert => (
-            <Link key={alert.id} href={`/challenge/${alert.id}`}>
-              <motion.div 
+          {moderationChallenges.map((c: any) => (
+            <Link key={c.id} href={`/challenge/${c.id}`}>
+              <motion.div
                 whileHover={{ scale: 1.02 }}
                 className="bg-accent/5 border border-accent/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-colors"
               >
@@ -141,8 +125,8 @@ export default function Dashboard() {
                     <ShieldAlert size={20} />
                   </div>
                   <div>
-                    <p className="font-bold text-sm">{alert.challenge}</p>
-                    <p className="text-xs text-accent/80 font-medium">{alert.pending} check-ins para revisar</p>
+                    <p className="font-bold text-sm">{c.title}</p>
+                    <p className="text-xs text-accent/80 font-medium">{c.activeParticipantCount || c.participantCount || 0} participantes ativos</p>
                   </div>
                 </div>
                 <ArrowUpRight size={20} className="text-accent" />
@@ -152,76 +136,87 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Active Challenges - Gamified Cards */}
       <div className="space-y-5">
         <div className="flex justify-between items-center px-1">
           <h2 className="text-xl font-display font-bold flex items-center gap-2">
             <Zap className="text-primary" size={20} fill="currentColor" /> Desafios Ativos
           </h2>
-          <Badge className="bg-primary/10 text-primary border-none font-bold text-[10px]">1 ATIVO</Badge>
+          {activeChallenges.length > 0 && (
+            <Badge className="bg-primary/10 text-primary border-none font-bold text-[10px]">{activeChallenges.length} ATIVO{activeChallenges.length > 1 ? "S" : ""}</Badge>
+          )}
         </div>
 
-        {ACTIVE_CHALLENGES.length > 0 ? (
+        {activeChallenges.length > 0 ? (
           <div className="space-y-4">
-            {ACTIVE_CHALLENGES.map((challenge) => (
-              <motion.div 
-                key={challenge.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-card border border-border rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden group"
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display font-bold text-xl leading-tight group-hover:text-primary transition-colors">{challenge.title}</h3>
-                      <div className="flex items-center gap-1 text-accent font-bold text-xs">
-                        <Flame size={14} fill="currentColor" /> {challenge.streak}d
+            {activeChallenges.map((challenge: any) => {
+              const count = challenge.activeParticipantCount || challenge.participantCount || 0;
+              const max = challenge.maxParticipants || 50;
+              const waiting = count < 2;
+              const isCreator = challenge.createdBy === user?.id;
+              const entryFee = Number(challenge.entryFee || 0);
+              const prizePool = count * entryFee;
+
+              return (
+                <motion.div
+                  key={challenge.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-card border border-border rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden group"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-display font-bold text-xl leading-tight group-hover:text-primary transition-colors truncate">{challenge.title}</h3>
                       </div>
+                      <p className="text-xs text-muted-foreground font-medium flex items-center gap-2">
+                        <Activity size={12} /> {count}/{max} participantes • {challenge.duration} dias
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground font-medium">Meta: 5 treinos semanais</p>
+                    <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      {isCreator && (
+                        <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px] font-black tracking-tighter">MOD</Badge>
+                      )}
+                      {waiting && (
+                        <Badge className="bg-yellow-500/20 text-yellow-600 border-none text-[9px]">AGUARDANDO</Badge>
+                      )}
+                    </div>
                   </div>
-                  {challenge.isModerator && (
-                    <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px] font-black tracking-tighter">MODERADOR</Badge>
-                  )}
-                </div>
 
-                <div className="space-y-3 mb-8">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-muted-foreground">Progresso</span>
-                    <span className="text-primary">{challenge.progress} / {challenge.goal}</span>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 text-center">
+                      <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">Pote</p>
+                      <p className="text-lg font-display font-bold text-primary">{fmtBRL(prizePool)}</p>
+                    </div>
+                    <div className="bg-muted/50 border border-border rounded-2xl p-3 text-center">
+                      <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">Sua Entrada</p>
+                      <p className="text-lg font-display font-bold">{fmtBRL(entryFee)}</p>
+                    </div>
                   </div>
-                  <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(challenge.progress / challenge.goal) * 100}%` }}
-                      className="h-full bg-primary shadow-[0_0_15px_rgba(0,255,133,0.5)] rounded-full relative overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.3)_50%,transparent_100%)] animate-[progress-shimmer_2s_infinite]" />
-                    </motion.div>
-                  </div>
-                </div>
 
-                <div className="flex gap-3">
-                  {challenge.needsCheckin && (
-                    <Button 
-                      className="flex-1 rounded-2xl bg-primary text-primary-foreground font-bold h-14 shadow-lg shadow-primary/20 btn-primary-glow border-none"
-                      onClick={() => setLocation(`/check-in/${challenge.id}`)}
-                    >
-                      <Camera className="mr-2" size={20} />
-                      CHECK-IN
-                    </Button>
-                  )}
-                  <Link href={`/challenge/${challenge.id}`} className="flex-1">
-                    <Button 
-                      variant="outline" 
-                      className="w-full rounded-2xl h-14 font-bold border-border bg-card hover:bg-muted transition-all"
-                    >
-                      DETALHES
-                    </Button>
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="flex gap-3">
+                    {!waiting && (
+                      <Button
+                        className="flex-1 rounded-2xl bg-primary text-primary-foreground font-bold h-14 shadow-lg shadow-primary/20 btn-primary-glow border-none"
+                        onClick={() => setLocation(`/check-in/${challenge.id}`)}
+                        data-testid={`button-checkin-${challenge.id}`}
+                      >
+                        <Camera className="mr-2" size={20} />
+                        CHECK-IN
+                      </Button>
+                    )}
+                    <Link href={`/challenge/${challenge.id}`} className="flex-1">
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-2xl h-14 font-bold border-border bg-card hover:bg-muted transition-all"
+                        data-testid={`button-details-${challenge.id}`}
+                      >
+                        DETALHES
+                      </Button>
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 px-6 bg-muted/20 rounded-[3rem] border-2 border-dashed border-border text-center space-y-8 animate-in zoom-in duration-500">
@@ -229,20 +224,22 @@ export default function Dashboard() {
               <Trophy size={40} />
             </div>
             <div className="space-y-3">
-              <p className="font-display font-bold text-2xl">Nenhum hábito ativo</p>
+              <p className="font-display font-bold text-2xl">Nenhum desafio ativo</p>
               <p className="text-sm text-muted-foreground px-4 leading-relaxed font-medium">Você ainda não entrou em nenhum desafio. Comece sua jornada agora!</p>
             </div>
             <div className="flex flex-col w-full gap-4">
-              <Button 
+              <Button
                 className="w-full h-16 rounded-[1.5rem] bg-primary text-primary-foreground font-bold text-lg btn-primary-glow border-none"
                 onClick={() => setLocation('/create')}
+                data-testid="button-create-challenge"
               >
                 <PlusCircle className="mr-2" size={24} /> Criar Desafio
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 className="w-full h-16 rounded-[1.5rem] font-bold border-border bg-card text-lg"
                 onClick={() => setLocation('/explore')}
+                data-testid="button-explore"
               >
                 <Compass className="mr-2" size={24} /> Explorar
               </Button>

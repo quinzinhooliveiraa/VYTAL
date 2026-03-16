@@ -116,7 +116,7 @@ export default function PublicProfile() {
   }
 
   const displayName = user.name || username;
-  const avatarUrl = user.avatar || `https://i.pravatar.cc/150?u=${username}`;
+  const avatarUrl = user.avatar || "";
   const hasBanner = user.banner && user.banner.length > 10;
   const stats = user.stats || { challengesCompleted: 0, challengesWon: 0, totalEarned: 0, checkInCount: 0 };
 
@@ -139,8 +139,8 @@ export default function PublicProfile() {
 
         <div className="absolute -bottom-16 left-6 flex items-end gap-4">
           <Avatar className="w-28 h-28 border-4 border-background shadow-xl rounded-[2rem]">
-            <AvatarImage src={avatarUrl} />
-            <AvatarFallback className="text-3xl">{displayName.charAt(0)}</AvatarFallback>
+            {avatarUrl && <AvatarImage src={avatarUrl} />}
+            <AvatarFallback className="text-3xl font-bold">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </div>
       </div>
@@ -346,7 +346,7 @@ export default function PublicProfile() {
                   data-testid={`suggested-${s.username}`}
                 >
                   <Avatar className="w-14 h-14 border-2 border-border">
-                    <AvatarImage src={s.avatar || `https://i.pravatar.cc/150?u=${s.username}`} />
+                    {s.avatar && <AvatarImage src={s.avatar} />}
                     <AvatarFallback>{(s.name || "?").charAt(0)}</AvatarFallback>
                   </Avatar>
                   <p className="font-bold text-xs truncate w-full">{s.name}</p>
@@ -371,7 +371,7 @@ export default function PublicProfile() {
               {userFollowers.map((f: any) => (
                 <div key={f.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setFollowersOpen(false); setLocation(`/user/${f.username}`); }}>
                   <Avatar className="w-10 h-10 border border-border">
-                    <AvatarImage src={f.avatar || `https://i.pravatar.cc/150?u=${f.username}`} />
+                    {f.avatar && <AvatarImage src={f.avatar} />}
                     <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -398,7 +398,7 @@ export default function PublicProfile() {
               {userFollowing.map((f: any) => (
                 <div key={f.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setFollowingOpen(false); setLocation(`/user/${f.username}`); }}>
                   <Avatar className="w-10 h-10 border border-border">
-                    <AvatarImage src={f.avatar || `https://i.pravatar.cc/150?u=${f.username}`} />
+                    {f.avatar && <AvatarImage src={f.avatar} />}
                     <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">

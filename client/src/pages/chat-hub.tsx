@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Search, Users, MessageCircle, Trophy, ChevronRight, Hash, ShieldCheck } from "lucide-react";
+import { Search, Users, MessageCircle, Trophy, ChevronRight, Hash, ShieldCheck, Inbox, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -48,8 +48,45 @@ export default function ChatHub() {
     otherUser: c.otherUser || c.user,
   }));
 
-  const filteredConversations = normalizedConversations.filter((c: any) =>
+  const followerConversations = normalizedConversations.filter((c: any) => c.isFollower);
+  const requestConversations = normalizedConversations.filter((c: any) => !c.isFollower);
+
+  const filteredFollower = followerConversations.filter((c: any) =>
     search === "" || c.otherUser?.name?.toLowerCase().includes(search.toLowerCase()) || c.otherUser?.username?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredRequests = requestConversations.filter((c: any) =>
+    search === "" || c.otherUser?.name?.toLowerCase().includes(search.toLowerCase()) || c.otherUser?.username?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const requestCount = requestConversations.length;
+
+  const renderConversation = (chat: any) => (
+    <Link key={chat.otherUser?.id} href={`/messages/${chat.otherUser?.username}`}>
+      <div className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors">
+        <div className="relative">
+          <Avatar className="w-14 h-14 border border-border">
+            {chat.otherUser?.avatar && <AvatarImage src={chat.otherUser.avatar} />}
+            <AvatarFallback className="text-lg font-bold">{(chat.otherUser?.name || chat.otherUser?.username || "?").charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          {chat.otherUser?.online && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full"></div>}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-bold text-sm truncate">{chat.otherUser?.name || chat.otherUser?.username}</h3>
+            <span className="text-[10px] text-muted-foreground">{formatTime(chat.lastMessage?.createdAt)}</span>
+          </div>
+          <p className="text-xs truncate text-muted-foreground">
+            {chat.lastMessage?.text || "Sem mensagens"}
+          </p>
+        </div>
+        {chat.unreadCount > 0 && (
+          <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
+            {chat.unreadCount}
+          </div>
+        )}
+      </div>
+    </Link>
   );
 
   return (
@@ -72,49 +109,46 @@ export default function ChatHub() {
       <div className="px-6 mt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 h-12 rounded-xl bg-muted p-1 mb-6">
-            <TabsTrigger value="direct" className="rounded-lg font-bold">Privado</TabsTrigger>
-            <TabsTrigger value="challenges" className="rounded-lg font-bold">Desafios</TabsTrigger>
+            <TabsTrigger value="direct" className="rounded-lg font-bold">Mensagens</TabsTrigger>
+            <TabsTrigger value="requests" className="rounded-lg font-bold relative">
+              Pedidos
+              {requestCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {requestCount}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="communities" className="rounded-lg font-bold">Comunidades</TabsTrigger>
           </TabsList>
 
           <TabsContent value="direct" className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-            {filteredConversations.length === 0 && (
+            {filteredFollower.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Nenhuma conversa ainda</p>
-                <p className="text-xs mt-1">Envie uma mensagem para alguém para começar!</p>
+                <p className="text-xs mt-1">Envie uma mensagem para alguém que você segue!</p>
               </div>
             )}
-            {filteredConversations.map((chat: any) => (
-              <Link key={chat.otherUser?.id} href={`/messages/${chat.otherUser?.username}`}>
-                <div className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors">
-                  <div className="relative">
-                    <Avatar className="w-14 h-14 border border-border">
-                      <AvatarImage src={chat.otherUser?.avatar || `https://i.pravatar.cc/150?u=${chat.otherUser?.username}`} />
-                      <AvatarFallback>{(chat.otherUser?.name || "?").charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    {chat.otherUser?.online && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full"></div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <h3 className="font-bold text-sm truncate">{chat.otherUser?.name || chat.otherUser?.username}</h3>
-                      <span className="text-[10px] text-muted-foreground">{formatTime(chat.lastMessage?.createdAt)}</span>
-                    </div>
-                    <p className="text-xs truncate text-muted-foreground">
-                      {chat.lastMessage?.text || "Sem mensagens"}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
+            {filteredFollower.map(renderConversation)}
           </TabsContent>
 
-          <TabsContent value="challenges" className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-            <div className="text-center py-12 text-muted-foreground">
-              <Trophy size={40} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Chats de desafios aparecem aqui</p>
-              <p className="text-xs mt-1">Participe de um desafio para ver seu chat.</p>
-            </div>
+          <TabsContent value="requests" className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+            {filteredRequests.length > 0 && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-3 mb-2">
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium flex items-center gap-2">
+                  <Inbox size={14} />
+                  Mensagens de pessoas que você não segue
+                </p>
+              </div>
+            )}
+            {filteredRequests.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Inbox size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Nenhum pedido de mensagem</p>
+                <p className="text-xs mt-1">Mensagens de pessoas que você não segue aparecem aqui.</p>
+              </div>
+            )}
+            {filteredRequests.map(renderConversation)}
           </TabsContent>
 
           <TabsContent value="communities" className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -142,7 +176,7 @@ export default function ChatHub() {
               {communities.map((c: any) => (
                 <div key={c.id} className="flex items-center gap-4 p-3 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors" onClick={() => setLocation(`/communities`)}>
                   <Avatar className="w-14 h-14 border border-border rounded-2xl">
-                    <AvatarImage src={c.image} className="object-cover" />
+                    {c.image && <AvatarImage src={c.image} className="object-cover" />}
                     <AvatarFallback><Hash size={20} /></AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">

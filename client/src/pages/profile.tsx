@@ -19,7 +19,7 @@ export default function Profile() {
 
   const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
   const [bio, setBio] = useState(user?.bio || "");
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "https://ui-avatars.com/api/?name=S+N&background=0D8BFF&color=fff");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
 
   const [cropperOpen, setCropperOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -179,8 +179,8 @@ export default function Profile() {
             <input ref={fileInputRef} type="file" id="avatar-upload" className="hidden" accept="image/*" onChange={handleFileSelect} />
             <div className="w-22 h-22 rounded-full border-2 border-background p-0.5 bg-gradient-to-tr from-yellow-400 via-primary to-accent relative group cursor-pointer">
               <Avatar className="w-20 h-20 border-2 border-background">
-                <AvatarImage src={avatarUrl} className="object-cover" />
-                <AvatarFallback>{profileName.substring(0,2).toUpperCase()}</AvatarFallback>
+                {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                <AvatarFallback className="text-lg font-bold">{profileName.substring(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera size={20} className="text-white" />

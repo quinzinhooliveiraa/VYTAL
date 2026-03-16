@@ -9,11 +9,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Messages() {
   const [, setLocation] = useLocation();
   const { username } = useParams();
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   
   const [message, setMessage] = useState("");
   const [replyingTo, setReplyingTo] = useState<{id: string, text: string, sender: string} | null>(null);
@@ -72,7 +74,7 @@ export default function Messages() {
   };
 
   const displayName = targetUser?.name || username || "Usuário";
-  const avatarUrl = targetUser?.avatar || `https://i.pravatar.cc/150?u=${username || '1'}`;
+  const avatarUrl = targetUser?.avatar || "";
   const isOnline = targetUser?.online || false;
 
   const formatTime = (dateStr: string) => {
@@ -89,8 +91,8 @@ export default function Messages() {
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setLocation(`/user/${username}`)}>
             <div className="relative">
               <Avatar className="w-10 h-10 border border-border">
-                <AvatarImage src={avatarUrl} />
-                <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
+                {avatarUrl && <AvatarImage src={avatarUrl} />}
+                <AvatarFallback className="font-bold">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               {isOnline && (
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
@@ -103,8 +105,8 @@ export default function Messages() {
           </div>
         </div>
         <div className="flex items-center gap-1 text-muted-foreground">
-          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8"><Phone size={18} /></Button>
-          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8"><Video size={18} /></Button>
+          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8" onClick={() => toast({ title: "Em breve", description: "Chamadas de voz estarão disponíveis em breve!" })} data-testid="button-call-voice"><Phone size={18} /></Button>
+          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8" onClick={() => toast({ title: "Em breve", description: "Chamadas de vídeo estarão disponíveis em breve!" })} data-testid="button-call-video"><Video size={18} /></Button>
           <Button variant="ghost" size="icon" className="rounded-full w-8 h-8"><MoreVertical size={18} /></Button>
         </div>
       </header>

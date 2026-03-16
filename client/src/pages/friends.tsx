@@ -12,16 +12,16 @@ export default function Friends() {
   const [search, setSearch] = useState("");
 
   const friends = [
-    { name: "Ana Clara", username: "anaclara", bio: "Focada no 100km mensal! 🏃‍♀️", avatar: "https://i.pravatar.cc/150?u=1" },
-    { name: "Lucas Melo", username: "lucasm", bio: "Crossfit todo dia.", avatar: "https://i.pravatar.cc/150?u=2" },
-    { name: "Bia Santos", username: "biasantos", bio: "Iniciante na musculação.", avatar: "https://i.pravatar.cc/150?u=3" },
-    { name: "Rodrigo Oliver", username: "rod_oliver", bio: "Ciclismo é vida.", avatar: "https://i.pravatar.cc/150?u=10" },
+    { name: "Ana Clara", username: "anaclara", bio: "Focada no 100km mensal! 🏃‍♀️", avatar: "" },
+    { name: "Lucas Melo", username: "lucasm", bio: "Crossfit todo dia.", avatar: "" },
+    { name: "Bia Santos", username: "biasantos", bio: "Iniciante na musculação.", avatar: "" },
+    { name: "Rodrigo Oliver", username: "rod_oliver", bio: "Ciclismo é vida.", avatar: "" },
   ];
 
   const suggested = [
-    { name: "Felipe Góes", username: "felipegoes", bio: "Maratonista amador.", avatar: "https://i.pravatar.cc/150?u=4" },
-    { name: "Carol Lima", username: "carollima", bio: "Yoga & Mindfulness.", avatar: "https://i.pravatar.cc/150?u=5" },
-    { name: "Gabriel Souza", username: "gabsouza", bio: "Treino em casa.", avatar: "https://i.pravatar.cc/150?u=11" },
+    { name: "Felipe Góes", username: "felipegoes", bio: "Maratonista amador.", avatar: "" },
+    { name: "Carol Lima", username: "carollima", bio: "Yoga & Mindfulness.", avatar: "" },
+    { name: "Gabriel Souza", username: "gabsouza", bio: "Treino em casa.", avatar: "" },
   ];
 
   const filteredFriends = friends.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || f.username.toLowerCase().includes(search.toLowerCase()));
@@ -73,7 +73,7 @@ export default function Friends() {
                   <div onClick={() => setLocation(`/user/${friend.username}`)} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer active:scale-[0.98] hover:border-primary/50 transition-all">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-12 h-12">
-                        <AvatarImage src={friend.avatar} />
+                        {friend.avatar && <AvatarImage src={friend.avatar} />}
                         <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -102,7 +102,7 @@ export default function Friends() {
               <div key={sug.username} onClick={() => setLocation(`/user/${sug.username}`)} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/50 transition-colors">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={sug.avatar} />
+                    {sug.avatar && <AvatarImage src={sug.avatar} />}
                     <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -123,7 +123,7 @@ export default function Friends() {
               <div key={sug.username} onClick={() => setLocation(`/user/${sug.username}`)} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/50 transition-colors">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={sug.avatar} />
+                    {sug.avatar && <AvatarImage src={sug.avatar} />}
                     <AvatarFallback>{sug.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>

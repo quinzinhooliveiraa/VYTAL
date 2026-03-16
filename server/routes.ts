@@ -46,7 +46,6 @@ import memoize from "memoizee";
 import { OAuth2Client } from "google-auth-library";
 import { pushService } from "./services/push-service";
 import { notificationService } from "./services/notification-service";
-import nodemailer from "nodemailer";
 
 const resetCodes = new Map<string, { code: string; expiresAt: number }>();
 
@@ -61,46 +60,76 @@ function cleanExpiredCodes() {
   }
 }
 
+const resetEmailHtml = (code: string) => `
+<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px 24px;background:#f9fafb;border-radius:16px;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <h1 style="color:#1a7a3a;font-size:28px;margin:0;">VYTAL</h1>
+    <p style="color:#6b7280;font-size:14px;margin-top:4px;">Recuperação de senha</p>
+  </div>
+  <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    <p style="color:#374151;font-size:14px;margin:0 0 16px;">Seu código de verificação é:</p>
+    <div style="text-align:center;background:#f0fdf4;border:2px dashed #22c55e;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <span style="font-size:36px;font-weight:800;letter-spacing:8px;color:#1a7a3a;">${code}</span>
+    </div>
+    <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">Este código expira em <strong>15 minutos</strong>.</p>
+  </div>
+  <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">Se você não solicitou esta recuperação, ignore este e-mail.</p>
+</div>`;
+
 async function sendResetEmail(email: string, code: string): Promise<boolean> {
-  try {
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    if (!smtpUser || !smtpPass) {
-      console.error("SMTP credentials not configured");
+  const brevoKey = process.env.BREVO_API_KEY;
+  if (brevoKey) {
+    try {
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@vytal.app";
+      const senderName = process.env.BREVO_SENDER_NAME || "VYTAL";
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoKey,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email }],
+          subject: "Código de recuperação de senha - VYTAL",
+          htmlContent: resetEmailHtml(code),
+        }),
+      });
+      if (res.ok) return true;
+      const err = await res.text();
+      console.error("Brevo error:", res.status, err);
+      return false;
+    } catch (err) {
+      console.error("Brevo send error:", err);
       return false;
     }
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: smtpUser, pass: smtpPass },
-    });
-
-    await transporter.sendMail({
-      from: `"VYTAL" <${smtpUser}>`,
-      to: email,
-      subject: "Código de recuperação de senha - VYTAL",
-      html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 420px; margin: 0 auto; padding: 32px 24px; background: #f9fafb; border-radius: 16px;">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="color: #1a7a3a; font-size: 28px; margin: 0;">VYTAL</h1>
-            <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Recuperação de senha</p>
-          </div>
-          <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <p style="color: #374151; font-size: 14px; margin: 0 0 16px;">Seu código de verificação é:</p>
-            <div style="text-align: center; background: #f0fdf4; border: 2px dashed #22c55e; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-              <span style="font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #1a7a3a;">${code}</span>
-            </div>
-            <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">Este código expira em <strong>15 minutos</strong>.</p>
-          </div>
-          <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 16px;">Se você não solicitou esta recuperação, ignore este e-mail.</p>
-        </div>
-      `,
-    });
-    return true;
-  } catch (err) {
-    console.error("Error sending reset email:", err);
-    return false;
   }
+
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (smtpUser && smtpPass) {
+    try {
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.default.createTransport({
+        service: "gmail",
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+      await transporter.sendMail({
+        from: `"VYTAL" <${smtpUser}>`,
+        to: email,
+        subject: "Código de recuperação de senha - VYTAL",
+        html: resetEmailHtml(code),
+      });
+      return true;
+    } catch (err) {
+      console.error("SMTP send error:", err);
+      return false;
+    }
+  }
+
+  console.error("No email provider configured (set BREVO_API_KEY or SMTP_USER+SMTP_PASS)");
+  return false;
 }
 
 const ADMIN_EMAILS = [

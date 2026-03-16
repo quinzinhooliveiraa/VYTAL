@@ -118,7 +118,7 @@ export default function Explorar() {
   const sortedChallenges = [...nonSuggested].sort(sortFn);
 
   const renderChallengeCard = (challenge: any, i: number) => {
-    const img = sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
+    const img = challenge.image || sportImages[challenge.sport?.toLowerCase()] || sportImages.academia;
     const isPending = challenge.status === "pending";
     const daysLeft = challenge.startDate
       ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() + (challenge.duration || 30) * 86400000 - Date.now()) / 86400000))

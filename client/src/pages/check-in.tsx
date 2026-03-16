@@ -16,17 +16,52 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 function estimateCalories(durationMins: number, distanceKm: number, sport: string): number {
   const weightKg = 70;
-  let met = 5;
   const s = sport.toLowerCase();
-  if (s.includes("corr") || s.includes("run")) met = 9.8;
-  else if (s.includes("caminh") || s.includes("walk")) met = 3.8;
-  else if (s.includes("ciclism") || s.includes("bike") || s.includes("pedal")) met = 7.5;
+  const hours = durationMins / 60;
+
+  if (distanceKm > 0.05 && (s.includes("corr") || s.includes("run"))) {
+    const speedKmh = distanceKm / hours;
+    let met = 6;
+    if (speedKmh < 6) met = 3.8;
+    else if (speedKmh < 8) met = 6;
+    else if (speedKmh < 10) met = 8.3;
+    else if (speedKmh < 12) met = 9.8;
+    else if (speedKmh < 14) met = 11;
+    else met = 12.8;
+    return Math.round(met * weightKg * hours);
+  }
+
+  if (distanceKm > 0.05 && (s.includes("ciclism") || s.includes("bike") || s.includes("pedal"))) {
+    const speedKmh = distanceKm / hours;
+    let met = 4;
+    if (speedKmh < 16) met = 4;
+    else if (speedKmh < 20) met = 6.8;
+    else if (speedKmh < 25) met = 8;
+    else if (speedKmh < 30) met = 10;
+    else met = 12;
+    return Math.round(met * weightKg * hours);
+  }
+
+  if (distanceKm > 0.05 && (s.includes("caminh") || s.includes("walk"))) {
+    const speedKmh = distanceKm / hours;
+    let met = 3.5;
+    if (speedKmh < 4) met = 2.8;
+    else if (speedKmh < 5.5) met = 3.5;
+    else if (speedKmh < 7) met = 4.3;
+    else met = 5;
+    return Math.round(met * weightKg * hours);
+  }
+
+  let met = 5;
+  if (s.includes("corr") || s.includes("run")) met = 8.3;
+  else if (s.includes("caminh") || s.includes("walk")) met = 3.5;
+  else if (s.includes("ciclism") || s.includes("bike") || s.includes("pedal")) met = 6.8;
   else if (s.includes("nat") || s.includes("swim")) met = 8;
   else if (s.includes("muscula") || s.includes("academia") || s.includes("gym") || s.includes("crossfit")) met = 6;
   else if (s.includes("yoga") || s.includes("pilates")) met = 3;
   else if (s.includes("futebol") || s.includes("soccer") || s.includes("basquet")) met = 8;
   else if (s.includes("luta") || s.includes("box") || s.includes("mma") || s.includes("jiu")) met = 9;
-  return Math.round(met * weightKg * (durationMins / 60));
+  return Math.round(met * weightKg * hours);
 }
 
 function formatPace(durationMins: number, distanceKm: number): string {
@@ -74,7 +109,7 @@ export default function CheckIn() {
 
   type Phase = "ready" | "camera-front" | "camera-back" | "in-progress" | "camera-end-front" | "camera-end-back" | "review" | "submitting" | "done";
   const [phase, setPhase] = useState<Phase>("ready");
-  const [beRealStep, setBeRealStep] = useState<"front" | "back">("front");
+  const [captureStep, setCaptureStep] = useState<"front" | "back">("front");
 
   const [startFrontBlob, setStartFrontBlob] = useState<Blob | null>(null);
   const [startFrontPreview, setStartFrontPreview] = useState("");
@@ -99,7 +134,7 @@ export default function CheckIn() {
   const [indoorMode, setIndoorMode] = useState(false);
   const [manualDistanceKm, setManualDistanceKm] = useState("");
   const [distanceKm, setDistanceKm] = useState(0);
-  const [beRealCountdown, setBeRealCountdown] = useState<number | null>(null);
+  const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -238,9 +273,9 @@ export default function CheckIn() {
     });
   }, [cameraFacing]);
 
-  const handleStartBeReal = async () => {
+  const handleStartCapture = async () => {
     setPhase("camera-front");
-    setBeRealStep("front");
+    setCaptureStep("front");
     await startCamera("user");
   };
 
@@ -256,14 +291,14 @@ export default function CheckIn() {
       }
       stopCamera();
 
-      setBeRealCountdown(3);
+      setCaptureCountdown(3);
       let count = 3;
       const interval = setInterval(() => {
         count--;
-        setBeRealCountdown(count);
+        setCaptureCountdown(count);
         if (count <= 0) {
           clearInterval(interval);
-          setBeRealCountdown(null);
+          setCaptureCountdown(null);
           if (isEnd) {
             setPhase("camera-end-back");
           } else {
@@ -290,12 +325,30 @@ export default function CheckIn() {
       stopCamera();
 
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           if (isEnd) {
             setEndCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           } else {
             setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            setLocationName(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+            try {
+              const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&zoom=18&addressdetails=1`, {
+                headers: { "User-Agent": "VYTAL-App/1.0" },
+              });
+              if (geoRes.ok) {
+                const data = await geoRes.json();
+                const addr = data.address;
+                if (addr) {
+                  const parts = [addr.road, addr.suburb, addr.city || addr.town || addr.village].filter(Boolean);
+                  setLocationName(parts.join(", ") || data.display_name || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+                } else {
+                  setLocationName(data.display_name || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+                }
+              } else {
+                setLocationName(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+              }
+            } catch {
+              setLocationName(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+            }
           }
         },
         () => {},
@@ -352,9 +405,9 @@ export default function CheckIn() {
     }
   };
 
-  const handleStartEndBeReal = async () => {
+  const handleStartEndCapture = async () => {
     setPhase("camera-end-front");
-    setBeRealStep("front");
+    setCaptureStep("front");
     await startCamera("user");
   };
 
@@ -442,11 +495,11 @@ export default function CheckIn() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/70 pointer-events-none" />
 
-          {beRealCountdown !== null && (
+          {captureCountdown !== null && (
             <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
               <div className="text-center">
                 <div className="w-24 h-24 rounded-full border-4 border-primary flex items-center justify-center mx-auto mb-4 animate-pulse">
-                  <span className="text-5xl font-bold text-primary">{beRealCountdown}</span>
+                  <span className="text-5xl font-bold text-primary">{captureCountdown}</span>
                 </div>
                 <p className="text-lg font-bold">Virando para câmera traseira...</p>
                 <p className="text-xs text-white/50 mt-1">Mostre o ambiente ao redor</p>
@@ -535,7 +588,7 @@ export default function CheckIn() {
           </div>
 
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold">Check-in BeReal</h1>
+            <h1 className="text-2xl font-bold">Check-in Duplo</h1>
             <p className="text-sm text-white/60 max-w-xs mx-auto">{challenge?.title || "Desafio"}</p>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 mt-2">
               <SwitchCamera size={12} className="text-blue-400" />
@@ -572,7 +625,7 @@ export default function CheckIn() {
               <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">1</div>
               <div>
                 <p className="text-sm font-medium">Selfie + foto do ambiente</p>
-                <p className="text-[11px] text-white/50">Estilo BeReal: câmera frontal e traseira</p>
+                <p className="text-[11px] text-white/50">Selfie + Foto do ambiente para validação</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
@@ -585,7 +638,7 @@ export default function CheckIn() {
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
               <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-bold">3</div>
               <div>
-                <p className="text-sm font-medium">Volte e faça o check-out BeReal</p>
+                <p className="text-sm font-medium">Volte e faça o check-out com fotos</p>
                 <p className="text-[11px] text-white/50">Selfie + ambiente novamente para confirmar</p>
               </div>
             </div>
@@ -593,7 +646,7 @@ export default function CheckIn() {
 
           <Button
             className="w-full max-w-xs h-14 rounded-2xl font-bold text-lg bg-primary text-primary-foreground shadow-[0_0_30px_rgba(34,197,94,0.3)]"
-            onClick={handleStartBeReal}
+            onClick={handleStartCapture}
             disabled={!!gpsError && !indoorMode}
             data-testid="button-start-checkin"
           >
@@ -670,7 +723,7 @@ export default function CheckIn() {
           <div className="px-6 pb-10 pt-4">
             <Button
               className="w-full h-14 rounded-2xl font-bold text-lg bg-red-500 hover:bg-red-600 text-white"
-              onClick={handleStartEndBeReal}
+              onClick={handleStartEndCapture}
               data-testid="button-checkout"
             >
               <LogOut className="mr-2" size={18} /> Fazer Check-out

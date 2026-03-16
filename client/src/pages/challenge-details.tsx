@@ -240,7 +240,7 @@ export default function ChallengeDetails() {
     ? Math.max(0, Math.ceil((new Date(challenge.startDate).getTime() + (challenge.duration || 30) * 86400000 - Date.now()) / 86400000))
     : 0;
 
-  const hasBanner = challenge.banner && challenge.banner.length > 10;
+  const hasBanner = (challenge.image || challenge.banner) && (challenge.image || challenge.banner).length > 10;
 
   const sportGradients: Record<string, string> = {
     corrida: "from-green-600/30 via-emerald-500/20 to-primary/10",
@@ -258,7 +258,7 @@ export default function ChallengeDetails() {
       <div className="h-52 relative">
         {hasBanner ? (
           <>
-            <img src={challenge.banner} alt={challenge.title} className="w-full h-full object-cover" />
+            <img src={challenge.image || challenge.banner} alt={challenge.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
           </>
         ) : (

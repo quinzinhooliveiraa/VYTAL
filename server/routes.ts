@@ -819,6 +819,23 @@ export async function registerRoutes(
 
   // ====== CHECK-INS ======
 
+  app.post("/api/upload/challenge-banner", requireAuth, async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => chunks.push(chunk));
+      req.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        const filename = `${randomUUID()}.jpg`;
+        const uploadDir = path.join(process.cwd(), "server/uploads/banners");
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadDir, filename), buffer);
+        res.json({ url: `/uploads/banners/${filename}` });
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Erro ao fazer upload do banner" });
+    }
+  });
+
   app.post("/api/upload/checkin-photo", requireAuth, async (req, res) => {
     try {
       const chunks: Buffer[] = [];

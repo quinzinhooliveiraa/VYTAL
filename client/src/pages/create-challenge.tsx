@@ -31,6 +31,9 @@ export default function CreateChallenge() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
   const [combinationSpec, setCombinationSpec] = useState("");
+  const [bannerPreview, setBannerPreview] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const { data: walletData } = useQuery({
     queryKey: ["/api/wallet/balance"],
@@ -57,6 +60,7 @@ export default function CreateChallenge() {
           maxParticipants: parseInt(numMembers),
           duration: parseInt(durationDays),
           validationType,
+          image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
           createdBy: "placeholder",
         }),
@@ -77,6 +81,26 @@ export default function CreateChallenge() {
       setCreateError(error.message);
     },
   });
+
+  const handleBannerPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBannerPreview(URL.createObjectURL(file));
+    setUploadingBanner(true);
+    try {
+      const res = await fetch("/api/upload/challenge-banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBannerUrl(data.url);
+      }
+    } catch { }
+    setUploadingBanner(false);
+  };
 
   const modalidades = [
     { id: "corrida", icon: Route, label: "Corrida" },
@@ -196,6 +220,39 @@ export default function CreateChallenge() {
                   onChange={(e) => setChallengeDesc(e.target.value)}
                   className="h-12 rounded-xl px-4" 
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Banner do Desafio</Label>
+                <label className="block cursor-pointer">
+                  {bannerPreview ? (
+                    <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-primary/30 group">
+                      <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera size={24} className="text-white" />
+                        <span className="text-white text-sm font-medium ml-2">Trocar</span>
+                      </div>
+                      {uploadingBanner && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <Loader2 size={24} className="text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-36 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors bg-muted/30">
+                      <Camera size={28} className="text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground font-medium">Escolher imagem</span>
+                      <span className="text-[10px] text-muted-foreground/60">JPG, PNG — até 5MB</span>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerPick}
+                    className="hidden"
+                    data-testid="input-banner-upload"
+                  />
+                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

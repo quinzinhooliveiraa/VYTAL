@@ -272,6 +272,25 @@ export default function Admin() {
       <div className="px-4 py-4 space-y-4">
         {tab === "overview" && (
           <>
+            <div className="flex gap-1.5 mb-1">
+              {[
+                { key: "all" as const, label: "Plataforma" },
+                { key: "mine" as const, label: "Minhas" },
+                { key: "others" as const, label: "Usuários" },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setTxOwner(f.key)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                    txOwner === f.key ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`overview-filter-${f.key}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <StatCard icon={Percent} label="Receita (10%)" value={formatBRL(stats?.platformFees?.total || 0)} sub={`${stats?.platformFees?.count || 0} cobranças`} color="green" testId="text-platform-revenue" />
               <StatCard icon={DollarSign} label="Saldo usuários" value={formatBRL(stats?.usersBalance?.total || 0)} sub={`${formatBRL(stats?.usersBalance?.locked || 0)} travado`} color="blue" testId="text-users-balance" />
@@ -298,14 +317,15 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <p className="font-bold text-sm px-1">Últimas transações</p>
-              {txs.slice(0, 10).map((tx: any) => <TxRow key={tx.id} tx={tx} typeLabels={typeLabels} statusLabels={statusLabels} statusColors={statusColors} formatBRL={formatBRL} formatDate={formatDate} currentUserId={user?.id} />)}
-              {txs.length > 10 && (
+              {filteredTxs.slice(0, 8).map((tx: any) => <TxRowCompact key={tx.id} tx={tx} typeLabels={typeLabels} statusLabels={statusLabels} statusColors={statusColors} formatBRL={formatBRL} formatDate={formatDate} currentUserId={user?.id} />)}
+              {filteredTxs.length > 8 && (
                 <Button variant="ghost" className="w-full text-xs text-primary" onClick={() => setTab("transactions")}>
-                  Ver todas <ChevronRight size={14} />
+                  Ver todas ({filteredTxs.length}) <ChevronRight size={14} />
                 </Button>
               )}
+              {filteredTxs.length === 0 && <p className="text-center text-xs text-muted-foreground py-4">Nenhuma transação</p>}
             </div>
           </>
         )}
@@ -576,6 +596,27 @@ function TxRow({ tx, typeLabels, statusLabels, statusColors, formatBRL, formatDa
       <div className="text-right shrink-0 ml-3">
         <p className="text-sm font-bold">{formatBRL(Number(tx.amount))}</p>
         <p className={`text-[10px] font-semibold ${statusColors[tx.status] || ""}`}>{statusLabels[tx.status] || tx.status}</p>
+      </div>
+    </div>
+  );
+}
+
+function TxRowCompact({ tx, typeLabels, statusLabels, statusColors, formatBRL, formatDate, currentUserId }: any) {
+  const isMine = tx.userId === currentUserId;
+  const typeIcons: Record<string, string> = {
+    deposit: "↓", withdraw_request: "↑", withdraw_completed: "↑", challenge_entry: "→", challenge_win: "★", platform_fee: "%", refund: "←",
+  };
+  return (
+    <div className={`flex items-center justify-between py-2 px-2 rounded-lg ${isMine ? 'bg-primary/5' : 'hover:bg-muted/50'}`} data-testid={`admin-tx-compact-${tx.id}`}>
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span className="text-[11px] w-4 text-center shrink-0">{typeIcons[tx.type] || "·"}</span>
+        <span className="text-xs font-semibold truncate">{typeLabels[tx.type] || tx.type}</span>
+        {isMine && <span className="text-[8px] font-bold text-primary">EU</span>}
+        <span className="text-[10px] text-muted-foreground truncate">{tx.userName?.split(" ")[0] || ""}</span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-xs font-bold">{formatBRL(Number(tx.amount))}</span>
+        <span className={`text-[9px] font-bold ${statusColors[tx.status] || ""}`}>{statusLabels[tx.status] || tx.status}</span>
       </div>
     </div>
   );

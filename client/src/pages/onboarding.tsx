@@ -636,14 +636,25 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
   const { canInstall, isInstalled, install, isIOS } = usePwaInstall();
   const [showContinue, setShowContinue] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
     if (isInstalled) {
       setShowContinue(true);
-    } else {
-      const timer = setTimeout(() => setShowContinue(true), 8000);
-      return () => clearTimeout(timer);
+      setCountdown(0);
+      return;
     }
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setShowContinue(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
   }, [isInstalled]);
 
   const handleInstall = async () => {
@@ -652,6 +663,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
       await install();
       setInstalling(false);
       setShowContinue(true);
+      setCountdown(0);
     }
   };
 
@@ -662,7 +674,38 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
     { icon: Timer, title: "Mais rápido", desc: "Performance nativa", color: "text-purple-500 bg-purple-500/10" },
   ];
 
-  const isAndroid = !isIOS && typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isAndroid = !isIOS && /android/i.test(ua);
+  const isChrome = /chrome/i.test(ua) && !/edg/i.test(ua);
+  const isFirefox = /firefox/i.test(ua);
+  const isSamsung = /samsungbrowser/i.test(ua);
+  const isEdge = /edg/i.test(ua);
+  const isOpera = /opr\//i.test(ua);
+
+  const getBrowserName = () => {
+    if (isSamsung) return "Samsung Internet";
+    if (isOpera) return "Opera";
+    if (isEdge) return "Edge";
+    if (isFirefox) return "Firefox";
+    if (isChrome) return "Chrome";
+    return "navegador";
+  };
+
+  const getMenuInstruction = () => {
+    if (isSamsung) return "Toque no ícone de 3 linhas (☰) no canto inferior direito";
+    if (isOpera) return "Toque no ícone de 3 pontos no canto inferior direito";
+    if (isFirefox) return "Toque no ícone de 3 pontos (⋮) no canto inferior direito";
+    if (isEdge) return "Toque no ícone de 3 pontos (⋯) na barra inferior";
+    return "Toque nos 3 pontos (⋮) no canto superior direito";
+  };
+
+  const getInstallLabel = () => {
+    if (isSamsung) return '"Adicionar página a" → "Tela inicial"';
+    if (isFirefox) return '"Instalar" no banner ou menu';
+    if (isEdge) return '"Adicionar ao telefone"';
+    if (isOpera) return '"Tela inicial" no menu';
+    return '"Instalar aplicativo" ou "Adicionar à tela inicial"';
+  };
 
   return (
     <motion.div {...slideIn} className="flex flex-col h-full justify-between py-4">
@@ -823,7 +866,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
               <div className="w-6 h-6 bg-blue-500/10 rounded-lg flex items-center justify-center">
                 <Smartphone size={14} className="text-blue-500" />
               </div>
-              <p className="text-sm font-bold">Como instalar no seu celular</p>
+              <p className="text-sm font-bold">Como instalar via {getBrowserName()}</p>
             </div>
 
             <div className="space-y-4">
@@ -838,8 +881,8 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
                   <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">1</span>
                 </div>
                 <div>
-                  <p className="text-sm font-bold">Abra o menu do navegador</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Toque nos 3 pontos no canto superior direito</p>
+                  <p className="text-sm font-bold">Abra o menu do {getBrowserName()}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{getMenuInstruction()}</p>
                 </div>
               </motion.div>
 
@@ -854,8 +897,8 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
                   <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-[10px] text-primary-foreground font-bold rounded-full flex items-center justify-center shadow-sm">2</span>
                 </div>
                 <div>
-                  <p className="text-sm font-bold">"Instalar aplicativo"</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Ou "Adicionar à tela inicial"</p>
+                  <p className="text-sm font-bold">Toque em {getInstallLabel()}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Procure essa opção no menu que abriu</p>
                 </div>
               </motion.div>
 
@@ -871,7 +914,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
                 </div>
                 <div>
                   <p className="text-sm font-bold">Confirme a instalação</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">O VYTAL aparecerá na sua tela inicial</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">O VYTAL aparecerá na sua tela inicial como um app</p>
                 </div>
               </motion.div>
             </div>
@@ -880,6 +923,11 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
       </div>
 
       <div className="w-full space-y-3 shrink-0 mt-4">
+        {!showContinue && countdown > 0 && (
+          <p className="text-center text-[11px] text-muted-foreground">
+            Leia as instruções acima — continuar em {countdown}s
+          </p>
+        )}
         <AnimatePresence>
           {showContinue && (
             <motion.div
@@ -892,7 +940,7 @@ const InstallPWA = ({ onNext }: { onNext: () => void }) => {
                 onClick={onNext}
                 data-testid="button-onboarding-install-next"
               >
-                Continuar <ArrowRight className="ml-2" size={18} />
+                {isInstalled ? "Continuar" : "Continuar sem instalar"} <ArrowRight className="ml-2" size={18} />
               </Button>
             </motion.div>
           )}

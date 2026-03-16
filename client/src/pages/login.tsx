@@ -146,11 +146,12 @@ export default function Login() {
     });
 
     if (googleBtnRef.current) {
+      googleBtnRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         type: "standard",
         theme: "outline",
         size: "large",
-        width: googleBtnRef.current.offsetWidth,
+        width: googleBtnRef.current.offsetWidth || 320,
         text: "continue_with",
         logo_alignment: "center",
       });
@@ -158,10 +159,18 @@ export default function Login() {
     }
   }, [handleGoogleCallback, isLogin]);
 
-  const handleAppleLogin = () => {
+  const triggerGoogleSignIn = () => {
     if (!window.google) {
       setError("Google Sign-In ainda está carregando. Tente novamente.");
       return;
+    }
+    if (googleBtnRef.current) {
+      const clickTarget = googleBtnRef.current.querySelector('[role="button"]') as HTMLElement
+        || googleBtnRef.current.querySelector("div[style]") as HTMLElement;
+      if (clickTarget) {
+        clickTarget.click();
+        return;
+      }
     }
     window.google.accounts.id.prompt();
   };
@@ -273,7 +282,7 @@ export default function Login() {
           />
 
           <button
-            onClick={handleAppleLogin}
+            onClick={triggerGoogleSignIn}
             disabled={socialLoading}
             className="w-full h-14 rounded-2xl border border-border bg-black dark:bg-white flex items-center justify-center gap-3 text-sm font-medium text-white dark:text-black hover:opacity-90 transition-all disabled:opacity-50"
             data-testid="button-apple-login"

@@ -3,11 +3,12 @@ import { eq, and, or, desc, sql, ne, ilike } from "drizzle-orm";
 import {
   users, challenges, challengeParticipants, checkIns,
   messages, follows, communities, communityMembers, walletTransactions,
+  challengeMessages,
   type User, type InsertUser, type Challenge, type InsertChallenge,
   type CheckIn, type InsertCheckIn, type Message, type InsertMessage,
   type Follow, type InsertFollow, type Community, type InsertCommunity,
   type CommunityMember, type WalletTransaction, type InsertWalletTransaction,
-  type ChallengeParticipant
+  type ChallengeParticipant, type ChallengeMessage, type InsertChallengeMessage
 } from "@shared/schema";
 
 export interface IStorage {
@@ -32,6 +33,10 @@ export interface IStorage {
   getChallengeParticipants(challengeId: string): Promise<(ChallengeParticipant & { user: User })[]>;
   getParticipant(challengeId: string, userId: string): Promise<ChallengeParticipant | undefined>;
   updateParticipantScore(challengeId: string, userId: string, score: number): Promise<void>;
+
+  // Challenge Messages
+  createChallengeMessage(msg: InsertChallengeMessage): Promise<ChallengeMessage>;
+  getChallengeMessages(challengeId: string): Promise<(ChallengeMessage & { user: { id: string; name: string; avatar: string | null; username: string } })[]>;
 
   // Check-ins
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
@@ -185,6 +190,33 @@ export class DatabaseStorage implements IStorage {
         eq(challengeParticipants.challengeId, challengeId),
         eq(challengeParticipants.userId, userId)
       ));
+  }
+
+  // Challenge Messages
+  async createChallengeMessage(msg: InsertChallengeMessage): Promise<ChallengeMessage> {
+    const [created] = await db.insert(challengeMessages).values(msg).returning();
+    return created;
+  }
+
+  async getChallengeMessages(challengeId: string) {
+    const rows = await db.select({
+      id: challengeMessages.id,
+      challengeId: challengeMessages.challengeId,
+      userId: challengeMessages.userId,
+      text: challengeMessages.text,
+      createdAt: challengeMessages.createdAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        avatar: users.avatar,
+        username: users.username,
+      },
+    })
+      .from(challengeMessages)
+      .innerJoin(users, eq(challengeMessages.userId, users.id))
+      .where(eq(challengeMessages.challengeId, challengeId))
+      .orderBy(challengeMessages.createdAt);
+    return rows;
   }
 
   // Check-ins

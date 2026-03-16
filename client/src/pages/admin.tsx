@@ -1,23 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft, DollarSign, TrendingUp, Users, ArrowDownLeft, ArrowUpRight,
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
-  Trophy, UserPlus, Eye, ChevronRight, Loader2
+  Trophy, ChevronRight, Loader2, Bell, BellOff, Volume2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 type Tab = "overview" | "transactions" | "users" | "suspicious";
 
+const playMoneySound = () => {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+
+    const notes = [523, 659, 784, 1047];
+    let t = ctx.currentTime;
+    notes.forEach((freq, i) => {
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.3 - i * 0.05, t);
+      t += 0.12;
+    });
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.start();
+    osc.stop(t + 0.3);
+  } catch (e) {}
+};
+
+const playNotifSound = () => {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {}
+};
+
 export default function Admin() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const [confirmDialog, setConfirmDialog] = useState<{ type: string; userId: string; userName: string } | null>(null);
   const [txFilter, setTxFilter] = useState<string>("all");
+  const [txOwner, setTxOwner] = useState<"all" | "mine" | "others">("all");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return localStorage.getItem("admin-notif") !== "off";
+  });
+  const prevTxCountRef = useRef<number | null>(null);
+  const prevStatsRef = useRef<any>(null);
+
+  const toggleNotifications = useCallback(() => {
+    const next = !notificationsEnabled;
+    setNotificationsEnabled(next);
+    localStorage.setItem("admin-notif", next ? "on" : "off");
+  }, [notificationsEnabled]);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/admin/stats"],
@@ -26,6 +79,7 @@ export default function Admin() {
       if (!res.ok) throw new Error("Acesso negado");
       return res.json();
     },
+    refetchInterval: 15000,
   });
 
   const { data: txs = [] } = useQuery({
@@ -35,6 +89,7 @@ export default function Admin() {
       return res.ok ? res.json() : [];
     },
     enabled: tab === "overview" || tab === "transactions",
+    refetchInterval: 15000,
   });
 
   const { data: allUsers = [] } = useQuery({
@@ -54,6 +109,33 @@ export default function Admin() {
     },
     enabled: tab === "suspicious",
   });
+
+  useEffect(() => {
+    if (!notificationsEnabled || !txs.length) return;
+
+    if (prevTxCountRef.current !== null && txs.length > prevTxCountRef.current) {
+      const newTxs = txs.slice(0, txs.length - prevTxCountRef.current);
+      const hasFee = newTxs.some((tx: any) => tx.type === "platform_fee");
+      const hasDeposit = newTxs.some((tx: any) => tx.type === "deposit" && tx.status === "completed");
+
+      if (hasFee) {
+        playMoneySound();
+      } else if (hasDeposit) {
+        playNotifSound();
+      }
+    }
+    prevTxCountRef.current = txs.length;
+  }, [txs, notificationsEnabled]);
+
+  useEffect(() => {
+    if (!notificationsEnabled || !stats) return;
+    if (prevStatsRef.current !== null) {
+      if (stats.totalChallenges > prevStatsRef.current.totalChallenges) {
+        playNotifSound();
+      }
+    }
+    prevStatsRef.current = stats;
+  }, [stats, notificationsEnabled]);
 
   const toggleAdminMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -104,7 +186,13 @@ export default function Admin() {
     completed: "text-green-500", pending: "text-yellow-500", processing: "text-blue-500", failed: "text-red-500",
   };
 
-  const filteredTxs = txFilter === "all" ? txs : txs.filter((tx: any) => tx.type === txFilter);
+  const filteredTxs = txs.filter((tx: any) => {
+    const matchesType = txFilter === "all" || tx.type === txFilter;
+    const matchesOwner = txOwner === "all" ||
+      (txOwner === "mine" && tx.userId === user?.id) ||
+      (txOwner === "others" && tx.userId !== user?.id);
+    return matchesType && matchesOwner;
+  });
 
   if (isLoading) {
     return (
@@ -128,7 +216,16 @@ export default function Admin() {
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate("/profile")} data-testid="button-admin-back">
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="font-display font-bold text-lg">Painel Admin</h1>
+          <h1 className="font-display font-bold text-lg flex-1">Painel Admin</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-9 w-9 ${notificationsEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={toggleNotifications}
+            data-testid="button-toggle-notif"
+          >
+            {notificationsEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+          </Button>
         </div>
         <div className="flex px-2 pb-2 gap-1">
           {tabs.map(t => (
@@ -159,6 +256,13 @@ export default function Admin() {
               <StatCard icon={Users} label="Usuários" value={String(stats?.totalUsers || 0)} sub={`${stats?.challengeEntries?.count || 0} entradas`} color="cyan" testId="text-users" />
             </div>
 
+            {notificationsEnabled && (
+              <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 flex items-center gap-3">
+                <Volume2 size={16} className="text-primary shrink-0" />
+                <p className="text-xs text-primary">Notificações ativas: som ao receber taxa 10%, novo depósito ou novo desafio.</p>
+              </div>
+            )}
+
             <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
               <p className="text-sm font-bold flex items-center gap-2"><TrendingUp size={16} className="text-primary" /> Movimentação total</p>
               <div className="grid grid-cols-2 gap-3 text-xs">
@@ -171,7 +275,7 @@ export default function Admin() {
 
             <div className="space-y-2">
               <p className="font-bold text-sm px-1">Últimas transações</p>
-              {txs.slice(0, 10).map((tx: any) => <TxRow key={tx.id} tx={tx} typeLabels={typeLabels} statusLabels={statusLabels} statusColors={statusColors} formatBRL={formatBRL} formatDate={formatDate} />)}
+              {txs.slice(0, 10).map((tx: any) => <TxRow key={tx.id} tx={tx} typeLabels={typeLabels} statusLabels={statusLabels} statusColors={statusColors} formatBRL={formatBRL} formatDate={formatDate} currentUserId={user?.id} />)}
               {txs.length > 10 && (
                 <Button variant="ghost" className="w-full text-xs text-primary" onClick={() => setTab("transactions")}>
                   Ver todas <ChevronRight size={14} />
@@ -183,6 +287,24 @@ export default function Admin() {
 
         {tab === "transactions" && (
           <>
+            <div className="flex gap-1.5 mb-2">
+              {[
+                { key: "all" as const, label: "Todos" },
+                { key: "mine" as const, label: "Minhas" },
+                { key: "others" as const, label: "Outros" },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setTxOwner(f.key)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                    txOwner === f.key ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`owner-filter-${f.key}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-1.5 flex-wrap">
               {[
                 { key: "all", label: "Todos" },
@@ -206,7 +328,7 @@ export default function Admin() {
             </div>
             <p className="text-[10px] text-muted-foreground">{filteredTxs.length} transações</p>
             <div className="space-y-2">
-              {filteredTxs.map((tx: any) => <TxRow key={tx.id} tx={tx} typeLabels={typeLabels} statusLabels={statusLabels} statusColors={statusColors} formatBRL={formatBRL} formatDate={formatDate} />)}
+              {filteredTxs.map((tx: any) => <TxRow key={tx.id} tx={tx} typeLabels={typeLabels} statusLabels={statusLabels} statusColors={statusColors} formatBRL={formatBRL} formatDate={formatDate} currentUserId={user?.id} />)}
               {filteredTxs.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">Nenhuma transação</p>}
             </div>
           </>
@@ -222,6 +344,7 @@ export default function Admin() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-bold truncate">{u.name || u.username}</p>
                       {u.isAdmin && <Badge className="text-[8px] px-1.5 py-0 bg-primary/20 text-primary border-none">ADMIN</Badge>}
+                      {u.id === user?.id && <Badge className="text-[8px] px-1.5 py-0 bg-blue-500/20 text-blue-500 border-none">VOCÊ</Badge>}
                     </div>
                     <p className="text-[10px] text-muted-foreground">{u.email}</p>
                     <p className="text-[10px] text-muted-foreground">Saldo: {formatBRL(Number(u.balance || 0))} | Travado: {formatBRL(Number(u.lockedBalance || 0))}</p>
@@ -347,11 +470,15 @@ function StatCard({ icon: Icon, label, value, sub, color, testId }: { icon: any;
   );
 }
 
-function TxRow({ tx, typeLabels, statusLabels, statusColors, formatBRL, formatDate }: any) {
+function TxRow({ tx, typeLabels, statusLabels, statusColors, formatBRL, formatDate, currentUserId }: any) {
+  const isMine = tx.userId === currentUserId;
   return (
-    <div className="bg-card border border-border rounded-xl p-3 flex items-center justify-between" data-testid={`admin-tx-${tx.id}`}>
+    <div className={`bg-card border rounded-xl p-3 flex items-center justify-between ${isMine ? 'border-primary/30' : 'border-border'}`} data-testid={`admin-tx-${tx.id}`}>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold truncate">{typeLabels[tx.type] || tx.type}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold truncate">{typeLabels[tx.type] || tx.type}</p>
+          {isMine && <Badge className="text-[7px] px-1 py-0 bg-primary/20 text-primary border-none">EU</Badge>}
+        </div>
         <p className="text-[10px] text-muted-foreground truncate">{tx.userName || tx.description}</p>
         <p className="text-[10px] text-muted-foreground">{formatDate(tx.createdAt)}</p>
       </div>

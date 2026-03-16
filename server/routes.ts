@@ -326,6 +326,37 @@ export async function registerRoutes(
     res.json(checkIns);
   });
 
+  // ====== CHALLENGE MESSAGES ======
+
+  app.get("/api/challenges/:id/messages", requireAuth, async (req, res) => {
+    const msgs = await storage.getChallengeMessages(req.params.id);
+    res.json(msgs);
+  });
+
+  app.post("/api/challenges/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.id;
+      const { text } = req.body;
+
+      if (!text || !text.trim()) return res.status(400).json({ message: "Mensagem vazia" });
+
+      const participant = await storage.getParticipant(challengeId, userId);
+      if (!participant || !participant.isActive) {
+        return res.status(403).json({ message: "Apenas participantes podem enviar mensagens" });
+      }
+
+      const msg = await storage.createChallengeMessage({ challengeId, userId, text: text.trim() });
+      const user = await storage.getUser(userId);
+      res.status(201).json({
+        ...msg,
+        user: { id: user!.id, name: user!.name, avatar: user!.avatar, username: user!.username },
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao enviar mensagem" });
+    }
+  });
+
   // ====== MESSAGES ======
 
   app.get("/api/messages/conversations", requireAuth, async (req, res) => {

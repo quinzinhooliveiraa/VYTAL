@@ -250,6 +250,24 @@ export default function ChallengeDetails() {
   const isParticipant = challenge.isParticipant;
   const entryFee = Number(challenge.entryFee);
   const prizePool = activeParticipants.length * entryFee;
+
+  const cType = challenge.type || "checkin";
+  const cVType = challenge.validationType || "foto";
+
+  const formatScore = (p: any) => {
+    if (cType === "corrida" && cVType === "distancia") return `${((p.score || 0) / 100).toFixed(1)} km`;
+    if (cType === "corrida" && cVType === "tempo") return `${p.score || 0} min`;
+    if (cType === "ranking" && cVType === "distancia") return `${((p.score || 0) / 100).toFixed(1)} km`;
+    if (cType === "ranking" && cVType === "tempo") return `${p.score || 0} min`;
+    if (cVType === "repeticoes") return `${p.score || 0} reps`;
+    return `${p.score || 0}`;
+  };
+  const scoreUnit = (() => {
+    if ((cType === "corrida" || cType === "ranking") && cVType === "distancia") return "km total";
+    if ((cType === "corrida" || cType === "ranking") && cVType === "tempo") return "minutos";
+    if (cVType === "repeticoes") return "repetições";
+    return "check-ins";
+  })();
   const isChallengeEnded = !challenge.isActive || challenge.status === "completed";
   const hasStarted = challenge.hasStarted;
   const joinRequestStatus = challenge.joinRequestStatus;
@@ -441,9 +459,15 @@ export default function ChallengeDetails() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
                 <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : hasStarted ? `${daysLeft} dias restantes` : "Ainda não começou"}</span></div>
                 <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{activeParticipants.length} participantes ativos</span></div>
-                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação: {
-                  { foto: "Check-in Duplo (Foto)", tempo: "Tempo (Início/Fim)", distancia: "Distância (GPS)", repeticoes: "Repetições", combinacao: "Combinação" }[challenge.validationType] || challenge.validationType || "Foto"
+                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Pontuação: {
+                  { checkin: "Check-in Diário", corrida: "Modo Corrida", ranking: "Ranking de Performance", survival: "Sobrevivência" }[cType] || cType
                 }</span></div>
+                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação: {
+                  { foto: "Check-in Duplo (Foto)", tempo: "Tempo (Início/Fim)", distancia: "Distância (GPS)", repeticoes: "Repetições", combinacao: "Combinação" }[cVType] || cVType || "Foto"
+                }</span></div>
+                {cType === "corrida" && challenge.goalTarget && (
+                  <div className="flex items-center gap-3"><Trophy size={16} className="text-yellow-500" /> <span>Meta: {challenge.goalTarget} {cVType === "distancia" ? "km" : cVType === "tempo" ? "min" : cVType === "repeticoes" ? "reps" : "pontos"}</span></div>
+                )}
                 {challenge.description && (
                   <div className="flex items-start gap-3"><Info size={16} className="text-primary shrink-0 mt-0.5" /> <span>{challenge.description}</span></div>
                 )}
@@ -467,8 +491,8 @@ export default function ChallengeDetails() {
                         <p className="text-xs font-bold truncate">{p.user?.name || "Usuário"}{p.userId === user?.id ? " (Você)" : ""}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold">{p.score || 0}</p>
-                        <p className="text-[8px] text-muted-foreground uppercase">check-ins</p>
+                        <p className="text-sm font-bold">{formatScore(p)}</p>
+                        <p className="text-[8px] text-muted-foreground uppercase">{scoreUnit}</p>
                       </div>
                     </div>
                   ))}
@@ -561,8 +585,8 @@ export default function ChallengeDetails() {
                     {!p.isActive && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Desistiu</Badge>}
                   </div>
                   <div className="text-right">
-                    <p className="font-display font-bold text-lg">{p.score || 0}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Check-ins</p>
+                    <p className="font-display font-bold text-lg">{formatScore(p)}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">{scoreUnit}</p>
                   </div>
                 </div>
               ))}

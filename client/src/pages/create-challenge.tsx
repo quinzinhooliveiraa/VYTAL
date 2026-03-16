@@ -76,6 +76,7 @@ export default function CreateChallenge() {
           maxParticipants: parseInt(numMembers),
           duration: parseInt(durationDays),
           validationType,
+          goalTarget: scoringSystem === "corrida" && combinationSpec ? parseInt(combinationSpec) : null,
           image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
           createdBy: "placeholder",

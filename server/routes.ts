@@ -11,7 +11,7 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
-import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns } from "@shared/schema";
+import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns, challengeParticipants } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 async function reverseGeocode(lat: string | null, lng: string | null): Promise<string> {
@@ -932,7 +932,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const { checkInId } = req.params;
-      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace, indoorProofPhotoUrl } = req.body;
+      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace, indoorProofPhotoUrl, reps } = req.body;
 
       const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, checkInId));
       if (!checkIn) return res.status(404).json({ message: "Check-in não encontrado" });
@@ -975,15 +975,52 @@ export async function registerRoutes(
         durationMins,
         caloriesBurned: caloriesBurned || null,
         avgPace: avgPace || null,
+        reps: reps ? parseInt(reps) : null,
         indoorProofPhotoUrl: indoorProofPhotoUrl || "",
         flagged,
         flagReason,
         checkedOutAt: now,
       }).where(eq(checkIns.id, checkInId)).returning();
 
+      const [challenge] = await db.select().from(challenges).where(eq(challenges.id, checkIn.challengeId));
       const participant = await storage.getParticipant(checkIn.challengeId, userId);
       if (participant) {
-        await storage.updateParticipantScore(checkIn.challengeId, userId, (participant.score || 0) + 1);
+        const challengeType = challenge?.type || "checkin";
+        const vType = challenge?.validationType || "foto";
+        const today = now.toISOString().split("T")[0];
+        const dist = distanceKm ? parseFloat(distanceKm) : 0;
+        const newTotalDist = parseFloat(String(participant.totalDistanceKm || "0")) + dist;
+        const newTotalDuration = (participant.totalDurationMins || 0) + durationMins;
+        const newScore = (participant.score || 0) + 1;
+
+        const updates: Record<string, any> = {
+          score: newScore,
+          totalDistanceKm: newTotalDist.toFixed(3),
+          totalDurationMins: newTotalDuration,
+          lastCheckInDate: today,
+        };
+
+        if (challengeType === "corrida" && vType === "distancia") {
+          updates.score = Math.round(newTotalDist * 100);
+        } else if (challengeType === "corrida" && vType === "repeticoes") {
+          const totalReps = newScore;
+          updates.score = totalReps;
+        } else if (challengeType === "corrida" && vType === "tempo") {
+          updates.score = newTotalDuration;
+        } else if (challengeType === "ranking" && vType === "distancia") {
+          updates.score = Math.round(newTotalDist * 100);
+        } else if (challengeType === "ranking" && vType === "tempo") {
+          updates.score = newTotalDuration;
+        } else if (challengeType === "ranking" && vType === "repeticoes") {
+          const r = reps ? parseInt(reps) : 0;
+          updates.score = (participant.score || 0) + r;
+        }
+
+        await db.update(challengeParticipants).set(updates)
+          .where(and(
+            eq(challengeParticipants.challengeId, checkIn.challengeId),
+            eq(challengeParticipants.userId, userId)
+          ));
       }
 
       res.json(updated);

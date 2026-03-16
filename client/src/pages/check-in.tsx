@@ -139,6 +139,7 @@ export default function CheckIn() {
   const [endBackPreview, setEndBackPreview] = useState("");
   const [indoorProofBlob, setIndoorProofBlob] = useState<Blob | null>(null);
   const [indoorProofPreview, setIndoorProofPreview] = useState("");
+  const [repsCount, setRepsCount] = useState("");
 
   const [currentCheckInId, setCurrentCheckInId] = useState<string | null>(null);
   const [checkInStartTime, setCheckInStartTime] = useState<Date | null>(null);
@@ -487,6 +488,7 @@ export default function CheckIn() {
         distanceKm: finalDist > 0 ? finalDist.toFixed(3) : null,
         caloriesBurned: cal,
         avgPace: pace,
+        reps: repsCount ? parseInt(repsCount) : null,
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
@@ -956,6 +958,27 @@ export default function CheckIn() {
                         Pace: {formatPace(durationMins, parseFloat(manualDistanceKm))} min/km
                       </p>
                     )}
+                  </div>
+                </div>
+              )}
+              {vType === "repeticoes" && (
+                <div className="col-span-2 bg-purple-500/10 rounded-2xl p-4 border border-purple-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Flame size={16} className="text-purple-400" />
+                    <p className="text-xs text-purple-300 font-bold uppercase">Repetições</p>
+                  </div>
+                  <p className="text-[10px] text-white/50 mb-2">Quantas repetições você fez neste treino?</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="0"
+                      value={repsCount}
+                      onChange={(e) => setRepsCount(e.target.value)}
+                      className="flex-1 h-12 bg-black/50 border border-purple-500/30 rounded-xl px-4 text-xl font-bold text-purple-400 placeholder:text-white/20 focus:outline-none focus:border-purple-500"
+                      data-testid="input-reps"
+                    />
+                    <span className="text-lg font-bold text-purple-400">reps</span>
                   </div>
                 </div>
               )}

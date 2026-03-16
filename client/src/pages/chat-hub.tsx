@@ -216,7 +216,7 @@ export default function ChatHub() {
                   <div
                     key={challenge.id}
                     className="flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-primary/50 cursor-pointer transition-colors"
-                    onClick={() => setLocation(`/challenges/${challenge.id}`)}
+                    onClick={() => setLocation(`/challenge/${challenge.id}`)}
                     data-testid={`challenge-chat-${challenge.id}`}
                   >
                     <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">

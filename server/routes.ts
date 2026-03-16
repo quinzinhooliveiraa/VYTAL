@@ -89,9 +89,18 @@ export async function registerRoutes(
   }));
 
   // Auth middleware
+  const lastActivityUpdate = new Map<string, number>();
+
   function requireAuth(req: any, res: any, next: any) {
     if (!req.session?.userId) {
       return res.status(401).json({ message: "Não autenticado" });
+    }
+    const userId = req.session.userId;
+    const now = Date.now();
+    const last = lastActivityUpdate.get(userId) || 0;
+    if (now - last > 5 * 60 * 1000) {
+      lastActivityUpdate.set(userId, now);
+      storage.updateUser(userId, { lastActiveAt: new Date() } as any).catch(() => {});
     }
     next();
   }
@@ -537,6 +546,16 @@ export async function registerRoutes(
     if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
     const { password, twoFactorSecret, ...safeUser } = updated;
     res.json(safeUser);
+  });
+
+  app.post("/api/users/pwa-installed", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      await storage.updateUser(userId, { pwaInstalled: true } as any);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   app.post("/api/auth/2fa/setup", requireAuth, async (req, res) => {
@@ -2072,6 +2091,8 @@ export async function registerRoutes(
         isAdmin: usersTable.isAdmin,
         role: usersTable.role,
         online: usersTable.online,
+        pwaInstalled: usersTable.pwaInstalled,
+        lastActiveAt: usersTable.lastActiveAt,
         createdAt: usersTable.createdAt,
         balance: sql<string>`COALESCE(w.balance, 0)`.as("balance"),
         lockedBalance: sql<string>`COALESCE(w.locked_balance, 0)`.as("locked_balance"),

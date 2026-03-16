@@ -25,10 +25,15 @@ export function usePwaInstall() {
 
     window.addEventListener("beforeinstallprompt", handler);
 
+    if (isStandalone) {
+      fetch("/api/users/pwa-installed", { method: "POST", credentials: "include" }).catch(() => {});
+    }
+
     window.addEventListener("appinstalled", () => {
       setIsInstalled(true);
       setCanInstall(false);
       deferredPrompt = null;
+      fetch("/api/users/pwa-installed", { method: "POST", credentials: "include" }).catch(() => {});
     });
 
     return () => window.removeEventListener("beforeinstallprompt", handler);

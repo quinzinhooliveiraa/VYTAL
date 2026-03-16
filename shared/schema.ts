@@ -22,6 +22,8 @@ export const users = pgTable("users", {
   authProvider: text("auth_provider").default("email"),
   twoFactorSecret: text("two_factor_secret"),
   twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  pwaInstalled: boolean("pwa_installed").default(false),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

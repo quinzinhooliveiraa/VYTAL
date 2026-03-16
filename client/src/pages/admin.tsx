@@ -5,7 +5,8 @@ import {
   ArrowLeft, DollarSign, TrendingUp, Users, ArrowDownLeft, ArrowUpRight,
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
   Trophy, ChevronRight, ChevronDown, Loader2, Bell, BellOff, Volume2,
-  MessageSquare, Search, Eye, X, Calendar, Hash, Send, Megaphone, CheckCircle2, Link2
+  MessageSquare, Search, Eye, X, Calendar, Hash, Send, Megaphone, CheckCircle2, Link2,
+  Smartphone, Wifi, WifiOff, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -442,6 +443,22 @@ export default function Admin() {
                         {u.id === user?.id && <Badge className="text-[8px] px-1.5 py-0 bg-blue-500/20 text-blue-500 border-none">VOCÊ</Badge>}
                       </div>
                       <p className="text-[11px] text-muted-foreground">{u.email}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {u.pwaInstalled && <Badge className="text-[8px] px-1.5 py-0 bg-green-500/20 text-green-500 border-none gap-0.5"><Smartphone size={9} /> PWA</Badge>}
+                        {!u.pwaInstalled && <Badge className="text-[8px] px-1.5 py-0 bg-muted text-muted-foreground border-none gap-0.5">Sem PWA</Badge>}
+                        {(() => {
+                          if (!u.lastActiveAt) return <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-500 border-none gap-0.5"><WifiOff size={9} /> Nunca ativo</Badge>;
+                          const diff = Date.now() - new Date(u.lastActiveAt).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          if (mins < 5) return <Badge className="text-[8px] px-1.5 py-0 bg-green-500/20 text-green-500 border-none gap-0.5"><Wifi size={9} /> Online agora</Badge>;
+                          if (mins < 60) return <Badge className="text-[8px] px-1.5 py-0 bg-yellow-500/20 text-yellow-500 border-none gap-0.5"><Clock size={9} /> {mins}min atrás</Badge>;
+                          const hours = Math.floor(mins / 60);
+                          if (hours < 24) return <Badge className="text-[8px] px-1.5 py-0 bg-yellow-500/20 text-yellow-500 border-none gap-0.5"><Clock size={9} /> {hours}h atrás</Badge>;
+                          const days = Math.floor(hours / 24);
+                          if (days <= 7) return <Badge className="text-[8px] px-1.5 py-0 bg-orange-500/20 text-orange-500 border-none gap-0.5"><Clock size={9} /> {days}d atrás</Badge>;
+                          return <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-500 border-none gap-0.5"><WifiOff size={9} /> Inativo ({days}d)</Badge>;
+                        })()}
+                      </div>
                       <div className="flex gap-4 mt-2">
                         <div>
                           <p className="text-[9px] text-muted-foreground uppercase">Saldo</p>

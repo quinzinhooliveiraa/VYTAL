@@ -19,7 +19,7 @@ export default function ChatHub() {
       if (!res.ok) return [];
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 15000,
   });
 
   const { data: myChallenges = [] } = useQuery({

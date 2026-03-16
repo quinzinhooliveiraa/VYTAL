@@ -54,7 +54,7 @@ export default function ChallengeDetails() {
       return res.ok ? res.json() : [];
     },
     enabled: !!id && activeTab === "chat" && challenge?.isParticipant,
-    refetchInterval: 5000,
+    refetchInterval: 10000,
   });
 
   const { data: checkInHistory = [] } = useQuery({
@@ -84,7 +84,7 @@ export default function ChallengeDetails() {
       return res.ok ? res.json() : [];
     },
     enabled: !!id && user?.id === challenge?.createdBy,
-    refetchInterval: 10000,
+    refetchInterval: 30000,
   });
 
   useEffect(() => {

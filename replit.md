@@ -74,8 +74,9 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 
 ## Admin Panel
 - Route: `/admin` (accessible from profile page via shield icon, only visible for admin users)
-- Tabs: Resumo, Transações, Usuários, Alertas, Suporte
+- Tabs: Resumo, Transações, Usuários, Desafios, Alertas, Suporte, Push
 - Shows platform revenue (10% fees), total deposits/withdrawals, user balances, transaction history, support tickets
+- **Push Broadcast**: Admin can send push notifications to all subscribed users (title, body, optional URL). Routes: `POST /api/admin/push/broadcast`, `GET /api/admin/push/stats`
 - Admin emails: quinzinhooliveiraa@gmail.com and oliveirasocial74@gmail.com (isAdmin=true in DB)
 - **Wallet**: GET `/api/wallet/balance` (returns balance, lockedBalance, availableBalance), GET `/api/wallet/transactions`, POST `/api/wallet/deposit`, POST `/api/wallet/withdraw`, GET `/api/wallet/deposit/:id/status`
 - **Webhooks**: POST `/api/webhooks/abacatepay`

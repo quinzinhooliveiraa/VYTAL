@@ -113,7 +113,7 @@ export default function Messages() {
       return res.json();
     },
     enabled: !!username,
-    refetchInterval: 3000,
+    refetchInterval: 8000,
   });
 
   const sendMutation = useMutation({

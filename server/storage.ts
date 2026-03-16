@@ -82,6 +82,7 @@ export interface IStorage {
   // Push Subscriptions
   savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
   getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
+  getAllPushSubscribedUserIds(): Promise<string[]>;
   deletePushSubscription(endpoint: string): Promise<void>;
 
   // Notifications
@@ -527,6 +528,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
     return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async getAllPushSubscribedUserIds(): Promise<string[]> {
+    const rows = await db.selectDistinct({ userId: pushSubscriptions.userId }).from(pushSubscriptions);
+    return rows.map(r => r.userId);
   }
 
   async deletePushSubscription(endpoint: string): Promise<void> {

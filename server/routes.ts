@@ -2190,6 +2190,33 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/push/broadcast", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { title, body, url } = req.body;
+      if (!title || !body) return res.status(400).json({ message: "Título e mensagem são obrigatórios" });
+      const userIds = await storage.getAllPushSubscribedUserIds();
+      if (userIds.length === 0) return res.json({ sent: 0, failed: 0, total: 0 });
+      const results = await pushService.sendToMultiple(userIds, { title, body, url: url || "/" });
+      let sent = 0, failed = 0;
+      results.forEach((r: any) => {
+        if (r.status === "fulfilled") { sent += r.value.sent; failed += r.value.failed; }
+        else { failed++; }
+      });
+      res.json({ sent, failed, total: userIds.length });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/push/stats", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const userIds = await storage.getAllPushSubscribedUserIds();
+      res.json({ subscribedUsers: userIds.length });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/admin/suspicious", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");

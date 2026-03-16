@@ -5,7 +5,7 @@ import {
   ArrowLeft, DollarSign, TrendingUp, Users, ArrowDownLeft, ArrowUpRight,
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
   Trophy, ChevronRight, ChevronDown, Loader2, Bell, BellOff, Volume2,
-  MessageSquare, Search, Eye, X, Calendar, Hash
+  MessageSquare, Search, Eye, X, Calendar, Hash, Send, Megaphone, CheckCircle2, Link2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
-type Tab = "overview" | "transactions" | "users" | "challenges" | "suspicious" | "support";
+type Tab = "overview" | "transactions" | "users" | "challenges" | "suspicious" | "support" | "push";
 
 const playMoneySound = () => {
   try {
@@ -204,6 +204,38 @@ export default function Admin() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/support"] }); },
   });
 
+  const [pushTitle, setPushTitle] = useState("");
+  const [pushBody, setPushBody] = useState("");
+  const [pushUrl, setPushUrl] = useState("");
+  const [broadcastResult, setBroadcastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+  const { data: pushStats } = useQuery({
+    queryKey: ["/api/admin/push/stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/push/stats", { credentials: "include" });
+      return res.ok ? res.json() : { subscribedUsers: 0 };
+    },
+    enabled: tab === "push",
+  });
+
+  const broadcastMutation = useMutation({
+    mutationFn: async (payload: { title: string; body: string; url: string }) => {
+      const res = await fetch("/api/admin/push/broadcast", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setBroadcastResult(data);
+      setPushTitle("");
+      setPushBody("");
+      setPushUrl("");
+    },
+  });
+
   useEffect(() => {
     if (!notificationsEnabled || !txs.length) return;
     if (prevTxCountRef.current !== null && txs.length > prevTxCountRef.current) {
@@ -264,6 +296,7 @@ export default function Admin() {
             { key: "challenges" as Tab, label: "Desafios", icon: Trophy, badge: null },
             { key: "suspicious" as Tab, label: "Alertas", icon: AlertTriangle, badge: alertCount > 0 ? alertCount : null },
             { key: "support" as Tab, label: "Suporte", icon: MessageSquare, badge: openTickets > 0 ? openTickets : null },
+            { key: "push" as Tab, label: "Push", icon: Megaphone, badge: null },
           ]).map(t => (
             <button
               key={t.key}
@@ -667,6 +700,104 @@ export default function Admin() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ====== PUSH BROADCAST ====== */}
+        {tab === "push" && (
+          <div className="space-y-5">
+            <div className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border border-violet-500/20 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <Megaphone size={16} className="text-violet-500" />
+                <span className="text-xs font-bold text-violet-500 uppercase tracking-wider">Notificações Push</span>
+              </div>
+              <p className="text-3xl font-display font-black">{pushStats?.subscribedUsers ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">dispositivos inscritos</p>
+            </div>
+
+            <div className="bg-card border rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Send size={16} className="text-primary" />
+                <p className="text-sm font-bold">Enviar para todos</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Título *</label>
+                  <Input
+                    placeholder="Ex: Novo desafio disponível!"
+                    value={pushTitle}
+                    onChange={e => setPushTitle(e.target.value)}
+                    className="rounded-xl h-10 text-sm"
+                    maxLength={100}
+                    data-testid="input-push-title"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Mensagem *</label>
+                  <textarea
+                    placeholder="Ex: Participe do desafio de corrida e ganhe prêmios!"
+                    value={pushBody}
+                    onChange={e => setPushBody(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    maxLength={300}
+                    data-testid="input-push-body"
+                  />
+                  <p className="text-[10px] text-muted-foreground text-right">{pushBody.length}/300</p>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Link2 size={10} /> Link (opcional)
+                  </label>
+                  <Input
+                    placeholder="Ex: /challenges"
+                    value={pushUrl}
+                    onChange={e => setPushUrl(e.target.value)}
+                    className="rounded-xl h-10 text-sm"
+                    data-testid="input-push-url"
+                  />
+                </div>
+              </div>
+
+              <Button
+                className="w-full h-11 rounded-xl font-bold text-sm gap-2"
+                disabled={!pushTitle.trim() || !pushBody.trim() || broadcastMutation.isPending}
+                onClick={() => broadcastMutation.mutate({ title: pushTitle.trim(), body: pushBody.trim(), url: pushUrl.trim() || "/" })}
+                data-testid="button-send-broadcast"
+              >
+                {broadcastMutation.isPending ? (
+                  <><Loader2 size={16} className="animate-spin" /> Enviando...</>
+                ) : (
+                  <><Send size={16} /> Enviar notificação</>
+                )}
+              </Button>
+
+              {broadcastResult && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-green-500" />
+                    <p className="text-sm font-bold text-green-600">Enviado!</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {broadcastResult.sent} entregue{broadcastResult.sent !== 1 ? "s" : ""} · {broadcastResult.failed} falha{broadcastResult.failed !== 1 ? "s" : ""} · {broadcastResult.total} usuário{broadcastResult.total !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              )}
+
+              {broadcastMutation.isError && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                  <p className="text-xs text-red-500 font-bold">Erro: {(broadcastMutation.error as Error).message}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-muted/30 rounded-xl p-4">
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                A notificação será enviada para todos os dispositivos inscritos. Certifique-se de que o conteúdo é relevante para evitar que os usuários desativem as notificações.
+              </p>
+            </div>
           </div>
         )}
       </div>

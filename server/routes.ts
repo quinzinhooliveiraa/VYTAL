@@ -43,6 +43,7 @@ import fs from "fs";
 import { randomUUID } from "crypto";
 import * as oidcClient from "openid-client";
 import memoize from "memoizee";
+import { OAuth2Client } from "google-auth-library";
 import { pushService } from "./services/push-service";
 
 const ADMIN_EMAILS = [
@@ -271,6 +272,63 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("OIDC callback error:", error);
       res.redirect("/login?error=auth_failed");
+    }
+  });
+
+  // ====== GOOGLE DIRECT LOGIN ======
+
+  const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      const { credential } = req.body;
+      if (!credential) return res.status(400).json({ message: "Token não fornecido" });
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) return res.status(400).json({ message: "Token inválido" });
+
+      const email = payload.email;
+      const fullName = payload.name || email.split("@")[0];
+      const profileImage = payload.picture || "";
+
+      let appUser = await storage.getUserByEmail(email);
+
+      if (appUser) {
+        (req.session as any).userId = appUser.id;
+        await storage.updateUser(appUser.id, { online: true, avatar: appUser.avatar || profileImage });
+        res.json({ user: appUser, isNew: false });
+      } else {
+        const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 20);
+        let username = baseUsername;
+        let counter = 1;
+        while (await storage.getUserByUsername(username)) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(2) + Date.now(), 10);
+        const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+
+        appUser = await storage.createUser({
+          username,
+          email,
+          password: randomPassword,
+          name: fullName,
+          avatar: profileImage,
+          isAdmin,
+        } as any);
+
+        (req.session as any).userId = appUser.id;
+        res.json({ user: appUser, isNew: true });
+      }
+    } catch (error: any) {
+      console.error("Google auth error:", error);
+      res.status(400).json({ message: "Erro na autenticação com Google" });
     }
   });
 

@@ -929,20 +929,9 @@ const NotificationsStep = ({ onNext }: { onNext: () => void }) => {
       setPermState(result as "granted" | "denied");
 
       if (result === "granted") {
-        try {
-          if ("serviceWorker" in navigator) {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: undefined,
-            }).catch(() => null);
-          }
-        } catch (e) {}
-
-        new Notification("VYTAL Ativado!", {
-          body: "Você receberá lembretes de check-in e alertas de desafios.",
-          icon: "/icons/icon-192x192.png",
-        });
+        const { subscribeToPush, sendTestPush } = await import("@/lib/push-notifications");
+        await subscribeToPush();
+        await sendTestPush();
 
         setTimeout(() => onNext(), 1500);
       }

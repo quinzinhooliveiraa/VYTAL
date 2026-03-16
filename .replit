@@ -76,3 +76,5 @@ integrations = ["javascript_log_in_with_replit:2.0.0"]
 
 [userenv.shared]
 ABACATEPAY_API_KEY = "abc_dev_Lp3zmZf2JbwhSrMDtRzr1fts"
+VAPID_PUBLIC_KEY = "BC_oHuly5xquzdqC61tQwoeg7pv9PnYn5aMnNSXAIzJKc-0ZNW8bCHlaSfLSOopH6zIkrVe0DNVhPl5WEmcAUKY"
+VAPID_PRIVATE_KEY = "-UyqXcrID5MyXPeXLsjpEk8EsSvCTQ5rvOj-BtNVQSc"

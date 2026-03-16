@@ -15,6 +15,7 @@ import { challenges, communities, transactions, challengeJoinRequests, followReq
 import { eq, and, sql } from "drizzle-orm";
 import * as oidcClient from "openid-client";
 import memoize from "memoizee";
+import { pushService } from "./services/push-service";
 
 const ADMIN_EMAILS = [
   "oliveirasocial74@gmail.com",
@@ -1408,6 +1409,56 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("[Webhook] Error:", error.message);
       res.status(500).json({ message: "Erro ao processar webhook" });
+    }
+  });
+
+  // ---- Push Notifications ----
+
+  app.get("/api/push/vapid-key", (_req, res) => {
+    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
+  });
+
+  app.post("/api/push/subscribe", async (req, res) => {
+    if (!req.session?.userId) return res.status(401).json({ message: "Não autenticado" });
+    const { endpoint, keys } = req.body;
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+      return res.status(400).json({ message: "Dados de subscription inválidos" });
+    }
+    try {
+      await storage.savePushSubscription({
+        userId: req.session.userId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", async (req, res) => {
+    const { endpoint } = req.body;
+    if (!endpoint) return res.status(400).json({ message: "Endpoint obrigatório" });
+    try {
+      await storage.deletePushSubscription(endpoint);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/push/test", async (req, res) => {
+    if (!req.session?.userId) return res.status(401).json({ message: "Não autenticado" });
+    try {
+      const result = await pushService.sendToUser(req.session.userId, {
+        title: "VYTAL",
+        body: "Notificações ativadas com sucesso! 🎉",
+        url: "/",
+      });
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

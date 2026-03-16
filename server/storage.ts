@@ -3,13 +3,14 @@ import { eq, and, or, desc, sql, ne, ilike, inArray } from "drizzle-orm";
 import {
   users, challenges, challengeParticipants, checkIns,
   messages, follows, communities, communityMembers, walletTransactions,
-  challengeMessages, supportTickets,
+  challengeMessages, supportTickets, pushSubscriptions,
   type User, type InsertUser, type Challenge, type InsertChallenge,
   type CheckIn, type InsertCheckIn, type Message, type InsertMessage,
   type Follow, type InsertFollow, type Community, type InsertCommunity,
   type CommunityMember, type WalletTransaction, type InsertWalletTransaction,
   type ChallengeParticipant, type ChallengeMessage, type InsertChallengeMessage,
-  type SupportTicket, type InsertSupportTicket
+  type SupportTicket, type InsertSupportTicket,
+  type PushSubscription, type InsertPushSubscription
 } from "@shared/schema";
 
 export interface IStorage {
@@ -75,6 +76,11 @@ export interface IStorage {
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
   getSupportTickets(): Promise<(SupportTicket & { userName: string; userEmail: string })[]>;
   updateSupportTicketStatus(id: string, status: string, adminNotes?: string): Promise<void>;
+
+  // Push Subscriptions
+  savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
+  getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
+  deletePushSubscription(endpoint: string): Promise<void>;
 
   // Stats
   getUserStats(userId: string): Promise<{
@@ -489,6 +495,20 @@ export class DatabaseStorage implements IStorage {
     const updates: any = { status };
     if (adminNotes !== undefined) updates.adminNotes = adminNotes;
     await db.update(supportTickets).set(updates).where(eq(supportTickets.id, id));
+  }
+
+  async savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, sub.endpoint));
+    const [row] = await db.insert(pushSubscriptions).values(sub).returning();
+    return row;
+  }
+
+  async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
   }
 }
 

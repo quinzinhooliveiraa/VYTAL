@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -459,18 +459,47 @@ export default function ChallengeDetails() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
                 <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : hasStarted ? `${daysLeft} dias restantes` : "Ainda não começou"}</span></div>
                 <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{activeParticipants.length} participantes ativos</span></div>
-                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Pontuação: {
-                  { checkin: "Check-in Diário", corrida: "Modo Corrida", ranking: "Ranking de Performance", survival: "Sobrevivência" }[cType] || cType
-                }</span></div>
-                <div className="flex items-center gap-3"><Info size={16} className="text-primary" /> <span>Validação: {
-                  { foto: "Check-in Duplo (Foto)", tempo: "Tempo (Início/Fim)", distancia: "Distância (GPS)", repeticoes: "Repetições", combinacao: "Combinação" }[cVType] || cVType || "Foto"
-                }</span></div>
                 {cType === "corrida" && challenge.goalTarget && (
                   <div className="flex items-center gap-3"><Trophy size={16} className="text-yellow-500" /> <span>Meta: {challenge.goalTarget} {cVType === "distancia" ? "km" : cVType === "tempo" ? "min" : cVType === "repeticoes" ? "reps" : "pontos"}</span></div>
                 )}
                 {challenge.description && (
                   <div className="flex items-start gap-3"><Info size={16} className="text-primary shrink-0 mt-0.5" /> <span>{challenge.description}</span></div>
                 )}
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                  <Zap size={12} />
+                  {{ checkin: "Check-in Diário", corrida: "Modo Corrida", ranking: "Ranking de Performance", survival: "Sobrevivência" }[cType] || cType}
+                </p>
+                <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
+                  {cType === "checkin" && (<>
+                    <p>Cada participante precisa fazer check-in <strong className="text-foreground">todos os dias</strong> — selfie + foto do ambiente para comprovação.</p>
+                    <p>Quem <strong className="text-destructive">faltar um dia é eliminado</strong> e perde a entrada.</p>
+                    <p>No final, quem completou todos os dias <strong className="text-green-500">divide o prêmio igualmente</strong>.</p>
+                  </>)}
+                  {cType === "corrida" && (<>
+                    <p>Cada check-out acumula seu progresso real: {cVType === "distancia" ? "quilômetros percorridos via GPS" : cVType === "tempo" ? "minutos cronometrados" : cVType === "repeticoes" ? "repetições informadas" : "pontos acumulados"}.</p>
+                    <p>O <strong className="text-foreground">primeiro a bater a meta{challenge.goalTarget ? ` de ${challenge.goalTarget} ${cVType === "distancia" ? "km" : cVType === "tempo" ? "min" : "reps"}` : ""}</strong> vence e leva o prêmio.</p>
+                    <p>Se ninguém bater, quem chegou <strong className="text-yellow-500">mais perto ganha</strong>.</p>
+                  </>)}
+                  {cType === "ranking" && (<>
+                    <p>Cada check-out acumula dados reais: {cVType === "distancia" ? "km percorridos via GPS" : cVType === "tempo" ? "minutos cronometrados" : cVType === "repeticoes" ? "repetições informadas" : "pontos do moderador"}.</p>
+                    <p>No final do prazo, os <strong className="text-yellow-500">TOP 3 dividem o prêmio</strong> (50% / 30% / 20%).</p>
+                    <p>Ranking atualiza em tempo real. Desistentes perdem a entrada.</p>
+                  </>)}
+                  {cType === "survival" && (<>
+                    <p>Todos começam ativos e precisam fazer check-in <strong className="text-foreground">regularmente</strong>.</p>
+                    <p>Quem <strong className="text-destructive">faltar é eliminado automaticamente</strong>.</p>
+                    <p>O prêmio vai inteiro para o <strong className="text-green-500">último sobrevivente</strong>. Se mais de um sobreviver, dividem igualmente.</p>
+                  </>)}
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-[10px] text-muted-foreground">
+                    <strong className="text-foreground">Validação:</strong>{" "}
+                    {{ foto: "Selfie + foto do ambiente (check-in duplo) com GPS", tempo: "Tempo cronometrado do check-in ao check-out", distancia: "Distância rastreada em tempo real via GPS", repeticoes: "Repetições informadas no check-out", combinacao: "Critérios personalizados pelo moderador" }[cVType] || "Foto"}
+                  </p>
+                </div>
               </div>
             </div>
 

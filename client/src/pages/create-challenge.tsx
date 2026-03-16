@@ -414,37 +414,61 @@ export default function CreateChallenge() {
                   id: "checkin", 
                   title: "Check-in Diário", 
                   icon: Camera, 
-                  description: "Apenas quem registrar check-in todos os dias (sem faltar) divide o prêmio igualmente.",
+                  description: "Quem treinar todos os dias divide o prêmio.",
+                  details: [
+                    "Cada participante precisa fazer check-in (selfie + foto do ambiente) todo dia",
+                    "Quem faltar um dia é eliminado e perde a entrada",
+                    "No final, quem sobrou divide o prêmio igualmente",
+                    "Pontuação: 1 ponto por check-in completado"
+                  ],
                   methods: ["foto"]
                 },
                 { 
                   id: "corrida", 
                   title: "Modo Corrida", 
                   icon: Zap, 
-                  description: "O primeiro a atingir a meta total (ex: 100km, 50 treinos) vence e leva tudo.",
+                  description: "O primeiro a bater a meta leva tudo.",
+                  details: [
+                    "Você define uma meta (ex: 100km, 500 reps, 600 min)",
+                    "Cada check-out acumula o progresso real (km do GPS, reps informadas, ou minutos)",
+                    "O primeiro participante a atingir a meta vence e leva o prêmio",
+                    "Se ninguém bater a meta, quem chegou mais perto ganha"
+                  ],
                   methods: ["distancia", "repeticoes", "tempo"]
                 },
                 { 
                   id: "ranking", 
                   title: "Ranking de Performance", 
                   icon: Trophy, 
-                  description: "O prêmio é dividido entre os TOP 3 que mais acumularem pontos.",
+                  description: "Os TOP 3 com mais acúmulo dividem o prêmio.",
+                  details: [
+                    "Cada check-out acumula dados reais: km percorridos (GPS), repetições informadas, ou minutos treinados",
+                    "No final do prazo, os 3 primeiros do ranking dividem o prêmio (50% / 30% / 20%)",
+                    "O ranking atualiza em tempo real a cada check-out",
+                    "Desistentes perdem a entrada para o prêmio"
+                  ],
                   methods: ["distancia", "repeticoes", "tempo", "combinacao"]
                 },
                 { 
                   id: "survival", 
                   title: "Sobrevivência", 
                   icon: Flame, 
-                  description: "O último a sobrar ou quem não falhar nenhum dia leva tudo.",
+                  description: "O último a permanecer ativo leva tudo.",
+                  details: [
+                    "Todos começam ativos e precisam fazer check-in regularmente",
+                    "Quem faltar um dia é eliminado automaticamente",
+                    "O prêmio vai inteiro para o último sobrevivente",
+                    "Se mais de um sobreviver até o fim, dividem igualmente"
+                  ],
                   methods: ["foto", "tempo"]
                 }
               ].map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setScoringSystem(item.id)}
-                  className={`w-full text-left p-5 rounded-3xl border-2 transition-all space-y-4 ${scoringSystem === item.id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted'}`}
+                  className={`w-full text-left p-5 rounded-3xl border-2 transition-all ${scoringSystem === item.id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted'}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className={`p-2 rounded-xl ${scoringSystem === item.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                       <item.icon size={20} />
                     </div>
@@ -453,6 +477,16 @@ export default function CreateChallenge() {
                       <p className="text-xs text-muted-foreground">{item.description}</p>
                     </div>
                   </div>
+                  {scoringSystem === item.id && (
+                    <div className="mt-3 space-y-1.5 pl-2 border-l-2 border-primary/30 ml-5 animate-in fade-in slide-in-from-top-2">
+                      {item.details.map((d, i) => (
+                        <p key={i} className="text-[11px] text-muted-foreground flex items-start gap-2">
+                          <span className="text-primary font-bold mt-0.5 shrink-0">{i + 1}.</span>
+                          {d}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -462,31 +496,43 @@ export default function CreateChallenge() {
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-primary">Método de Validação</p>
                   <p className="text-xs text-muted-foreground">
-                    Como o progresso será medido e comprovado para este sistema:
+                    Como cada check-out será medido e comprovado:
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   {validationTypes
                     .filter(type => {
-                      const recommendedMethods = {
+                      const recommendedMethods: Record<string, string[]> = {
                         checkin: ["foto"],
                         corrida: ["distancia", "repeticoes", "tempo"],
                         ranking: ["distancia", "repeticoes", "tempo", "combinacao"],
                         survival: ["foto", "tempo"]
                       };
-                      return recommendedMethods[scoringSystem as keyof typeof recommendedMethods]?.includes(type.id);
+                      return recommendedMethods[scoringSystem]?.includes(type.id);
                     })
-                    .map((type) => (
-                      <button
-                        key={type.id}
-                        onClick={() => setValidationType(type.id)}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/20 text-primary' : 'border-primary/30 bg-primary/5 text-muted-foreground hover:bg-primary/10'}`}
-                      >
-                        <type.icon size={16} />
-                        <span className="text-[10px] font-semibold text-center">{type.label}</span>
-                      </button>
-                    ))}
+                    .map((type) => {
+                      const explanations: Record<string, string> = {
+                        foto: "Selfie + foto do ambiente no check-in e check-out. GPS registra localização. Pontuação por presença.",
+                        distancia: "GPS rastreia distância em tempo real durante a atividade. Km acumulados definem a pontuação. Modo indoor: foto do painel + distância manual.",
+                        tempo: "Tempo cronometrado do check-in ao check-out. Minutos acumulados definem a pontuação.",
+                        repeticoes: "No check-out, informe quantas repetições fez. Total de reps acumuladas define a pontuação.",
+                        combinacao: "Moderador define critérios personalizados. Check-in duplo obrigatório + critérios do moderador."
+                      };
+                      return (
+                        <button
+                          key={type.id}
+                          onClick={() => setValidationType(type.id)}
+                          className={`w-full text-left p-3 rounded-xl border-2 transition-all ${validationType === type.id ? 'border-primary bg-primary/20' : 'border-primary/20 bg-primary/5 hover:bg-primary/10'}`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <type.icon size={14} className={validationType === type.id ? "text-primary" : "text-muted-foreground"} />
+                            <span className={`text-xs font-bold ${validationType === type.id ? "text-primary" : "text-muted-foreground"}`}>{type.label}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">{explanations[type.id]}</p>
+                        </button>
+                      );
+                    })}
                 </div>
 
                 {validationType === "combinacao" && scoringSystem !== "corrida" && (
@@ -504,15 +550,24 @@ export default function CreateChallenge() {
 
                 {scoringSystem === "corrida" && (
                   <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl animate-in zoom-in-95">
-                    <Label className="text-sm font-bold text-primary mb-2 block">Meta da Corrida</Label>
-                    <p className="text-[10px] text-muted-foreground mb-2">Qual o objetivo final para vencer? (Ex: 100 para 100km)</p>
-                    <Input 
-                      type="number"
-                      placeholder="Valor da meta" 
-                      value={combinationSpec}
-                      onChange={(e) => setCombinationSpec(e.target.value)}
-                      className="h-10 rounded-xl px-3 text-sm"
-                    />
+                    <Label className="text-sm font-bold text-primary mb-2 block">Meta para Vencer</Label>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      {validationType === "distancia" ? "Quantos km o participante precisa acumular para vencer? (Ex: 100 = 100km)" :
+                       validationType === "tempo" ? "Quantos minutos o participante precisa acumular? (Ex: 600 = 10 horas)" :
+                       "Quantas repetições o participante precisa acumular? (Ex: 500 reps)"}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="number"
+                        placeholder="Valor da meta" 
+                        value={combinationSpec}
+                        onChange={(e) => setCombinationSpec(e.target.value)}
+                        className="h-10 rounded-xl px-3 text-sm flex-1"
+                      />
+                      <span className="text-sm font-bold text-primary">
+                        {validationType === "distancia" ? "km" : validationType === "tempo" ? "min" : "reps"}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

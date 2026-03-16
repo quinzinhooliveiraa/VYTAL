@@ -26,7 +26,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - `client/src/App.tsx` — Root with auth-based routing
 
 ## Database Tables
-- **Core**: users, challenges, challengeParticipants, checkIns, messages, follows, communities, communityMembers
+- **Core**: users (with cpf, phone fields), challenges, challengeParticipants, checkIns, messages, follows, communities, communityMembers
 - **Financial**: wallets (balance + locked_balance per user), transactions (with status, external_id, idempotency_key, metadata)
 - **Legacy**: walletTransactions (kept for backward compatibility)
 

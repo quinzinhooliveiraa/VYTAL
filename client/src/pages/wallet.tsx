@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, QrCode, Loader2, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, History, Info, Eye, EyeOff, Copy, QrCode, Loader2, CheckCircle2, Clock, XCircle, AlertCircle, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,15 +7,20 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Wallet() {
+  const { user } = useAuth();
   const [showBalance, setShowBalance] = useState(true);
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [cpfDialogOpen, setCpfDialogOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [pixKeyType, setPixKeyType] = useState("CPF");
+  const [cpfInput, setCpfInput] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
   const [pixData, setPixData] = useState<{ qrCode?: string; qrCodeBase64?: string; url?: string } | null>(null);
 
   const { data: walletData } = useQuery({
@@ -34,10 +39,36 @@ export default function Wallet() {
     },
   });
 
+  const saveCpfMutation = useMutation({
+    mutationFn: async (data: { cpf: string; phone: string }) => {
+      const res = await apiRequest("PATCH", "/api/users/me", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setCpfDialogOpen(false);
+      if (depositAmount) {
+        depositMutation.mutate(Number(depositAmount));
+      }
+    },
+  });
+
   const depositMutation = useMutation({
     mutationFn: async (amount: number) => {
-      const res = await apiRequest("POST", "/api/wallet/deposit", { amount });
-      return res.json();
+      const res = await fetch("/api/wallet/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.needsCpf) {
+          setCpfDialogOpen(true);
+        }
+        throw new Error(data.message || "Erro ao depositar");
+      }
+      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
@@ -53,8 +84,15 @@ export default function Wallet() {
 
   const withdrawMutation = useMutation({
     mutationFn: async (params: { amount: number; pixKey: string; pixKeyType: string }) => {
-      const res = await apiRequest("POST", "/api/wallet/withdraw", params);
-      return res.json();
+      const res = await fetch("/api/wallet/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(params),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erro ao sacar");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
@@ -408,6 +446,59 @@ export default function Wallet() {
                 {(withdrawMutation.error as any)?.message || "Erro ao sacar"}
               </p>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cpfDialogOpen} onOpenChange={setCpfDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle className="font-display">Dados para pagamento</DialogTitle>
+            <DialogDescription>
+              Para usar Pix, precisamos do seu CPF e telefone. Seus dados são protegidos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold">CPF</Label>
+              <Input
+                placeholder="000.000.000-00"
+                value={cpfInput}
+                onChange={(e) => setCpfInput(e.target.value.replace(/\D/g, ""))}
+                className="h-12 rounded-xl"
+                maxLength={11}
+                data-testid="input-cpf"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold">Telefone com DDD</Label>
+              <Input
+                placeholder="55 11 99999-9999"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, ""))}
+                className="h-12 rounded-xl"
+                maxLength={13}
+                data-testid="input-phone"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                className="w-full h-12 rounded-xl font-bold"
+                disabled={cpfInput.length !== 11 || phoneInput.length < 10 || saveCpfMutation.isPending}
+                onClick={() => saveCpfMutation.mutate({ cpf: cpfInput, phone: phoneInput })}
+                data-testid="button-save-cpf"
+              >
+                {saveCpfMutation.isPending ? (
+                  <Loader2 className="animate-spin mr-2" size={18} />
+                ) : (
+                  <User className="mr-2" size={18} />
+                )}
+                Salvar e continuar
+              </Button>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

@@ -20,6 +20,13 @@ export interface PixWithdrawResult {
   status: string;
 }
 
+export interface CustomerData {
+  name: string;
+  email: string;
+  cellphone: string;
+  taxId: string;
+}
+
 export class PaymentService {
   private async request(method: string, path: string, body?: any) {
     const apiKey = getApiKey();
@@ -34,15 +41,15 @@ export class PaymentService {
     });
 
     const data = await res.json();
-    if (!res.ok) {
+    if (!res.ok || data.success === false) {
       console.error("[AbacatePay] Error:", res.status, data);
-      throw new Error(data?.error?.message || `AbacatePay error: ${res.status}`);
+      throw new Error(data?.error || `AbacatePay error: ${res.status}`);
     }
 
     return data;
   }
 
-  async createPixCharge(amountInCents: number, description: string, externalRef: string): Promise<PixChargeResult> {
+  async createPixCharge(amountInCents: number, description: string, externalRef: string, customer: CustomerData): Promise<PixChargeResult> {
     const data = await this.request("POST", "/billing/create", {
       frequency: "ONE_TIME",
       methods: ["PIX"],
@@ -54,6 +61,12 @@ export class PaymentService {
           price: amountInCents,
         },
       ],
+      customer: {
+        name: customer.name,
+        email: customer.email,
+        cellphone: customer.cellphone,
+        taxId: customer.taxId,
+      },
       returnUrl: process.env.APP_URL || "https://fitstake.app",
       completionUrl: process.env.APP_URL || "https://fitstake.app",
     });

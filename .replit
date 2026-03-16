@@ -70,3 +70,8 @@ waitForPort = 5000
 [agent]
 stack = "MOCKUP_JS"
 mockupState = "FULLSTACK"
+
+[userenv]
+
+[userenv.shared]
+ABACATEPAY_API_KEY = "abc_dev_Lp3zmZf2JbwhSrMDtRzr1fts"

@@ -137,8 +137,8 @@ export async function registerRoutes(
 
   app.patch("/api/users/me", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
-    const { name, bio, avatar, goals, publicEarnings, isPrivate } = req.body;
-    const updated = await storage.updateUser(userId, { name, bio, avatar, goals, publicEarnings, isPrivate });
+    const { name, bio, avatar, goals, publicEarnings, isPrivate, cpf, phone } = req.body;
+    const updated = await storage.updateUser(userId, { name, bio, avatar, goals, publicEarnings, isPrivate, cpf, phone });
     if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
     const { password, ...safeUser } = updated;
     res.json(safeUser);
@@ -431,11 +431,23 @@ export async function registerRoutes(
       });
 
       if (paymentService.isConfigured()) {
+        const user = await storage.getUser(userId);
+        if (!user?.cpf) {
+          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED);
+          return res.status(400).json({ message: "Configure seu CPF no perfil antes de depositar", needsCpf: true });
+        }
+
         const amountInCents = Math.round(numAmount * 100);
         const charge = await paymentService.createPixCharge(
           amountInCents,
           `Depósito FitStake - R$ ${numAmount.toFixed(2)}`,
-          tx.id
+          tx.id,
+          {
+            name: user.name,
+            email: user.email,
+            cellphone: user.phone || "5500000000000",
+            taxId: user.cpf,
+          }
         );
 
         await transactionService.setExternalId(tx.id, charge.id);

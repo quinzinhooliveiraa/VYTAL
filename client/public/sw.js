@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vytal-v1';
+const CACHE_NAME = 'vytal-v2';
 const STATIC_ASSETS = [
   '/',
   '/favicon.png',
@@ -32,7 +32,24 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/', responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => caches.match('/').then((r) => r || fetch(event.request)))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)

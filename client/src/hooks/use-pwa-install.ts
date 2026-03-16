@@ -12,10 +12,16 @@ export function usePwaInstall() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    const isStandalone =
+    const checkStandalone = () =>
       window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    setIsInstalled(isStandalone);
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      window.matchMedia("(display-mode: minimal-ui)").matches ||
+      (navigator as any).standalone === true ||
+      document.referrer.includes("android-app://") ||
+      (window.innerHeight === screen.height && window.innerWidth === screen.width);
+
+    const standalone = checkStandalone();
+    setIsInstalled(standalone);
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -25,9 +31,19 @@ export function usePwaInstall() {
 
     window.addEventListener("beforeinstallprompt", handler);
 
-    if (isStandalone) {
+    if (standalone) {
       fetch("/api/users/pwa-installed", { method: "POST", credentials: "include" }).catch(() => {});
     }
+
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const onDisplayChange = () => {
+      if (checkStandalone()) {
+        setIsInstalled(true);
+        setCanInstall(false);
+        fetch("/api/users/pwa-installed", { method: "POST", credentials: "include" }).catch(() => {});
+      }
+    };
+    mediaQuery.addEventListener("change", onDisplayChange);
 
     window.addEventListener("appinstalled", () => {
       setIsInstalled(true);
@@ -36,7 +52,10 @@ export function usePwaInstall() {
       fetch("/api/users/pwa-installed", { method: "POST", credentials: "include" }).catch(() => {});
     });
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      mediaQuery.removeEventListener("change", onDisplayChange);
+    };
   }, []);
 
   const install = async () => {

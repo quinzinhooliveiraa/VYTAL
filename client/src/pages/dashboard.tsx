@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity, Users, Clock, HelpCircle } from "lucide-react";
+import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity, Users, Clock, HelpCircle, Eye, EyeOff } from "lucide-react";
 import { NotificationBell } from "@/components/notification-center";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,15 @@ export default function Dashboard() {
 
   const { hasSeen: quickStartSeen, reset: resetQuickStart } = useQuickStartGuide();
   const [showQuickStart, setShowQuickStart] = useState(false);
+  const [hideBalance, setHideBalance] = useState(() => localStorage.getItem("vytal-hide-balance") === "true");
+  const toggleHideBalance = () => {
+    setHideBalance(prev => {
+      const next = !prev;
+      localStorage.setItem("vytal-hide-balance", String(next));
+      return next;
+    });
+  };
+  const masked = "••••••";
 
   return (
     <div className="px-5 pb-28 pt-6 space-y-6 animate-in fade-in duration-500">
@@ -104,18 +113,23 @@ export default function Dashboard() {
         </div>
 
         <div className="relative z-10 mb-5">
-          <p className="text-white/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Saldo Disponível</p>
-          <h2 className="text-4xl font-display font-bold text-primary tracking-tight" data-testid="text-dashboard-available">{availableBalance}</h2>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-[0.2em]">Saldo Disponível</p>
+            <button onClick={toggleHideBalance} className="text-white/40 hover:text-white/70 transition-colors p-1 -m-1" data-testid="button-toggle-balance">
+              {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <h2 className="text-4xl font-display font-bold text-primary tracking-tight" data-testid="text-dashboard-available">{hideBalance ? masked : availableBalance}</h2>
         </div>
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10 relative z-10">
           <div>
             <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-0.5">Em Desafios</p>
-            <p className="text-lg font-display font-bold" data-testid="text-dashboard-locked">{totalInvested}</p>
+            <p className="text-lg font-display font-bold" data-testid="text-dashboard-locked">{hideBalance ? masked : totalInvested}</p>
           </div>
           <div>
             <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-0.5">Saldo Total</p>
-            <p className="text-lg font-display font-bold text-primary" data-testid="text-dashboard-total">{totalEarned}</p>
+            <p className="text-lg font-display font-bold text-primary" data-testid="text-dashboard-total">{hideBalance ? masked : totalEarned}</p>
           </div>
         </div>
       </motion.div>

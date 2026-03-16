@@ -2307,6 +2307,38 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/reset-wallets", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { confirmation } = req.body;
+      if (confirmation !== "RESETAR_SALDOS") {
+        return res.status(400).json({ message: "Confirmação inválida. Envie 'RESETAR_SALDOS' para confirmar." });
+      }
+
+      const { db: database } = await import("./db");
+      const { users: usersTable, transactions } = await import("@shared/schema");
+      const { sql } = await import("drizzle-orm");
+
+      const [userCount] = await database.select({
+        count: sql<number>`COUNT(*)`.as("count"),
+        totalBalance: sql<string>`COALESCE(SUM(balance), 0)`.as("total_balance"),
+      }).from(usersTable).where(sql`balance > 0 OR locked_balance > 0`);
+
+      await database.execute(sql`UPDATE users SET balance = 0, locked_balance = 0`);
+
+      await database.execute(sql`UPDATE transactions SET status = 'reset' WHERE status IN ('pending', 'processing')`);
+
+      console.log(`[Admin] Wallets reset by admin. ${userCount.count} users affected, total balance cleared: ${userCount.totalBalance}`);
+
+      res.json({
+        message: "Todos os saldos foram zerados com sucesso",
+        usersAffected: Number(userCount.count),
+        totalCleared: Number(userCount.totalBalance),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ====== WEBHOOKS ======
 
   app.post("/api/webhooks/abacatepay", async (req, res) => {

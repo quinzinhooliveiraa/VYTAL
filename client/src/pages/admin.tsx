@@ -6,7 +6,7 @@ import {
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
   Trophy, ChevronRight, ChevronDown, Loader2, Bell, BellOff, Volume2,
   MessageSquare, Search, Eye, X, Calendar, Hash, Send, Megaphone, CheckCircle2, Link2,
-  Smartphone, Wifi, WifiOff, Clock
+  Smartphone, Wifi, WifiOff, Clock, RotateCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,8 @@ export default function Admin() {
   const [txFilter, setTxFilter] = useState<string>("all");
   const [userSearch, setUserSearch] = useState("");
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
+  const [resetWalletDialog, setResetWalletDialog] = useState(false);
+  const [resetConfirmInput, setResetConfirmInput] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("admin-notif") !== "off");
   const prevTxCountRef = useRef<number | null>(null);
   const prevStatsRef = useRef<any>(null);
@@ -217,6 +219,25 @@ export default function Admin() {
       return res.ok ? res.json() : { subscribedUsers: 0 };
     },
     enabled: tab === "push",
+  });
+
+  const resetWalletsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/reset-wallets", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: "RESETAR_SALDOS" }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
+      setResetWalletDialog(false);
+      setResetConfirmInput("");
+    },
   });
 
   const broadcastMutation = useMutation({
@@ -366,6 +387,33 @@ export default function Admin() {
                   <TxRow key={tx.id} tx={tx} currentUserId={user?.id} />
                 ))}
                 {txs.length === 0 && <p className="text-center text-xs text-muted-foreground py-6">Nenhuma transação</p>}
+              </div>
+            </div>
+
+            {/* Ferramentas Admin */}
+            <div className="space-y-3">
+              <p className="font-bold text-sm">Ferramentas</p>
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center">
+                      <RotateCcw size={16} className="text-destructive" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Resetar saldos</p>
+                      <p className="text-[10px] text-muted-foreground">Zerar todos os saldos (usar ao sair do dev mode)</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-bold"
+                    onClick={() => { setResetWalletDialog(true); setResetConfirmInput(""); }}
+                    data-testid="button-open-reset-wallets"
+                  >
+                    Resetar
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -854,6 +902,72 @@ export default function Admin() {
               ) : "Confirmar"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetWalletDialog} onOpenChange={(open) => { setResetWalletDialog(open); if (!open) setResetConfirmInput(""); }}>
+        <DialogContent className="rounded-3xl max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">Resetar todos os saldos</DialogTitle>
+            <DialogDescription>
+              Esta ação vai zerar o saldo de TODOS os usuários e cancelar transações pendentes. Use apenas ao migrar do modo de desenvolvimento para produção.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30">
+              <p className="text-xs text-destructive font-bold mb-1">Atenção!</p>
+              <p className="text-[11px] text-destructive/80">Esta ação é irreversível. Todos os saldos serão zerados permanentemente.</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Digite <span className="font-mono font-bold text-foreground">RESETAR</span> para confirmar:
+              </p>
+              <Input
+                value={resetConfirmInput}
+                onChange={(e) => setResetConfirmInput(e.target.value)}
+                placeholder="RESETAR"
+                className="h-12 rounded-xl font-mono text-center text-lg tracking-widest"
+                data-testid="input-reset-confirm"
+              />
+            </div>
+
+            {resetWalletsMutation.isSuccess && (
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/30 text-center">
+                <CheckCircle2 size={20} className="mx-auto text-primary mb-1" />
+                <p className="text-xs font-bold text-primary">Saldos zerados com sucesso!</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {(resetWalletsMutation.data as any)?.usersAffected} usuários afetados · {formatBRL(Number((resetWalletsMutation.data as any)?.totalCleared || 0))} zerados
+                </p>
+              </div>
+            )}
+
+            {resetWalletsMutation.isError && (
+              <p className="text-destructive text-xs text-center">
+                <AlertTriangle size={14} className="inline mr-1" />
+                {(resetWalletsMutation.error as any)?.message || "Erro ao resetar"}
+              </p>
+            )}
+
+            <DialogFooter className="flex gap-2 sm:flex-row">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setResetWalletDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 rounded-xl font-bold"
+                disabled={resetConfirmInput !== "RESETAR" || resetWalletsMutation.isPending}
+                onClick={() => resetWalletsMutation.mutate()}
+                data-testid="button-confirm-reset-wallets"
+              >
+                {resetWalletsMutation.isPending ? (
+                  <Loader2 className="animate-spin mr-2" size={16} />
+                ) : (
+                  <RotateCcw size={16} className="mr-2" />
+                )}
+                Resetar Tudo
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

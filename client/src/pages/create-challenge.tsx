@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2, Plus } from "lucide-react";
+import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2, Plus, Loader2, Wallet, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 
 export default function CreateChallenge() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
+  const [createdChallengeId, setCreatedChallengeId] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [modalidade, setModalidade] = useState("academia");
   const [scoringSystem, setScoringSystem] = useState("ranking");
   const [validationType, setValidationType] = useState("foto");
@@ -27,6 +31,52 @@ export default function CreateChallenge() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
   const [combinationSpec, setCombinationSpec] = useState("");
+
+  const { data: walletData } = useQuery({
+    queryKey: ["/api/wallet/balance"],
+    queryFn: async () => {
+      const res = await fetch("/api/wallet/balance", { credentials: "include" });
+      return res.ok ? res.json() : { balance: 0, lockedBalance: 0, availableBalance: 0 };
+    },
+  });
+  const availableBalance = Number(walletData?.availableBalance || 0);
+  const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const createChallengeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/challenges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: challengeName,
+          description: challengeDesc,
+          type: scoringSystem,
+          sport: modalidade,
+          entryFee: entry.toString(),
+          maxParticipants: parseInt(numMembers),
+          duration: parseInt(durationDays),
+          validationType,
+          startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+          createdBy: "placeholder",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erro ao criar desafio");
+      return data;
+    },
+    onSuccess: (data) => {
+      setCreatedChallengeId(data.id);
+      setCreateError(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      setStep(5);
+    },
+    onError: (error: Error) => {
+      setCreateError(error.message);
+    },
+  });
 
   const modalidades = [
     { id: "corrida", icon: Route, label: "Corrida" },
@@ -65,6 +115,7 @@ export default function CreateChallenge() {
 
   const numParticipants = parseInt(numMembers) || 1;
   const entry = parseInt(entryValue) || 0;
+  const insufficientBalance = entry > 0 && availableBalance < entry;
   const rawTotal = entry * numParticipants;
   const prizePool = rawTotal * 0.9;
 
@@ -73,21 +124,22 @@ export default function CreateChallenge() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  // Autoshare when reaching step 5
+  const challengeUrl = createdChallengeId ? `${window.location.origin}/challenge/${createdChallengeId}` : "";
+
   useEffect(() => {
-    if (step === 5) {
+    if (step === 5 && challengeUrl) {
       setTimeout(() => {
         const shareData = {
           title: challengeName,
           text: `Entra no meu desafio "${challengeName}" no FitStake!`,
-          url: 'https://challenge.app/join/abc123xyz'
+          url: challengeUrl
         };
         if (navigator.share) {
           navigator.share(shareData).catch(console.error);
         }
-      }, 800); // slight delay to allow animation to play
+      }, 800);
     }
-  }, [step, challengeName]);
+  }, [step, challengeName, challengeUrl]);
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
@@ -457,6 +509,34 @@ export default function CreateChallenge() {
               </div>
             </div>
 
+            <div className={`p-4 rounded-2xl border ${insufficientBalance ? 'bg-destructive/10 border-destructive/30' : 'bg-primary/5 border-primary/20'}`}>
+              <div className="flex items-center gap-3">
+                <Wallet size={18} className={insufficientBalance ? 'text-destructive' : 'text-primary'} />
+                <div className="text-xs flex-1">
+                  <p className={`font-bold ${insufficientBalance ? 'text-destructive' : 'text-primary'}`}>
+                    Seu saldo disponível: {formatBRL(availableBalance)}
+                  </p>
+                  {entry > 0 && (
+                    <p className="text-muted-foreground">
+                      Entrada de {formatBRL(entry)} será debitada ao criar
+                    </p>
+                  )}
+                  {insufficientBalance && (
+                    <p className="text-destructive font-semibold mt-1">
+                      Saldo insuficiente! Deposite pelo menos {formatBRL(entry - availableBalance)} a mais.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {createError && (
+              <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30 flex items-center gap-3">
+                <AlertTriangle size={18} className="text-destructive shrink-0" />
+                <p className="text-xs text-destructive font-semibold">{createError}</p>
+              </div>
+            )}
+
             <div className="bg-card border border-border/50 rounded-2xl p-4 space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -495,10 +575,17 @@ export default function CreateChallenge() {
 
             <Button 
               className="w-full h-14 rounded-2xl text-lg font-semibold mt-4"
-              onClick={() => setStep(5)}
-              disabled={!isStep4Valid}
+              onClick={() => createChallengeMutation.mutate()}
+              disabled={!isStep4Valid || insufficientBalance || createChallengeMutation.isPending}
+              data-testid="button-create-challenge"
             >
-              Criar Desafio
+              {createChallengeMutation.isPending ? (
+                <><Loader2 className="animate-spin mr-2" size={20} /> Criando...</>
+              ) : insufficientBalance ? (
+                "Saldo Insuficiente"
+              ) : (
+                "Criar Desafio"
+              )}
             </Button>
           </div>
         )}
@@ -530,11 +617,14 @@ export default function CreateChallenge() {
                       const shareData = {
                         title: challengeName,
                         text: `Entre no meu desafio ${challengeName} no FitStake!`,
-                        url: 'https://challenge.app/join/abc123xyz'
+                        url: challengeUrl
                       };
                       if (navigator.share) {
                         navigator.share(shareData).catch(console.error);
                       } else {
+                        if (challengeUrl) {
+                          navigator.clipboard.writeText(challengeUrl);
+                        }
                         copyLink();
                       }
                     }}
@@ -569,16 +659,21 @@ export default function CreateChallenge() {
             <div className="w-full flex flex-col gap-3 mt-8">
               <Button 
                 className="w-full h-14 rounded-2xl text-lg font-semibold flex gap-2"
-                onClick={() => copyLink()}
+                onClick={() => {
+                  if (challengeUrl) {
+                    navigator.clipboard.writeText(challengeUrl);
+                    copyLink();
+                  }
+                }}
               >
                 <Share2 size={20} /> Compartilhar com Amigos
               </Button>
               <Button 
                 variant="outline"
                 className="w-full h-14 rounded-2xl text-lg font-semibold"
-                onClick={() => setLocation("/dashboard")}
+                onClick={() => setLocation(createdChallengeId ? `/challenge/${createdChallengeId}` : "/dashboard")}
               >
-                Ir para Dashboard
+                Ver Desafio
               </Button>
             </div>
           </div>

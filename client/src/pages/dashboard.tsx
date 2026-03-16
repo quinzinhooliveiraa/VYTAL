@@ -48,9 +48,13 @@ export default function Dashboard() {
   const initials = userName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
   const avatarUrl = user?.avatar || localStorage.getItem("fitstake-user-avatar");
 
-  const totalInvested = "R$ 150,00";
-  const totalEarned = "R$ 420,00";
-  const availableBalance = "R$ 132,50";
+  const bal = Number(walletData?.balance || 0);
+  const locked = Number(walletData?.lockedBalance || 0);
+  const avail = Number(walletData?.availableBalance || 0);
+  const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const totalInvested = fmtBRL(locked);
+  const totalEarned = fmtBRL(bal);
+  const availableBalance = fmtBRL(avail);
 
   const moderationAlerts = [
     { id: 1, challenge: "Projeto Verão 2024", pending: 3 }
@@ -107,13 +111,13 @@ export default function Dashboard() {
           
           <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/10 relative z-10">
             <div>
-              <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Investido</p>
-              <p className="text-xl font-display font-bold">R$ 150</p>
+              <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Em Desafios</p>
+              <p className="text-xl font-display font-bold" data-testid="text-dashboard-locked">{totalInvested}</p>
             </div>
             <div>
-              <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Ganhos</p>
-              <p className="text-xl font-display font-bold text-primary flex items-center gap-1">
-                R$ 420 <ArrowUpRight size={18} />
+              <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Saldo Total</p>
+              <p className="text-xl font-display font-bold text-primary flex items-center gap-1" data-testid="text-dashboard-total">
+                {totalEarned}
               </p>
             </div>
           </div>

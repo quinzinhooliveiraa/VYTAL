@@ -180,11 +180,23 @@ export async function registerRoutes(
       const userId = (req.session as any).userId;
       const data = insertChallengeSchema.parse({ ...req.body, createdBy: userId });
       
+      const entryFee = Number(data.entryFee || 0);
+      if (entryFee > 0) {
+        const { availableBalance } = await walletService.getBalance(userId);
+        if (availableBalance < entryFee) {
+          return res.status(400).json({ message: `Saldo insuficiente. Você tem ${availableBalance.toFixed(2)} disponível, mas precisa de ${entryFee.toFixed(2)} para criar este desafio.` });
+        }
+      }
+
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + (data.duration || 30));
       
       const challenge = await storage.createChallenge({ ...data, endDate });
       await storage.joinChallenge(challenge.id, userId, true);
+
+      if (entryFee > 0) {
+        await challengeFinanceService.processEntryFee(userId, challenge.id, entryFee, challenge.title);
+      }
       
       res.status(201).json(challenge);
     } catch (error: any) {
@@ -205,6 +217,10 @@ export async function registerRoutes(
       
       const entryFee = Number(challenge.entryFee);
       if (entryFee > 0) {
+        const { availableBalance } = await walletService.getBalance(userId);
+        if (availableBalance < entryFee) {
+          return res.status(400).json({ message: `Saldo insuficiente. Você tem R$ ${availableBalance.toFixed(2)} disponível, mas precisa de R$ ${entryFee.toFixed(2)} para entrar.` });
+        }
         await challengeFinanceService.processEntryFee(userId, challengeId, entryFee, challenge.title);
       }
       
@@ -502,6 +518,11 @@ export async function registerRoutes(
       }
       if (!pixKey) {
         return res.status(400).json({ message: "Chave Pix obrigatória" });
+      }
+
+      const { availableBalance } = await walletService.getBalance(userId);
+      if (numAmount > availableBalance) {
+        return res.status(400).json({ message: `Saldo disponível insuficiente. Você tem R$ ${availableBalance.toFixed(2)} disponível para saque.` });
       }
 
       const pending = await transactionService.getPendingWithdrawals(userId);

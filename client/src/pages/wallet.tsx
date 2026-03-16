@@ -200,12 +200,21 @@ export default function Wallet() {
         <h2 className="text-4xl font-display font-bold mb-1" data-testid="text-balance">
           {showBalance ? formatBRL(availableBalance) : "••••••"}
         </h2>
-        {lockedBalance > 0 && showBalance && (
-          <p className="text-background/50 dark:text-white/40 text-xs mb-4">
-            {formatBRL(lockedBalance)} bloqueado em desafios
-          </p>
+        {showBalance && (
+          <div className="flex gap-4 mb-4 text-[11px]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-background/60 dark:text-white/50">Total: {formatBRL(balance)}</span>
+            </div>
+            {lockedBalance > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                <span className="text-background/60 dark:text-white/50">Em desafios: {formatBRL(lockedBalance)}</span>
+              </div>
+            )}
+          </div>
         )}
-        {lockedBalance === 0 && <div className="mb-4" />}
+        {!showBalance && <div className="mb-4" />}
 
         <div className="flex gap-3">
           <Button
@@ -219,7 +228,8 @@ export default function Wallet() {
           <Button
             variant="outline"
             className="flex-1 h-12 rounded-xl bg-white/10 dark:bg-white/5 border-transparent text-background dark:text-white hover:bg-white/20 dark:hover:bg-white/10"
-            onClick={() => { setWithdrawOpen(true); setWithdrawAmount(""); setPixKey(""); }}
+            onClick={() => { setWithdrawOpen(true); setWithdrawAmount(""); setPixKey(""); setWithdrawSuccess(false); }}
+            disabled={availableBalance <= 0}
             data-testid="button-withdraw"
           >
             <ArrowUpRight className="mr-2" size={18} />
@@ -230,7 +240,7 @@ export default function Wallet() {
 
       <div className="px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 text-[11px] text-primary flex items-center gap-2">
         <Info size={16} className="shrink-0" />
-        <p>A plataforma retém <strong>10%</strong> apenas sobre o prêmio final dos desafios. Depósitos e saques são isentos de taxas. Mínimo: R$ 30,00.</p>
+        <p>Valores em desafios ficam <strong>bloqueados</strong> até o resultado. Só o saldo disponível pode ser sacado. Taxa de <strong>10%</strong> apenas sobre prêmios.</p>
       </div>
 
       <div className="space-y-4">

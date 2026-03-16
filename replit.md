@@ -43,7 +43,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - `client/src/App.tsx` — Root with auth-based routing
 
 ## Database Tables
-- **Core**: users (with cpf, phone fields), challenges (with isPrivate), challengeParticipants, challengeJoinRequests (pending/approved/rejected), checkIns, messages, follows, communities, communityMembers, challengeMessages
+- **Core**: users (with cpf, phone fields), challenges (with isPrivate), challengeParticipants, challengeJoinRequests (pending/approved/rejected), checkIns (with status active/completed, checkedOutAt, isIndoor), messages, follows, communities, communityMembers, challengeMessages
 - **Financial**: wallets (balance + locked_balance per user), transactions (with status, external_id, idempotency_key, metadata)
 - **Support**: supportTickets (id, userId, type[feedback/suporte/ideia], message, status[open/resolved/closed], adminNotes, createdAt)
 - **Legacy**: walletTransactions (kept for backward compatibility)
@@ -67,7 +67,7 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Auth**: POST `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, GET `/api/auth/me`, GET `/api/login` (social OIDC), GET `/api/callback` (OIDC callback)
 - **Users**: GET `/api/users/search`, `/api/users/:username`, PATCH `/api/users/me`
 - **Challenges**: GET/POST `/api/challenges`, GET `/api/challenges/:id`, POST `/api/challenges/:id/join`, POST `/api/challenges/:id/request-join`, GET `/api/challenges/:id/join-requests`, POST `/api/challenges/:id/join-requests/:requestId/approve`, POST `/api/challenges/:id/join-requests/:requestId/reject`, POST `/api/challenges/:id/finalize`
-- **Check-ins**: POST `/api/check-ins`, GET `/api/check-ins/:challengeId`
+- **Check-ins**: POST `/api/check-ins/start` (start active check-in with photo), POST `/api/check-ins/:checkInId/checkout` (complete with end photo, server calculates duration), GET `/api/check-ins/active` (get user's active check-ins), POST `/api/check-ins/location-update` (send GPS update, triggers push reminder if user moved >500m), POST `/api/check-ins` (legacy), GET `/api/check-ins/:challengeId`
 - **Messages**: GET `/api/messages/conversations`, GET `/api/messages/:username`, POST `/api/messages`
 - **Follows**: GET/POST/DELETE `/api/follows/:username`, GET `/api/follows/status/:username`, `/api/follows/followers`, `/api/follows/following`
 - **Communities**: GET `/api/communities`, POST `/api/communities`, GET `/api/communities/mine`, POST `/api/communities/:id/join`, DELETE `/api/communities/:id/leave`

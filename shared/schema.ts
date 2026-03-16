@@ -59,6 +59,7 @@ export const checkIns = pgTable("check_ins", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   challengeId: varchar("challenge_id").notNull().references(() => challenges.id),
   userId: varchar("user_id").notNull().references(() => users.id),
+  status: text("status").default("completed"),
   photoUrl: text("photo_url").default(""),
   endPhotoUrl: text("end_photo_url").default(""),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
@@ -69,7 +70,9 @@ export const checkIns = pgTable("check_ins", {
   durationMins: integer("duration_mins"),
   caloriesBurned: integer("calories_burned"),
   avgPace: text("avg_pace"),
+  isIndoor: boolean("is_indoor").default(false),
   approved: boolean("approved").default(false),
+  checkedOutAt: timestamp("checked_out_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

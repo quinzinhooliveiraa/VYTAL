@@ -11,7 +11,7 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
-import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages } from "@shared/schema";
+import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
@@ -769,6 +769,119 @@ export async function registerRoutes(
       });
     } catch (error: any) {
       res.status(500).json({ message: "Erro ao fazer upload da foto" });
+    }
+  });
+
+  app.post("/api/check-ins/start", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { challengeId, photoUrl, latitude, longitude, isIndoor } = req.body;
+
+      const participant = await storage.getParticipant(challengeId, userId);
+      if (!participant) return res.status(400).json({ message: "Você não está neste desafio" });
+
+      const existing = await db.select().from(checkIns)
+        .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.userId, userId), eq(checkIns.status, "active")));
+      if (existing.length > 0) return res.status(400).json({ message: "Você já tem um check-in ativo", checkIn: existing[0] });
+
+      const [checkIn] = await db.insert(checkIns).values({
+        challengeId,
+        userId,
+        status: "active",
+        photoUrl: photoUrl || "",
+        latitude: latitude || null,
+        longitude: longitude || null,
+        isIndoor: isIndoor || false,
+      }).returning();
+
+      res.status(201).json(checkIn);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao iniciar check-in" });
+    }
+  });
+
+  app.post("/api/check-ins/:checkInId/checkout", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { checkInId } = req.params;
+      const { endPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace } = req.body;
+
+      const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, checkInId));
+      if (!checkIn) return res.status(404).json({ message: "Check-in não encontrado" });
+      if (checkIn.userId !== userId) return res.status(403).json({ message: "Sem permissão" });
+      if (checkIn.status !== "active") return res.status(400).json({ message: "Check-in já finalizado" });
+
+      const now = new Date();
+      const startTime = new Date(checkIn.createdAt!);
+      const durationMins = Math.max(1, Math.round((now.getTime() - startTime.getTime()) / 60000));
+
+      const [updated] = await db.update(checkIns).set({
+        status: "completed",
+        endPhotoUrl: endPhotoUrl || "",
+        endLatitude: endLatitude || null,
+        endLongitude: endLongitude || null,
+        distanceKm: distanceKm || null,
+        durationMins,
+        caloriesBurned: caloriesBurned || null,
+        avgPace: avgPace || null,
+        checkedOutAt: now,
+      }).where(eq(checkIns.id, checkInId)).returning();
+
+      const participant = await storage.getParticipant(checkIn.challengeId, userId);
+      if (participant) {
+        await storage.updateParticipantScore(checkIn.challengeId, userId, (participant.score || 0) + 1);
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao fazer check-out" });
+    }
+  });
+
+  app.get("/api/check-ins/active", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const active = await db.select().from(checkIns)
+      .where(and(eq(checkIns.userId, userId), eq(checkIns.status, "active")));
+    res.json(active);
+  });
+
+  app.post("/api/check-ins/location-update", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { checkInId, latitude, longitude } = req.body;
+
+      const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, checkInId));
+      if (!checkIn || checkIn.userId !== userId || checkIn.status !== "active") {
+        return res.json({ reminder: false });
+      }
+
+      if (checkIn.latitude && checkIn.longitude && latitude && longitude) {
+        const startLat = parseFloat(checkIn.latitude);
+        const startLng = parseFloat(checkIn.longitude);
+        const curLat = parseFloat(latitude);
+        const curLng = parseFloat(longitude);
+
+        const R = 6371;
+        const dLat = (curLat - startLat) * Math.PI / 180;
+        const dLon = (curLng - startLng) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(startLat * Math.PI / 180) * Math.cos(curLat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        if (!checkIn.isIndoor && distKm > 0.5) {
+          const challenge = await storage.getChallenge(checkIn.challengeId);
+          pushService.sendToUser(userId, {
+            title: "Lembrete de Check-out",
+            body: `Parece que você saiu do local. Não esqueça de fazer o check-out do desafio "${challenge?.title || ""}"!`,
+            url: `/check-in/${checkIn.challengeId}`,
+            tag: `checkout-reminder-${checkIn.challengeId}`,
+          }).catch(() => {});
+          return res.json({ reminder: true, distance: distKm });
+        }
+      }
+
+      res.json({ reminder: false });
+    } catch (error: any) {
+      res.json({ reminder: false });
     }
   });
 

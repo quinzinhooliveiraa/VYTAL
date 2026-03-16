@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "6tF0DYcdb428Zs6HxABuJ"
+uri = "file://docs/VYTAL_Contrato_Social_Gateway.md"
+type = "text"
+title = "VYTAL — Contrato Social para Gateway de Pagamento"

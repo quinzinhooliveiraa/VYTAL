@@ -451,8 +451,16 @@ export default function Admin() {
                       <Badge className={`text-[9px] px-2 py-0.5 ${
                         ticket.type === "feedback" ? "bg-blue-500/20 text-blue-500 border-none" :
                         ticket.type === "suporte" ? "bg-red-500/20 text-red-500 border-none" :
+                        ticket.type === "organizador" ? "bg-orange-500/20 text-orange-500 border-none" :
+                        ticket.type === "parceiro" ? "bg-cyan-500/20 text-cyan-500 border-none" :
                         "bg-purple-500/20 text-purple-500 border-none"
-                      }`}>{ticket.type === "feedback" ? "Feedback" : ticket.type === "suporte" ? "Suporte" : "Ideia"}</Badge>
+                      }`}>{
+                        ticket.type === "feedback" ? "Feedback" :
+                        ticket.type === "suporte" ? "Suporte" :
+                        ticket.type === "organizador" ? "Organizador" :
+                        ticket.type === "parceiro" ? "Parceiro" :
+                        "Ideia"
+                      }</Badge>
                       <Badge className={`text-[9px] px-2 py-0.5 ${
                         ticket.status === "open" ? "bg-yellow-500/20 text-yellow-500 border-none" :
                         ticket.status === "resolved" ? "bg-green-500/20 text-green-500 border-none" :
@@ -464,7 +472,7 @@ export default function Admin() {
                   </div>
                   <p className="text-[10px] text-muted-foreground">{formatDate(ticket.createdAt)}</p>
                 </div>
-                <p className="text-sm bg-muted/50 rounded-xl p-3">{ticket.message}</p>
+                <p className="text-sm bg-muted/50 rounded-xl p-3 whitespace-pre-line">{ticket.message}</p>
                 {ticket.status === "open" && (
                   <div className="flex gap-2">
                     <Button

@@ -106,7 +106,7 @@ export default function Settings() {
                 <p className="text-[10px] text-muted-foreground mt-1">Crie desafios para centenas de pessoas e receba comissão sobre as entradas.</p>
               </div>
             </div>
-            <Button className="w-full rounded-xl bg-primary text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20" data-testid="button-organizer">
+            <Button className="w-full rounded-xl bg-primary text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20" onClick={() => setLocation("/communities")} data-testid="button-organizer">
               CANDIDATAR-SE
             </Button>
           </div>
@@ -122,7 +122,7 @@ export default function Settings() {
                 <p className="text-[10px] text-muted-foreground mt-1">Academias, nutricionistas ou marcas. Ofereça benefícios e ganhe destaque.</p>
               </div>
             </div>
-            <Button className="w-full rounded-xl bg-accent text-accent-foreground font-bold text-xs h-10 shadow-lg shadow-accent/20" data-testid="button-partner">
+            <Button className="w-full rounded-xl bg-accent text-accent-foreground font-bold text-xs h-10 shadow-lg shadow-accent/20" onClick={() => setLocation("/partner")} data-testid="button-partner">
               SEJA UM PARCEIRO
             </Button>
           </div>

@@ -995,7 +995,7 @@ export async function registerRoutes(
       if (!type || !message?.trim()) {
         return res.status(400).json({ message: "Tipo e mensagem são obrigatórios" });
       }
-      if (!["feedback", "suporte", "ideia"].includes(type)) {
+      if (!["feedback", "suporte", "ideia", "organizador", "parceiro"].includes(type)) {
         return res.status(400).json({ message: "Tipo inválido" });
       }
 

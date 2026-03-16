@@ -794,18 +794,32 @@ export async function registerRoutes(
       if (!target) return res.status(404).json([]);
 
       const targetFollowing = await storage.getFollowing(target.id);
-      const targetFollowingIds = targetFollowing.map(f => f.followingId);
+      const targetFollowingIds = new Set(targetFollowing.map(f => f.followingId));
+      const targetFollowers = await storage.getFollowers(target.id);
+      const targetFollowerIds = new Set(targetFollowers.map(f => f.followerId));
 
       const userId = (req as any).session?.userId;
+      const excludeIds = new Set([target.id, userId].filter(Boolean));
+
+      const friendsOfFriendsIds = new Set<string>();
+      for (const f of targetFollowing) {
+        const theirFollowing = await storage.getFollowing(f.followingId);
+        for (const ff of theirFollowing) {
+          if (!excludeIds.has(ff.followingId) && !targetFollowingIds.has(ff.followingId)) {
+            friendsOfFriendsIds.add(ff.followingId);
+          }
+        }
+      }
 
       const allUsers = await db.select().from(users);
+
       const suggested = allUsers
-        .filter(u => u.id !== target.id && u.id !== userId && targetFollowingIds.includes(u.id))
+        .filter(u => friendsOfFriendsIds.has(u.id))
         .slice(0, 10)
         .map(u => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, bio: u.bio }));
 
       if (suggested.length < 5) {
-        const usedIds = new Set([target.id, userId, ...suggested.map(s => s.id)]);
+        const usedIds = new Set([...excludeIds, ...targetFollowingIds, ...suggested.map(s => s.id)]);
         const extras = allUsers
           .filter(u => !usedIds.has(u.id))
           .slice(0, 5 - suggested.length)

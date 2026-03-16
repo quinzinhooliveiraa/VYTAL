@@ -16,9 +16,25 @@ export default function CreateChallenge() {
   const [step, setStep] = useState(1);
   const [createdChallengeId, setCreatedChallengeId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [modalidade, setModalidade] = useState("academia");
+  const [modalidade, setModalidadeState] = useState("academia");
   const [scoringSystem, setScoringSystem] = useState("ranking");
   const [validationType, setValidationType] = useState("foto");
+
+  const setModalidade = (mod: string) => {
+    setModalidadeState(mod);
+    const autoValidation: Record<string, string> = {
+      corrida: "distancia",
+      ciclismo: "distancia",
+      natacao: "distancia",
+      academia: "foto",
+      crossfit: "foto",
+      funcional: "foto",
+      yoga: "foto",
+      hiit: "tempo",
+      personalizado: "foto",
+    };
+    setValidationType(autoValidation[mod] || "foto");
+  };
   const [isPublic, setIsPublic] = useState(true);
   const [challengeName, setChallengeName] = useState("");
   const [challengeDesc, setChallengeDesc] = useState("");
@@ -82,16 +98,36 @@ export default function CreateChallenge() {
     },
   });
 
+  const resizeBanner = (file: File, maxW: number, maxH: number): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        const ratio = Math.min(maxW / w, maxH / h, 1);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.85);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleBannerPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBannerPreview(URL.createObjectURL(file));
     setUploadingBanner(true);
     try {
+      const resized = await resizeBanner(file, 1200, 600);
+      setBannerPreview(URL.createObjectURL(resized));
       const res = await fetch("/api/upload/challenge-banner", {
         method: "POST",
         headers: { "Content-Type": "application/octet-stream" },
-        body: file,
+        body: resized,
         credentials: "include",
       });
       const data = await res.json();

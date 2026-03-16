@@ -18,8 +18,9 @@ function estimateCalories(durationMins: number, distanceKm: number, sport: strin
   const weightKg = 70;
   const s = sport.toLowerCase();
   const hours = durationMins / 60;
+  if (hours <= 0) return 0;
 
-  if (distanceKm > 0.05 && (s.includes("corr") || s.includes("run"))) {
+  if (distanceKm > 0.05 && (s === "corrida" || s.includes("corr") || s.includes("run"))) {
     const speedKmh = distanceKm / hours;
     let met = 6;
     if (speedKmh < 6) met = 3.8;
@@ -31,7 +32,7 @@ function estimateCalories(durationMins: number, distanceKm: number, sport: strin
     return Math.round(met * weightKg * hours);
   }
 
-  if (distanceKm > 0.05 && (s.includes("ciclism") || s.includes("bike") || s.includes("pedal"))) {
+  if (distanceKm > 0.05 && (s === "ciclismo" || s.includes("ciclism") || s.includes("bike") || s.includes("pedal"))) {
     const speedKmh = distanceKm / hours;
     let met = 4;
     if (speedKmh < 16) met = 4;
@@ -52,15 +53,31 @@ function estimateCalories(durationMins: number, distanceKm: number, sport: strin
     return Math.round(met * weightKg * hours);
   }
 
-  let met = 5;
-  if (s.includes("corr") || s.includes("run")) met = 8.3;
-  else if (s.includes("caminh") || s.includes("walk")) met = 3.5;
-  else if (s.includes("ciclism") || s.includes("bike") || s.includes("pedal")) met = 6.8;
-  else if (s.includes("nat") || s.includes("swim")) met = 8;
-  else if (s.includes("muscula") || s.includes("academia") || s.includes("gym") || s.includes("crossfit")) met = 6;
-  else if (s.includes("yoga") || s.includes("pilates")) met = 3;
-  else if (s.includes("futebol") || s.includes("soccer") || s.includes("basquet")) met = 8;
-  else if (s.includes("luta") || s.includes("box") || s.includes("mma") || s.includes("jiu")) met = 9;
+  const metMap: Record<string, number> = {
+    corrida: 8.3,
+    academia: 5,
+    crossfit: 8,
+    ciclismo: 6.8,
+    natacao: 7.8,
+    funcional: 6.5,
+    yoga: 2.5,
+    hiit: 9,
+    personalizado: 5,
+  };
+  let met = metMap[s] || 5;
+  if (!metMap[s]) {
+    if (s.includes("corr") || s.includes("run")) met = 8.3;
+    else if (s.includes("caminh") || s.includes("walk")) met = 3.5;
+    else if (s.includes("ciclism") || s.includes("bike") || s.includes("pedal")) met = 6.8;
+    else if (s.includes("nat") || s.includes("swim")) met = 7.8;
+    else if (s.includes("muscula") || s.includes("academia") || s.includes("gym")) met = 5;
+    else if (s.includes("crossfit")) met = 8;
+    else if (s.includes("funcional")) met = 6.5;
+    else if (s.includes("yoga") || s.includes("pilates")) met = 2.5;
+    else if (s.includes("hiit")) met = 9;
+    else if (s.includes("futebol") || s.includes("soccer") || s.includes("basquet")) met = 8;
+    else if (s.includes("luta") || s.includes("box") || s.includes("mma") || s.includes("jiu")) met = 9;
+  }
   return Math.round(met * weightKg * hours);
 }
 

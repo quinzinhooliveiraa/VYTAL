@@ -332,6 +332,67 @@ export async function registerRoutes(
     }
   });
 
+  // ====== APPLE DIRECT LOGIN ======
+
+  app.post("/api/auth/apple", async (req, res) => {
+    try {
+      const { identityToken, user: appleUser, fullName } = req.body;
+      if (!identityToken) {
+        return res.status(400).json({ message: "Token da Apple não fornecido" });
+      }
+
+      const parts = identityToken.split(".");
+      if (parts.length !== 3) {
+        return res.status(400).json({ message: "Token inválido" });
+      }
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+
+      if (!payload.sub) {
+        return res.status(400).json({ message: "Token da Apple inválido" });
+      }
+
+      const appleId = payload.sub;
+      const email = payload.email || (appleUser ? `${appleUser}@privaterelay.appleid.com` : `${appleId}@privaterelay.appleid.com`);
+      const fullNameStr = fullName?.givenName
+        ? `${fullName.givenName}${fullName.familyName ? ` ${fullName.familyName}` : ""}`
+        : email.split("@")[0];
+
+      let appUser = await storage.getUserByEmail(email);
+
+      if (appUser) {
+        (req.session as any).userId = appUser.id;
+        await storage.updateUser(appUser.id, { online: true });
+        res.json({ user: appUser, isNew: false });
+      } else {
+        const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 20);
+        let username = baseUsername;
+        let counter = 1;
+        while (await storage.getUserByUsername(username)) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(2) + Date.now(), 10);
+        const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+
+        appUser = await storage.createUser({
+          username,
+          email,
+          password: randomPassword,
+          name: fullNameStr,
+          avatar: "",
+          isAdmin,
+        } as any);
+
+        (req.session as any).userId = appUser.id;
+        res.json({ user: appUser, isNew: true });
+      }
+    } catch (error: any) {
+      console.error("Apple auth error:", error);
+      res.status(400).json({ message: "Erro na autenticação com Apple" });
+    }
+  });
+
   // ====== USERS ======
 
   app.get("/api/users/search", requireAuth, async (req, res) => {

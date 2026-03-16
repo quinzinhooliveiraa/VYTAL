@@ -18,6 +18,12 @@ declare global {
         };
       };
     };
+    AppleID?: {
+      auth: {
+        init: (config: any) => void;
+        signIn: () => Promise<any>;
+      };
+    };
   }
 }
 
@@ -159,18 +165,60 @@ export default function Login() {
     }
   }, [handleGoogleCallback, isLogin]);
 
-  const triggerGooglePopup = () => {
-    if (!window.google) {
-      setError("Google Sign-In ainda está carregando. Tente novamente.");
-      return;
+  const loadAppleSDK = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (window.AppleID) { resolve(); return; }
+      const script = document.createElement("script");
+      script.src = "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Falha ao carregar SDK da Apple"));
+      document.head.appendChild(script);
+    });
+  }, []);
+
+  const handleAppleSignIn = useCallback(async () => {
+    setSocialLoading(true);
+    setError("");
+    try {
+      await loadAppleSDK();
+      window.AppleID!.auth.init({
+        clientId: "com.vytal.app",
+        scope: "email name",
+        redirectURI: window.location.origin,
+        usePopup: true,
+      });
+      const result = await window.AppleID!.auth.signIn();
+      if (result.authorization?.id_token) {
+        const res = await fetch("/api/auth/apple", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            identityToken: result.authorization.id_token,
+            user: result.user?.email,
+            fullName: result.user?.name
+              ? { givenName: result.user.name.firstName, familyName: result.user.name.lastName }
+              : undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Erro na autenticação");
+
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        localStorage.setItem("fitstake-onboarding-done", "true");
+        const savedRedirect = sessionStorage.getItem("vytal-redirect");
+        sessionStorage.removeItem("vytal-redirect");
+        setLocation(data.isNew ? "/onboarding" : (savedRedirect || "/dashboard"));
+      }
+    } catch (err: any) {
+      const msg = err?.message || err?.error || "";
+      if (msg !== "The user canceled the sign-in flow." && msg !== "popup_closed_by_user") {
+        setError("Erro ao fazer login com Apple. Tente novamente.");
+      }
+    } finally {
+      setSocialLoading(false);
     }
-    if (googleBtnRef.current) {
-      const gBtn = googleBtnRef.current.querySelector('[role="button"]') as HTMLElement
-        || googleBtnRef.current.querySelector("div[aria-labelledby]") as HTMLElement;
-      if (gBtn) { gBtn.click(); return; }
-    }
-    window.google.accounts.id.prompt();
-  };
+  }, [loadAppleSDK, setLocation]);
 
   if (requires2FA) {
     return (
@@ -273,7 +321,7 @@ export default function Login() {
           />
 
           <button
-            onClick={triggerGooglePopup}
+            onClick={handleAppleSignIn}
             disabled={socialLoading}
             className="w-full h-12 rounded-xl border border-border bg-black dark:bg-white flex items-center justify-center gap-3 text-sm font-medium text-white dark:text-black hover:opacity-90 transition-all disabled:opacity-50"
             data-testid="button-apple-login"

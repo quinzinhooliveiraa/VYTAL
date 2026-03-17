@@ -411,6 +411,32 @@ export default function Settings() {
         </div>
 
         <div className="space-y-4">
+          <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Convidar Amigos</h3>
+          <button
+            onClick={() => {
+              const url = window.location.origin;
+              const text = "Entra no VYTAL comigo! Desafios esportivos com dinheiro real. Quem desiste, paga. Quem persiste, lucra. 💪";
+              if (navigator.share) {
+                navigator.share({ title: "Convite VYTAL", text, url }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(`${text}\n${url}`);
+              }
+            }}
+            className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-2xl text-left hover:border-purple-500/40 transition-all"
+            data-testid="button-settings-invite"
+          >
+            <div className="w-11 h-11 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+              <Users size={20} className="text-purple-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">Compartilhar VYTAL</p>
+              <p className="text-[11px] text-muted-foreground">Convide amigos para treinar junto com você</p>
+            </div>
+            <ExternalLink size={16} className="text-muted-foreground shrink-0" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
           <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Feedback & Suporte</h3>
           <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
             <div className="flex gap-2">

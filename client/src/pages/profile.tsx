@@ -1,4 +1,4 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2 } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -185,6 +185,14 @@ export default function Profile() {
       <header className="px-6 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-50 border-b border-border/50">
         <h1 className="text-xl font-bold flex items-center gap-2">{profileName.toLowerCase().replace(' ', '_')} <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
         <div className="flex gap-2">
+          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" onClick={() => {
+            const url = window.location.origin;
+            const text = "Entra no VYTAL comigo! Desafios esportivos com dinheiro real. 💪";
+            if (navigator.share) { navigator.share({ title: "Convite VYTAL", text, url }).catch(() => {}); }
+            else { navigator.clipboard.writeText(`${text}\n${url}`); }
+          }} data-testid="button-profile-invite">
+            <Share2 size={22} />
+          </Button>
           <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" onClick={() => { setShowSearch(true); setSearchQuery(""); }} data-testid="button-search-users">
             <UserPlus size={22} />
           </Button>

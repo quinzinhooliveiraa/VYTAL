@@ -30,6 +30,7 @@ import Admin from "@/pages/admin";
 import Partner from "@/pages/partner";
 import CommunityDashboard from "@/pages/community-dashboard";
 import PartnerDashboard from "@/pages/partner-dashboard";
+import ChallengeChat from "@/pages/challenge-chat";
 
 function Router() {
   const [location] = useLocation();
@@ -102,6 +103,7 @@ function Router() {
         <Route path="/explore" component={Explore} />
         <Route path="/create" component={CreateChallenge} />
         <Route path="/challenge/:id" component={ChallengeDetails} />
+        <Route path="/challenge/:id/chat" component={ChallengeChat} />
         <Route path="/check-in/:id" component={CheckIn} />
         <Route path="/wallet" component={Wallet} />
         <Route path="/profile" component={Profile} />

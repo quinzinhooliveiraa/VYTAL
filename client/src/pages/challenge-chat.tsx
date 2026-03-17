@@ -254,8 +254,8 @@ export default function ChallengeChat() {
   let prevDate = "";
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background" data-testid="challenge-chat-page">
-      <header className="px-4 py-3 bg-card border-b border-border flex items-center gap-3 shrink-0 z-10">
+    <div className="flex flex-col bg-background min-h-[100dvh] pb-20" data-testid="challenge-chat-page">
+      <header className="px-4 py-3 bg-card border-b border-border flex items-center gap-3 shrink-0 z-10 sticky top-0">
         <button
           onClick={() => setLocation("/chat-hub")}
           className="p-1.5 -ml-1 rounded-lg hover:bg-muted transition-colors"
@@ -280,8 +280,8 @@ export default function ChallengeChat() {
         </Link>
       </header>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain" ref={scrollRef}>
-        <div className="p-4 space-y-3 min-h-full flex flex-col justify-end">
+      <div className="flex-1" ref={scrollRef}>
+        <div className="p-4 space-y-3">
           {!isParticipant && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
               <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
@@ -352,7 +352,8 @@ export default function ChallengeChat() {
       </div>
 
       {isParticipant && (
-        <div className="px-4 py-3 bg-card border-t border-border shrink-0 z-10">
+        <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 flex justify-center">
+        <div className="w-full max-w-md px-4 py-3 bg-card border-t border-border">
           {isRecording ? (
             <div className="flex items-center gap-3">
               <Button
@@ -414,6 +415,7 @@ export default function ChallengeChat() {
               )}
             </div>
           )}
+        </div>
         </div>
       )}
     </div>

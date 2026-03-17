@@ -95,26 +95,6 @@ function Router() {
     return <Redirect to="/onboarding" />;
   }
 
-  if (location.match(/^\/challenge\/[^/]+\/chat$/)) {
-    return (
-      <div className="max-w-md mx-auto w-full sm:border-x sm:border-white/5">
-        <Switch>
-          <Route path="/challenge/:id/chat" component={ChallengeChat} />
-        </Switch>
-      </div>
-    );
-  }
-
-  if (location.startsWith("/messages/")) {
-    return (
-      <div className="max-w-md mx-auto w-full sm:border-x sm:border-white/5">
-        <Switch>
-          <Route path="/messages/:username" component={Messages} />
-        </Switch>
-      </div>
-    );
-  }
-
   return (
     <MobileLayout>
       <PwaInstallBanner />
@@ -123,12 +103,14 @@ function Router() {
         <Route path="/explore" component={Explore} />
         <Route path="/create" component={CreateChallenge} />
         <Route path="/challenge/:id" component={ChallengeDetails} />
+        <Route path="/challenge/:id/chat" component={ChallengeChat} />
         <Route path="/check-in/:id" component={CheckIn} />
         <Route path="/wallet" component={Wallet} />
         <Route path="/profile" component={Profile} />
         <Route path="/settings" component={Settings} />
         <Route path="/user/:username" component={PublicProfile} />
         <Route path="/friends" component={Friends} />
+        <Route path="/messages/:username" component={Messages} />
         <Route path="/chat-hub" component={ChatHub} />
         <Route path="/communities" component={Communities} />
         <Route path="/create-community" component={CreateCommunity} />

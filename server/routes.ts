@@ -1225,8 +1225,8 @@ export async function registerRoutes(
       const usersAffected = Number(beforeReset.rows[0]?.count || 0);
       const totalCleared = Number(beforeReset.rows[0]?.total || 0);
 
-      await db.execute(sql`UPDATE wallets SET balance = 0`);
-      await db.execute(sql`UPDATE wallet_transactions SET status = 'cancelled' WHERE status = 'pending'`);
+      await db.execute(sql`UPDATE wallets SET balance = 0, locked_balance = 0`);
+      await db.execute(sql`DELETE FROM wallet_transactions`);
 
       res.json({ message: "Todos os saldos foram resetados para R$ 0,00", usersAffected, totalCleared });
     } catch (error: any) {

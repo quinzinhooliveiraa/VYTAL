@@ -382,9 +382,7 @@ export default function Login() {
     <div className="min-h-[100dvh] flex flex-col p-6 items-center justify-center bg-background relative">
       <div className="w-full max-w-md space-y-8 z-0">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-xl shadow-primary/5">
-            <Activity size={40} strokeWidth={2.5} />
-          </div>
+          <img src="/vytal-logo.png" alt="VYTAL" className="w-20 h-20 rounded-[2rem] object-cover shadow-xl" />
           <h1 className="text-3xl font-display font-bold text-center" data-testid="text-title">
             {isLogin ? "Bem-vindo de volta!" : "Crie sua conta"}
           </h1>

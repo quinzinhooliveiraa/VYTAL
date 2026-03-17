@@ -167,9 +167,9 @@ const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
             initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="w-16 h-16 bg-primary/10 rounded-[1.5rem] flex items-center justify-center text-primary mx-auto border border-primary/20"
+            className="w-16 h-16 rounded-[1.5rem] mx-auto overflow-hidden"
           >
-            <Activity size={32} strokeWidth={2.5} />
+            <img src="/vytal-logo.png" alt="VYTAL" className="w-full h-full object-cover" />
           </motion.div>
           <h2 className="text-2xl font-display font-bold">Como funciona</h2>
           <p className="text-sm text-muted-foreground px-2">

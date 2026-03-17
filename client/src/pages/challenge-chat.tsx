@@ -254,33 +254,35 @@ export default function ChallengeChat() {
   let prevDate = "";
 
   return (
-    <div className="flex flex-col bg-background min-h-[100dvh] pb-20" data-testid="challenge-chat-page">
-      <header className="px-4 py-3 bg-card border-b border-border flex items-center gap-3 shrink-0 z-10 sticky top-0">
-        <button
-          onClick={() => setLocation("/chat-hub")}
-          className="p-1.5 -ml-1 rounded-lg hover:bg-muted transition-colors"
-          data-testid="button-back-from-chat"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-          <Trophy size={18} className="text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-bold text-sm truncate" data-testid="text-challenge-title">{challenge.title}</h1>
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-            <Users size={10} />
-            {challenge.activeParticipantCount || challenge.participantCount || 0} participantes
-          </p>
-        </div>
-        <Link href={`/challenge/${id}`}>
-          <button className="p-2 rounded-lg hover:bg-muted transition-colors" data-testid="button-view-challenge">
-            <Info size={18} className="text-muted-foreground" />
+    <div data-testid="challenge-chat-page">
+      <div className="fixed top-0 left-0 right-0 z-40 flex justify-center">
+        <div className="w-full max-w-md px-4 py-3 bg-card border-b border-border flex items-center gap-3">
+          <button
+            onClick={() => setLocation("/chat-hub")}
+            className="p-1.5 -ml-1 rounded-lg hover:bg-muted transition-colors"
+            data-testid="button-back-from-chat"
+          >
+            <ArrowLeft size={20} />
           </button>
-        </Link>
-      </header>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Trophy size={18} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-bold text-sm truncate" data-testid="text-challenge-title">{challenge.title}</h1>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <Users size={10} />
+              {challenge.activeParticipantCount || challenge.participantCount || 0} participantes
+            </p>
+          </div>
+          <Link href={`/challenge/${id}`}>
+            <button className="p-2 rounded-lg hover:bg-muted transition-colors" data-testid="button-view-challenge">
+              <Info size={18} className="text-muted-foreground" />
+            </button>
+          </Link>
+        </div>
+      </div>
 
-      <div className="flex-1" ref={scrollRef}>
+      <div className="pt-16 pb-24" ref={scrollRef}>
         <div className="p-4 space-y-3">
           {!isParticipant && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
@@ -353,69 +355,69 @@ export default function ChallengeChat() {
 
       {isParticipant && (
         <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 flex justify-center">
-        <div className="w-full max-w-md px-4 py-3 bg-card border-t border-border">
-          {isRecording ? (
-            <div className="flex items-center gap-3">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="w-10 h-10 rounded-full shrink-0 text-destructive"
-                onClick={cancelRecording}
-                data-testid="button-cancel-recording"
-              >
-                <X size={22} />
-              </Button>
-              <div className="flex-1 flex items-center gap-3 bg-destructive/5 border border-destructive/20 rounded-3xl px-4 h-12">
-                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm font-bold text-destructive">{fmtRecTime(recordingTime)}</span>
-                <span className="text-xs text-muted-foreground">Gravando...</span>
-              </div>
-              <Button
-                size="icon"
-                className="w-12 h-12 rounded-full shrink-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                onClick={stopRecording}
-                data-testid="button-stop-recording"
-              >
-                <Send size={20} className="translate-x-0.5" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2 items-center">
-              <div className="flex-1 bg-muted rounded-3xl border border-border overflow-hidden">
-                <Input
-                  placeholder="Mensagem..."
-                  className="border-none bg-transparent h-12 px-4 shadow-none focus-visible:ring-0"
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-                  data-testid="input-challenge-chat-message"
-                />
-              </div>
-              {message.trim() ? (
+          <div className="w-full max-w-md px-4 py-3 bg-card border-t border-border">
+            {isRecording ? (
+              <div className="flex items-center gap-3">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="w-10 h-10 rounded-full shrink-0 text-destructive"
+                  onClick={cancelRecording}
+                  data-testid="button-cancel-recording"
+                >
+                  <X size={22} />
+                </Button>
+                <div className="flex-1 flex items-center gap-3 bg-destructive/5 border border-destructive/20 rounded-3xl px-4 h-12">
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-bold text-destructive">{fmtRecTime(recordingTime)}</span>
+                  <span className="text-xs text-muted-foreground">Gravando...</span>
+                </div>
                 <Button
                   size="icon"
                   className="w-12 h-12 rounded-full shrink-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                  onClick={handleSend}
-                  disabled={sendMessageMutation.isPending}
-                  data-testid="button-send-challenge-message"
+                  onClick={stopRecording}
+                  data-testid="button-stop-recording"
                 >
-                  {sendMessageMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={20} className="translate-x-0.5" />}
+                  <Send size={20} className="translate-x-0.5" />
                 </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className={`w-12 h-12 rounded-full shrink-0 ${isSendingAudio ? "opacity-50" : ""}`}
-                  onClick={startRecording}
-                  disabled={isSendingAudio}
-                  data-testid="button-audio-challenge"
-                >
-                  <Mic size={20} />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <div className="flex gap-2 items-center">
+                <div className="flex-1 bg-muted rounded-3xl border border-border overflow-hidden">
+                  <Input
+                    placeholder="Mensagem..."
+                    className="border-none bg-transparent h-12 px-4 shadow-none focus-visible:ring-0"
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+                    data-testid="input-challenge-chat-message"
+                  />
+                </div>
+                {message.trim() ? (
+                  <Button
+                    size="icon"
+                    className="w-12 h-12 rounded-full shrink-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    onClick={handleSend}
+                    disabled={sendMessageMutation.isPending}
+                    data-testid="button-send-challenge-message"
+                  >
+                    {sendMessageMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={20} className="translate-x-0.5" />}
+                  </Button>
+                ) : (
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className={`w-12 h-12 rounded-full shrink-0 ${isSendingAudio ? "opacity-50" : ""}`}
+                    onClick={startRecording}
+                    disabled={isSendingAudio}
+                    data-testid="button-audio-challenge"
+                  >
+                    <Mic size={20} />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

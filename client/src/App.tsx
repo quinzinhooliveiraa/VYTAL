@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import NotFound from "@/pages/not-found";
 
 import { MobileLayout } from "@/components/layout";
+import { InAppBrowserDetector } from "@/components/inapp-browser-detector";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 
 import Login from "@/pages/login";
 import Onboarding from "@/pages/onboarding";
@@ -94,6 +96,7 @@ function Router() {
 
   return (
     <MobileLayout>
+      <PwaInstallBanner />
       <Switch>
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/explore" component={Explore} />
@@ -125,6 +128,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
+          <InAppBrowserDetector />
           <Router />
         </TooltipProvider>
       </QueryClientProvider>

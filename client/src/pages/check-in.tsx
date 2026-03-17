@@ -265,6 +265,12 @@ export default function CheckIn() {
   }, []);
 
   const startCamera = useCallback(async (facing: "user" | "environment") => {
+    if (cameraStream && cameraFacing === facing) {
+      if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
+        videoRef.current.srcObject = cameraStream;
+      }
+      return;
+    }
     if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -277,7 +283,7 @@ export default function CheckIn() {
     } catch {
       toast({ title: "Erro", description: "Não foi possível acessar a câmera.", variant: "destructive" });
     }
-  }, [cameraStream, toast]);
+  }, [cameraStream, cameraFacing, toast]);
 
   const stopCamera = useCallback(() => {
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
@@ -314,7 +320,8 @@ export default function CheckIn() {
         setStartFrontBlob(blob);
         setStartFrontPreview(URL.createObjectURL(blob));
       }
-      stopCamera();
+
+      startCamera("environment");
 
       setCaptureCountdown(3);
       let count = 3;
@@ -329,7 +336,6 @@ export default function CheckIn() {
           } else {
             setPhase("camera-back");
           }
-          startCamera("environment");
         }
       }, 1000);
     } catch {

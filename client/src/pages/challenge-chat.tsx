@@ -254,36 +254,34 @@ export default function ChallengeChat() {
   let prevDate = "";
 
   return (
-    <div data-testid="challenge-chat-page">
-      <div className="fixed top-0 left-0 right-0 z-40 flex justify-center">
-        <div className="w-full max-w-md px-4 py-3 bg-card border-b border-border flex items-center gap-3">
-          <button
-            onClick={() => setLocation("/chat-hub")}
-            className="p-1.5 -ml-1 rounded-lg hover:bg-muted transition-colors"
-            data-testid="button-back-from-chat"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <Trophy size={18} className="text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-sm truncate" data-testid="text-challenge-title">{challenge.title}</h1>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Users size={10} />
-              {challenge.activeParticipantCount || challenge.participantCount || 0} participantes
-            </p>
-          </div>
-          <Link href={`/challenge/${id}`}>
-            <button className="p-2 rounded-lg hover:bg-muted transition-colors" data-testid="button-view-challenge">
-              <Info size={18} className="text-muted-foreground" />
-            </button>
-          </Link>
+    <div className="h-[100dvh] flex flex-col bg-background" data-testid="challenge-chat-page">
+      <header className="px-4 py-3 bg-card border-b border-border flex items-center gap-3 shrink-0 z-10">
+        <button
+          onClick={() => setLocation("/chat-hub")}
+          className="p-1.5 -ml-1 rounded-lg hover:bg-muted transition-colors"
+          data-testid="button-back-from-chat"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <Trophy size={18} className="text-primary" />
         </div>
-      </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-bold text-sm truncate" data-testid="text-challenge-title">{challenge.title}</h1>
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Users size={10} />
+            {challenge.activeParticipantCount || challenge.participantCount || 0} participantes
+          </p>
+        </div>
+        <Link href={`/challenge/${id}`}>
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors" data-testid="button-view-challenge">
+            <Info size={18} className="text-muted-foreground" />
+          </button>
+        </Link>
+      </header>
 
-      <div className="pt-16 pb-24" ref={scrollRef}>
-        <div className="p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto overscroll-contain" ref={scrollRef}>
+        <div className="p-4 space-y-3 min-h-full flex flex-col justify-end">
           {!isParticipant && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
               <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
@@ -354,8 +352,7 @@ export default function ChallengeChat() {
       </div>
 
       {isParticipant && (
-        <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 flex justify-center">
-          <div className="w-full max-w-md px-4 py-3 bg-card border-t border-border">
+        <div className="px-4 py-3 bg-card border-t border-border shrink-0">
             {isRecording ? (
               <div className="flex items-center gap-3">
                 <Button
@@ -417,7 +414,6 @@ export default function ChallengeChat() {
                 )}
               </div>
             )}
-          </div>
         </div>
       )}
     </div>

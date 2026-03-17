@@ -82,7 +82,5 @@ integrations = ["javascript_log_in_with_replit:2.0.0"]
 [userenv]
 
 [userenv.shared]
-ABACATEPAY_API_KEY = "abc_prod_nZb623AzBtdktaRWY5WZCAE4"
 VAPID_PUBLIC_KEY = "BC_oHuly5xquzdqC61tQwoeg7pv9PnYn5aMnNSXAIzJKc-0ZNW8bCHlaSfLSOopH6zIkrVe0DNVhPl5WEmcAUKY"
-VAPID_PRIVATE_KEY = "-UyqXcrID5MyXPeXLsjpEk8EsSvCTQ5rvOj-BtNVQSc"
 GOOGLE_CLIENT_ID = "376587519485-an9p30conn0gk0hoou8a62977cphchan.apps.googleusercontent.com"

@@ -261,6 +261,7 @@ export class DatabaseStorage implements IStorage {
       challengeId: challengeMessages.challengeId,
       userId: challengeMessages.userId,
       text: challengeMessages.text,
+      audioUrl: challengeMessages.audioUrl,
       createdAt: challengeMessages.createdAt,
       user: {
         id: users.id,

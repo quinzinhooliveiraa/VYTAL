@@ -159,6 +159,7 @@ export const challengeMessages = pgTable("challenge_messages", {
   challengeId: varchar("challenge_id").notNull().references(() => challenges.id),
   userId: varchar("user_id").notNull().references(() => users.id),
   text: text("text").notNull(),
+  audioUrl: text("audio_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -1614,7 +1614,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const challengeId = req.params.id;
-      const { text } = req.body;
+      const { text, audioUrl } = req.body;
 
       if (!text || !text.trim()) return res.status(400).json({ message: "Mensagem vazia" });
 
@@ -1623,7 +1623,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Apenas participantes podem enviar mensagens" });
       }
 
-      const msg = await storage.createChallengeMessage({ challengeId, userId, text: text.trim() });
+      const msg = await storage.createChallengeMessage({ challengeId, userId, text: text.trim(), ...(audioUrl ? { audioUrl } : {}) });
       const user = await storage.getUser(userId);
       res.status(201).json({
         ...msg,

@@ -341,9 +341,7 @@ export default function Messages() {
               <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 <div
                   className={`relative max-w-[280px] sm:max-w-[320px] ${isSelected ? "scale-[1.02]" : ""} transition-transform`}
-                  onTouchStart={() => handleTouchStart(msg.id)}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchCancel={handleTouchEnd}
+                  onClick={() => setSelectedMsgId(selectedMsgId === msg.id ? null : msg.id)}
                   onContextMenu={(e) => { e.preventDefault(); setSelectedMsgId(msg.id); }}
                 >
                   <div

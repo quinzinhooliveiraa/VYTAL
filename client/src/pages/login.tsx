@@ -269,8 +269,11 @@ export default function Login() {
       sessionStorage.removeItem("vytal-redirect");
       setLocation(data.isNew ? "/onboarding" : (savedRedirect || "/dashboard"));
     } catch (err: any) {
-      if (err?.error !== "popup_closed_by_user") {
-        setError(err.message || "Erro ao fazer login com Apple");
+      if (err?.error === "popup_closed_by_user") {
+      } else if (err?.error === "popup_blocked_by_browser") {
+        setError("Popup bloqueado pelo navegador. Permita popups e tente novamente.");
+      } else {
+        setError("Login com Apple não disponível no momento. Use outra opção de login.");
       }
     } finally {
       setSocialLoading(false);

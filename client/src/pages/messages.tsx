@@ -322,13 +322,23 @@ export default function Messages() {
             </div>
           )}
 
-          {messagesData.map((msg: any) => {
+          {messagesData.map((msg: any, idx: number) => {
             const isMe = msg.senderId === currentUser?.id;
             const hasAudio = !!msg.audioUrl;
             const isSelected = selectedMsgId === msg.id;
             const replyMsg = getReplyMessage(msg.replyToId);
+            const msgDate = msg.createdAt ? new Date(msg.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : "";
+            const prevMsg = idx > 0 ? messagesData[idx - 1] : null;
+            const prevMsgDate = prevMsg?.createdAt ? new Date(prevMsg.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : "";
+            const showDateSep = msgDate && msgDate !== prevMsgDate;
             return (
-              <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+              <div key={msg.id}>
+                {showDateSep && (
+                  <div className="flex justify-center my-4">
+                    <span className="text-[10px] text-muted-foreground/60 bg-muted/50 px-3 py-1 rounded-full">{msgDate}</span>
+                  </div>
+                )}
+              <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 <div
                   className={`relative max-w-[280px] sm:max-w-[320px] ${isSelected ? "scale-[1.02]" : ""} transition-transform`}
                   onTouchStart={() => handleTouchStart(msg.id)}
@@ -389,6 +399,7 @@ export default function Messages() {
                 <span className="text-[10px] text-muted-foreground mt-1 px-1">
                   {msg.createdAt ? formatTime(msg.createdAt) : ""}
                 </span>
+              </div>
               </div>
             );
           })}

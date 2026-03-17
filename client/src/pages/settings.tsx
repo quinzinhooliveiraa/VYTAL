@@ -1,4 +1,4 @@
-import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle2, Loader2, Copy, X, Trophy, Camera, Wallet, Users, Megaphone, Clock, Flame, ExternalLink, RotateCcw, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Smartphone, Eye, ShieldCheck, LogOut, Award, Star, Bell, BellOff, MessageSquare, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle, CheckCircle2, Loader2, Copy, X, Trophy, Camera, Wallet, Users, Megaphone, Clock, Flame, ExternalLink, RotateCcw, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 const ALL_ON_PREFS = {
   pushEnabled: true,
   checkinReminders: true,
+  checkinActivity: true,
   challengeUpdates: true,
   challengeResults: true,
   newMessages: true,
@@ -26,6 +27,7 @@ const ALL_ON_PREFS = {
 const ALL_OFF_PREFS = {
   pushEnabled: false,
   checkinReminders: false,
+  checkinActivity: false,
   challengeUpdates: false,
   challengeResults: false,
   newMessages: false,
@@ -255,6 +257,7 @@ export default function Settings() {
 
             {([
               { key: "checkinReminders" as keyof NotifPrefs, icon: Camera, label: "Lembretes de Check-in", desc: "Aviso quando estiver perto do horário limite", color: "text-yellow-500 bg-yellow-500/10" },
+              { key: "checkinActivity" as keyof NotifPrefs, icon: CheckCircle, label: "Check-ins dos Participantes", desc: "Quando alguém completa um treino nos seus desafios", color: "text-emerald-500 bg-emerald-500/10" },
               { key: "challengeUpdates" as keyof NotifPrefs, icon: Trophy, label: "Atualizações de Desafios", desc: "Novos participantes, progresso e mudanças", color: "text-primary bg-primary/10" },
               { key: "challengeResults" as keyof NotifPrefs, icon: Flame, label: "Resultados e Prêmios", desc: "Quando desafios terminam e prêmios são distribuídos", color: "text-orange-500 bg-orange-500/10" },
               { key: "newMessages" as keyof NotifPrefs, icon: MessageSquare, label: "Novas Mensagens", desc: "Mensagens diretas e de grupo", color: "text-blue-500 bg-blue-500/10" },

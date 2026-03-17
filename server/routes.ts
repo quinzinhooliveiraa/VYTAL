@@ -1325,21 +1325,31 @@ export async function registerRoutes(
     }
   });
 
+  const checkinUploadDir = path.join(process.cwd(), "server/uploads/checkins");
+  if (!fs.existsSync(checkinUploadDir)) fs.mkdirSync(checkinUploadDir, { recursive: true });
+
   app.post("/api/upload/checkin-photo", requireAuth, async (req, res) => {
-    try {
-      const chunks: Buffer[] = [];
-      req.on("data", (chunk: Buffer) => chunks.push(chunk));
-      req.on("end", () => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => {
+      try {
         const buffer = Buffer.concat(chunks);
+        if (buffer.length === 0) {
+          return res.status(400).json({ message: "Nenhum dado recebido" });
+        }
         const filename = `${randomUUID()}.jpg`;
-        const uploadDir = path.join(process.cwd(), "server/uploads/checkins");
-        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-        fs.writeFileSync(path.join(uploadDir, filename), buffer);
+        if (!fs.existsSync(checkinUploadDir)) fs.mkdirSync(checkinUploadDir, { recursive: true });
+        fs.writeFileSync(path.join(checkinUploadDir, filename), buffer);
         res.json({ url: `/uploads/checkins/${filename}` });
-      });
-    } catch (error: any) {
-      res.status(500).json({ message: "Erro ao fazer upload da foto" });
-    }
+      } catch (error: any) {
+        console.error("Erro ao salvar foto de check-in:", error);
+        res.status(500).json({ message: "Erro ao fazer upload da foto" });
+      }
+    });
+    req.on("error", (err) => {
+      console.error("Erro no stream de upload:", err);
+      res.status(500).json({ message: "Erro no upload" });
+    });
   });
 
   app.post("/api/check-ins/start", requireAuth, async (req, res) => {
@@ -1479,6 +1489,22 @@ export async function registerRoutes(
             eq(challengeParticipants.userId, userId)
           ));
       }
+
+      const currentUser = await storage.getUser(userId);
+      const userName = currentUser?.name || "Alguém";
+      const dLabel = updated.durationMins ? `${updated.durationMins} min` : "";
+      const distLabel = updated.distanceKm && parseFloat(updated.distanceKm) > 0 ? ` • ${parseFloat(updated.distanceKm).toFixed(1)}km` : "";
+      notificationService.notifyChallengeParticipants(
+        checkIn.challengeId,
+        userId,
+        {
+          type: "checkin_activity",
+          title: `${userName} fez check-in!`,
+          body: `${userName} completou um treino no desafio "${challenge?.title || ""}"${dLabel ? ` (${dLabel}${distLabel})` : ""}`,
+          icon: "camera",
+          actionUrl: `/challenge/${checkIn.challengeId}`,
+        }
+      ).catch(() => {});
 
       res.json(updated);
     } catch (error: any) {

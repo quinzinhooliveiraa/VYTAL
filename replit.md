@@ -92,6 +92,14 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - **Border radius**: 0.75rem
 - **Language**: Brazilian Portuguese (pt-BR)
 
+## Check-in System
+- Photos uploaded as raw binary via `/api/upload/checkin-photo`, saved to `server/uploads/checkins/`
+- Upload dir created at startup, error handling inside `req.on("end")` callback
+- Calories only shown/sent when `validationType` is `tempo`, `distancia`, or `combinacao` (NOT for `foto` or `repeticoes`)
+- Check-in history in challenge details shows ALL participants (not just current user), sorted by date
+- After checkout, push notification sent to all other participants in the challenge (`checkin_activity` type)
+- Notification preference `checkinActivity` in localStorage `vytal-notif-prefs` (can be disabled in settings)
+
 ## Key Notes
 - Session stored in PostgreSQL via connect-pg-simple
 - Use `drizzle-orm/node-postgres` (NOT neon-serverless)

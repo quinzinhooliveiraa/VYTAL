@@ -167,6 +167,7 @@ export default function CheckIn() {
   const tracksDistance = vType === "distancia" || vType === "combinacao";
   const tracksTime = vType === "tempo" || vType === "combinacao";
   const showDistanceUI = tracksDistance && !isGymType;
+  const showCalories = vType === "tempo" || vType === "distancia" || vType === "combinacao";
 
   useEffect(() => {
     if (activeCheckIn) {
@@ -486,7 +487,7 @@ export default function CheckIn() {
         endLatitude: endCoords?.lat?.toString() || null,
         endLongitude: endCoords?.lng?.toString() || null,
         distanceKm: finalDist > 0 ? finalDist.toFixed(3) : null,
-        caloriesBurned: cal,
+        caloriesBurned: showCalories ? cal : null,
         avgPace: pace,
         reps: repsCount ? parseInt(repsCount) : null,
       });
@@ -769,7 +770,7 @@ export default function CheckIn() {
               <p className="text-[10px] text-white/30 mt-1">O tempo conta mesmo com o app fechado</p>
             </div>
 
-            <div className={`grid gap-4 w-full max-w-sm ${showDistanceUI && !indoorMode ? "grid-cols-3" : "grid-cols-2"}`}>
+            <div className={`grid gap-4 w-full max-w-sm ${showDistanceUI && !indoorMode && showCalories ? "grid-cols-3" : (showDistanceUI || showCalories ? "grid-cols-2" : "grid-cols-1")}`}>
               {showDistanceUI && !indoorMode && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
                   <Ruler size={18} className="text-blue-400 mx-auto mb-2" />
@@ -784,11 +785,13 @@ export default function CheckIn() {
                   <p className="text-[10px] text-white/50">Informar no final</p>
                 </div>
               )}
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
-                <Flame size={18} className="text-orange-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold" data-testid="text-calories">{calories}</p>
-                <p className="text-[10px] text-white/50 uppercase">kcal</p>
-              </div>
+              {showCalories && (
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
+                  <Flame size={18} className="text-orange-400 mx-auto mb-2" />
+                  <p className="text-2xl font-bold" data-testid="text-calories">{calories}</p>
+                  <p className="text-[10px] text-white/50 uppercase">kcal</p>
+                </div>
+              )}
               {showDistanceUI && !indoorMode && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
                   <Navigation size={18} className="text-green-400 mx-auto mb-2" />
@@ -870,7 +873,7 @@ export default function CheckIn() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid ${showCalories ? "grid-cols-2" : "grid-cols-1"} gap-3`}>
               <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">
                 <Timer size={20} className="text-primary shrink-0" />
                 <div>
@@ -878,13 +881,15 @@ export default function CheckIn() {
                   <p className="text-[10px] text-white/50 uppercase">Duração</p>
                 </div>
               </div>
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">
-                <Flame size={20} className="text-orange-400 shrink-0" />
-                <div>
-                  <p className="text-lg font-bold">{calories} kcal</p>
-                  <p className="text-[10px] text-white/50 uppercase">Calorias</p>
+              {showCalories && (
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">
+                  <Flame size={20} className="text-orange-400 shrink-0" />
+                  <div>
+                    <p className="text-lg font-bold">{calories} kcal</p>
+                    <p className="text-[10px] text-white/50 uppercase">Calorias</p>
+                  </div>
                 </div>
-              </div>
+              )}
               {showDistanceUI && !indoorMode && (
                 <>
                   <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">

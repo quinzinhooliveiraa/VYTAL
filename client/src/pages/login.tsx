@@ -27,7 +27,7 @@ declare global {
   }
 }
 
-const GOOGLE_CLIENT_ID = "376587519485-an9p30conn0gk0hoou8a62977cphchan.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 export default function Login() {
   const [, setLocation] = useLocation();

@@ -1313,16 +1313,15 @@ export async function registerRoutes(
 
   app.post("/api/upload/challenge-banner", requireAuth, async (req, res) => {
     try {
-      const chunks: Buffer[] = [];
-      req.on("data", (chunk: Buffer) => chunks.push(chunk));
-      req.on("end", () => {
-        const buffer = Buffer.concat(chunks);
-        const filename = `${randomUUID()}.jpg`;
-        const uploadDir = path.join(process.cwd(), "server/uploads/banners");
-        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-        fs.writeFileSync(path.join(uploadDir, filename), buffer);
-        res.json({ url: `/uploads/banners/${filename}` });
-      });
+      const buffer = req.body as Buffer;
+      if (!buffer || buffer.length === 0) {
+        return res.status(400).json({ message: "Nenhum dado recebido" });
+      }
+      const filename = `${randomUUID()}.jpg`;
+      const uploadDir = path.join(process.cwd(), "server/uploads/banners");
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      fs.writeFileSync(path.join(uploadDir, filename), buffer);
+      res.json({ url: `/uploads/banners/${filename}` });
     } catch (error: any) {
       res.status(500).json({ message: "Erro ao fazer upload do banner" });
     }
@@ -1332,27 +1331,19 @@ export async function registerRoutes(
   if (!fs.existsSync(checkinUploadDir)) fs.mkdirSync(checkinUploadDir, { recursive: true });
 
   app.post("/api/upload/checkin-photo", requireAuth, async (req, res) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
-    req.on("end", () => {
-      try {
-        const buffer = Buffer.concat(chunks);
-        if (buffer.length === 0) {
-          return res.status(400).json({ message: "Nenhum dado recebido" });
-        }
-        const filename = `${randomUUID()}.jpg`;
-        if (!fs.existsSync(checkinUploadDir)) fs.mkdirSync(checkinUploadDir, { recursive: true });
-        fs.writeFileSync(path.join(checkinUploadDir, filename), buffer);
-        res.json({ url: `/uploads/checkins/${filename}` });
-      } catch (error: any) {
-        console.error("Erro ao salvar foto de check-in:", error);
-        res.status(500).json({ message: "Erro ao fazer upload da foto" });
+    try {
+      const buffer = req.body as Buffer;
+      if (!buffer || buffer.length === 0) {
+        return res.status(400).json({ message: "Nenhum dado recebido" });
       }
-    });
-    req.on("error", (err) => {
-      console.error("Erro no stream de upload:", err);
-      res.status(500).json({ message: "Erro no upload" });
-    });
+      const filename = `${randomUUID()}.jpg`;
+      if (!fs.existsSync(checkinUploadDir)) fs.mkdirSync(checkinUploadDir, { recursive: true });
+      fs.writeFileSync(path.join(checkinUploadDir, filename), buffer);
+      res.json({ url: `/uploads/checkins/${filename}` });
+    } catch (error: any) {
+      console.error("Erro ao salvar foto de check-in:", error);
+      res.status(500).json({ message: "Erro ao fazer upload da foto" });
+    }
   });
 
   app.post("/api/check-ins/start", requireAuth, async (req, res) => {
@@ -1671,29 +1662,29 @@ export async function registerRoutes(
 
   app.post("/api/upload/audio", requireAuth, async (req, res) => {
     try {
-      const chunks: Buffer[] = [];
-      req.on("data", (chunk: Buffer) => chunks.push(chunk));
-      req.on("end", () => {
-        const buffer = Buffer.concat(chunks);
-        const contentType = req.headers["content-type"] || "audio/webm";
-        const extMap: Record<string, string> = {
-          "audio/webm": ".webm",
-          "audio/webm;codecs=opus": ".webm",
-          "audio/ogg": ".ogg",
-          "audio/ogg;codecs=opus": ".ogg",
-          "audio/mp4": ".m4a",
-          "audio/aac": ".aac",
-          "audio/mpeg": ".mp3",
-          "audio/mp3": ".mp3",
-          "audio/wav": ".wav",
-        };
-        const ext = extMap[contentType.toLowerCase().split(";")[0].trim()] || extMap[contentType.toLowerCase()] || ".webm";
-        const filename = `${randomUUID()}${ext}`;
-        const uploadDir = path.join(process.cwd(), "server/uploads/audio");
-        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-        fs.writeFileSync(path.join(uploadDir, filename), buffer);
-        res.json({ url: `/uploads/audio/${filename}` });
-      });
+      const buffer = req.body as Buffer;
+      if (!buffer || buffer.length === 0) {
+        return res.status(400).json({ message: "Nenhum dado recebido" });
+      }
+      const contentType = req.headers["content-type"] || "audio/webm";
+      const extMap: Record<string, string> = {
+        "audio/webm": ".webm",
+        "audio/webm;codecs=opus": ".webm",
+        "audio/ogg": ".ogg",
+        "audio/ogg;codecs=opus": ".ogg",
+        "audio/mp4": ".m4a",
+        "audio/aac": ".aac",
+        "audio/mpeg": ".mp3",
+        "audio/mp3": ".mp3",
+        "audio/wav": ".wav",
+      };
+      const ct = (typeof contentType === "string" ? contentType : contentType[0] || "audio/webm").toLowerCase();
+      const ext = extMap[ct.split(";")[0].trim()] || ".webm";
+      const filename = `${randomUUID()}${ext}`;
+      const uploadDir = path.join(process.cwd(), "server/uploads/audio");
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      fs.writeFileSync(path.join(uploadDir, filename), buffer);
+      res.json({ url: `/uploads/audio/${filename}` });
     } catch (error: any) {
       res.status(500).json({ message: "Erro ao fazer upload do áudio" });
     }

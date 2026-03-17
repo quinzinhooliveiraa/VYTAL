@@ -12,6 +12,8 @@ declare module "http" {
   }
 }
 
+app.use("/api/upload", express.raw({ type: "*/*", limit: "50mb" }));
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {

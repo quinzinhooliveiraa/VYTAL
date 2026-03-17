@@ -154,18 +154,33 @@ export default function Messages() {
     setSelectedMsgId(null);
   }, [currentUser]);
 
-  const handleTouchStart = useCallback((msgId: string) => {
-    longPressRef.current = setTimeout(() => {
-      setSelectedMsgId(msgId);
-    }, 400);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeCurrentX = useRef<number>(0);
+  const swipeMsgId = useRef<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<Record<string, number>>({});
+
+  const handleSwipeStart = useCallback((msgId: string, e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX;
+    swipeMsgId.current = msgId;
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
-    if (longPressRef.current) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
+  const handleSwipeMove = useCallback((msgId: string, e: React.TouchEvent) => {
+    if (swipeStartX.current === null || swipeMsgId.current !== msgId) return;
+    const diff = e.touches[0].clientX - swipeStartX.current;
+    const offset = Math.max(0, Math.min(diff, 80));
+    swipeCurrentX.current = offset;
+    setSwipeOffset(prev => ({ ...prev, [msgId]: offset }));
   }, []);
+
+  const handleSwipeEnd = useCallback((msg: any) => {
+    if (swipeCurrentX.current > 50) {
+      handleReply(msg);
+    }
+    setSwipeOffset(prev => ({ ...prev, [msg.id]: 0 }));
+    swipeStartX.current = null;
+    swipeMsgId.current = null;
+    swipeCurrentX.current = 0;
+  }, [handleReply]);
 
   const getSupportedMimeType = () => {
     const types = [
@@ -340,11 +355,20 @@ export default function Messages() {
                 )}
               <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 <div
-                  className={`relative max-w-[280px] sm:max-w-[320px] ${isSelected ? "scale-[1.02]" : ""} transition-transform`}
-                  onClick={() => setSelectedMsgId(selectedMsgId === msg.id ? null : msg.id)}
-                  onContextMenu={(e) => { e.preventDefault(); setSelectedMsgId(msg.id); }}
+                  className="relative max-w-[280px] sm:max-w-[320px]"
+                  onTouchStart={(e) => handleSwipeStart(msg.id, e)}
+                  onTouchMove={(e) => handleSwipeMove(msg.id, e)}
+                  onTouchEnd={() => handleSwipeEnd(msg)}
                 >
+                  {(swipeOffset[msg.id] || 0) > 10 && (
+                    <div className="absolute left-0 -translate-x-full top-1/2 -translate-y-1/2 px-1 flex items-center">
+                      <div className={`w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center transition-transform ${(swipeOffset[msg.id] || 0) > 50 ? "scale-110" : "scale-90"}`}>
+                        <Reply size={14} className="text-primary" />
+                      </div>
+                    </div>
+                  )}
                   <div
+                    style={{ transform: `translateX(${swipeOffset[msg.id] || 0}px)`, transition: swipeStartX.current !== null ? "none" : "transform 0.2s ease-out" }}
                     className={`shadow-sm flex flex-col ${
                       isMe 
                         ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" 
@@ -371,27 +395,6 @@ export default function Messages() {
                       )}
                     </div>
                   </div>
-
-                  <AnimatePresence>
-                    {isSelected && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className={`absolute ${isMe ? "left-0 -translate-x-full" : "right-0 translate-x-full"} top-1/2 -translate-y-1/2 px-1`}
-                      >
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          className="w-9 h-9 rounded-full shadow-lg"
-                          onClick={() => handleReply(msg)}
-                          data-testid={`button-reply-${msg.id}`}
-                        >
-                          <Reply size={16} />
-                        </Button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
                 <span className="text-[10px] text-muted-foreground mt-1 px-1">
@@ -403,10 +406,6 @@ export default function Messages() {
           })}
         </div>
       </div>
-
-      {selectedMsgId && (
-        <div className="fixed inset-0 z-5" onClick={() => setSelectedMsgId(null)} />
-      )}
 
       <div className="p-4 bg-background border-t border-border shrink-0">
         <AnimatePresence>

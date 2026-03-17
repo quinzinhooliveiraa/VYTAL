@@ -1211,6 +1211,28 @@ export async function registerRoutes(
 
   // ====== DAILY MISSED DAYS ENFORCEMENT ======
 
+  app.post("/api/admin/reset-wallets", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) return res.status(403).json({ message: "Admin only" });
+
+      if (req.body?.confirmation !== "RESETAR_SALDOS") {
+        return res.status(400).json({ message: "Confirmação inválida" });
+      }
+
+      const beforeReset = await db.execute(sql`SELECT COUNT(*) as count, COALESCE(SUM(balance), 0) as total FROM wallets WHERE balance != 0`);
+      const usersAffected = Number(beforeReset.rows[0]?.count || 0);
+      const totalCleared = Number(beforeReset.rows[0]?.total || 0);
+
+      await db.execute(sql`UPDATE wallets SET balance = 0 WHERE balance != 0`);
+
+      res.json({ message: "Todos os saldos foram resetados para R$ 0,00", usersAffected, totalCleared });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao resetar saldos" });
+    }
+  });
+
   app.post("/api/admin/process-missed-days", requireAuth, async (req, res) => {
     try {
       const userId = (req.session as any).userId;

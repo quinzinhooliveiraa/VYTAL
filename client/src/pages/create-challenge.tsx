@@ -73,6 +73,7 @@ export default function CreateChallenge() {
   const [combinationSpec, setCombinationSpec] = useState("");
   const [maxMissedDays, setMaxMissedDays] = useState("3");
   const [skipWeekends, setSkipWeekends] = useState(false);
+  const [restDays, setRestDays] = useState<string[]>([]);
   const [restDaysAllowed, setRestDaysAllowed] = useState("0");
   const [bannerPreview, setBannerPreview] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
@@ -95,6 +96,7 @@ export default function CreateChallenge() {
       if (draft.combinationSpec) setCombinationSpec(draft.combinationSpec);
       if (draft.maxMissedDays) setMaxMissedDays(draft.maxMissedDays);
       if (draft.skipWeekends !== undefined) setSkipWeekends(draft.skipWeekends);
+      if (draft.restDays) setRestDays(draft.restDays);
       if (draft.restDaysAllowed) setRestDaysAllowed(draft.restDaysAllowed);
       if (draft.bannerUrl) { setBannerUrl(draft.bannerUrl); setBannerPreview(draft.bannerUrl); }
       if (draft.isPublic !== undefined) setIsPublic(draft.isPublic);
@@ -108,7 +110,7 @@ export default function CreateChallenge() {
     modalidade, scoringSystem, validationType,
     challengeName, challengeDesc, startDate, durationDays,
     numMembers, entryValue, splitPrize, splitPercentages,
-    combinationSpec, maxMissedDays, skipWeekends, restDaysAllowed, bannerUrl, isPublic, step,
+    combinationSpec, maxMissedDays, skipWeekends, restDays, restDaysAllowed, bannerUrl, isPublic, step,
   });
 
   const handleRechargeAndSave = () => {
@@ -144,6 +146,7 @@ export default function CreateChallenge() {
           goalTarget: scoringSystem === "corrida" && combinationSpec ? parseInt(combinationSpec) : null,
           maxMissedDays: scoringSystem === "survival" ? parseInt(maxMissedDays) : 0,
           skipWeekends,
+          restDays: restDays.length > 0 ? restDays : undefined,
           restDaysAllowed: parseInt(restDaysAllowed) || 0,
           image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
@@ -721,17 +724,45 @@ export default function CreateChallenge() {
               <div className="space-y-3 p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 animate-in zoom-in-95">
                 <Label className="text-sm font-bold text-blue-500 mb-1 block">Configurações de Folga</Label>
 
-                <div className="flex items-center justify-between p-3 bg-card rounded-xl border border-border">
-                  <div className="flex-1">
-                    <p className="text-sm font-bold">Pular Finais de Semana</p>
-                    <p className="text-[10px] text-muted-foreground">Sábado e domingo não contam como faltas</p>
+                <div className="p-3 bg-card rounded-xl border border-border space-y-2">
+                  <div>
+                    <p className="text-sm font-bold">Dias de Folga Semanal</p>
+                    <p className="text-[10px] text-muted-foreground">Selecione os dias da semana que não contam como falta</p>
                   </div>
-                  <Switch
-                    checked={skipWeekends}
-                    onCheckedChange={setSkipWeekends}
-                    className="data-[state=checked]:bg-blue-500"
-                    data-testid="switch-skip-weekends"
-                  />
+                  <div className="flex gap-1.5">
+                    {[
+                      { key: "0", label: "D" },
+                      { key: "1", label: "S" },
+                      { key: "2", label: "T" },
+                      { key: "3", label: "Q" },
+                      { key: "4", label: "Q" },
+                      { key: "5", label: "S" },
+                      { key: "6", label: "S" },
+                    ].map((day) => {
+                      const isSelected = restDays.includes(day.key);
+                      return (
+                        <button
+                          key={day.key}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setRestDays(restDays.filter(d => d !== day.key));
+                            } else {
+                              setRestDays([...restDays, day.key]);
+                            }
+                          }}
+                          className={`flex-1 h-10 rounded-xl border-2 font-bold text-sm transition-all ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-500/20 text-blue-500"
+                              : "border-border bg-background hover:bg-muted text-foreground"
+                          }`}
+                          data-testid={`button-rest-day-${day.key}`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="p-3 bg-card rounded-xl border border-border space-y-2">
@@ -770,12 +801,12 @@ export default function CreateChallenge() {
                   </div>
                 </div>
 
-                {(skipWeekends || parseInt(restDaysAllowed) > 0) && (
+                {(restDays.length > 0 || parseInt(restDaysAllowed) > 0) && (
                   <p className="text-[10px] text-blue-500/70">
-                    {skipWeekends && parseInt(restDaysAllowed) > 0
-                      ? `Finais de semana liberados + ${restDaysAllowed} dia${parseInt(restDaysAllowed) !== 1 ? "s" : ""} de descanso por participante.`
-                      : skipWeekends
-                      ? "Finais de semana (sáb/dom) não contam como falta."
+                    {restDays.length > 0 && parseInt(restDaysAllowed) > 0
+                      ? `${restDays.length} dia${restDays.length !== 1 ? "s" : ""} de folga semanal + ${restDaysAllowed} dia${parseInt(restDaysAllowed) !== 1 ? "s" : ""} extras de descanso por participante.`
+                      : restDays.length > 0
+                      ? `${restDays.length} dia${restDays.length !== 1 ? "s" : ""} da semana não contam como falta.`
                       : `Cada participante tem ${restDaysAllowed} dia${parseInt(restDaysAllowed) !== 1 ? "s" : ""} de descanso para usar quando quiser.`}
                   </p>
                 )}

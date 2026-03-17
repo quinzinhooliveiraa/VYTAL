@@ -42,6 +42,7 @@ export const challenges = pgTable("challenges", {
   goalTarget: integer("goal_target"),
   maxMissedDays: integer("max_missed_days").default(0),
   skipWeekends: boolean("skip_weekends").default(false),
+  restDays: text("rest_days").array(),
   restDaysAllowed: integer("rest_days_allowed").default(0),
   isActive: boolean("is_active").default(true),
   status: text("status").default("active"),

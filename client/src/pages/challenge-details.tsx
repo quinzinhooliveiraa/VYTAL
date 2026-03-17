@@ -32,6 +32,7 @@ export default function ChallengeDetails() {
   const [editPrivate, setEditPrivate] = useState(false);
   const [editMaxParticipants, setEditMaxParticipants] = useState(50);
   const [editSkipWeekends, setEditSkipWeekends] = useState(false);
+  const [editRestDays, setEditRestDays] = useState<string[]>([]);
   const [editRestDaysAllowed, setEditRestDaysAllowed] = useState(0);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedNewMod, setSelectedNewMod] = useState<string | null>(null);
@@ -229,6 +230,7 @@ export default function ChallengeDetails() {
     setEditPrivate(challenge.isPrivate || false);
     setEditMaxParticipants(challenge.maxParticipants || 50);
     setEditSkipWeekends((challenge as any).skipWeekends || false);
+    setEditRestDays((challenge as any).restDays || []);
     setEditRestDaysAllowed((challenge as any).restDaysAllowed || 0);
     setEditMode(true);
   };
@@ -241,6 +243,7 @@ export default function ChallengeDetails() {
       isPrivate: editPrivate,
       maxParticipants: editMaxParticipants,
       skipWeekends: editSkipWeekends,
+      restDays: editRestDays.length > 0 ? editRestDays : undefined,
       restDaysAllowed: editRestDaysAllowed,
     });
   };
@@ -494,7 +497,10 @@ export default function ChallengeDetails() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-sm">
                 <div className="flex items-center gap-3"><Clock size={16} className="text-primary" /> <span>{isChallengeEnded ? "Desafio finalizado" : hasStarted ? `${daysLeft} dias restantes` : "Ainda não começou"}</span></div>
                 <div className="flex items-center gap-3"><Users size={16} className="text-primary" /> <span>{activeParticipants.length} participantes ativos</span></div>
-                {(challenge as any).skipWeekends && (
+                {((challenge as any).restDays?.length > 0) && (
+                  <div className="flex items-center gap-3"><Coffee size={16} className="text-blue-500" /> <span>Folga: {(challenge as any).restDays.map((d: string) => ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][parseInt(d)]).join(", ")}</span></div>
+                )}
+                {(challenge as any).skipWeekends && !((challenge as any).restDays?.length > 0) && (
                   <div className="flex items-center gap-3"><Coffee size={16} className="text-blue-500" /> <span>Finais de semana liberados</span></div>
                 )}
                 {((challenge as any).restDaysAllowed || 0) > 0 && (
@@ -910,12 +916,45 @@ export default function ChallengeDetails() {
                     </div>
                     {(challenge.type === "checkin" || challenge.type === "survival") && (
                       <>
-                        <div className="flex items-center justify-between p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                          <div className="flex-1">
-                            <p className="text-sm font-bold">Pular Finais de Semana</p>
-                            <p className="text-[10px] text-muted-foreground">Sáb/Dom não contam como faltas</p>
+                        <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 space-y-2">
+                          <div>
+                            <p className="text-sm font-bold">Dias de Folga Semanal</p>
+                            <p className="text-[10px] text-muted-foreground">Dias que não contam como falta</p>
                           </div>
-                          <Switch checked={editSkipWeekends} onCheckedChange={setEditSkipWeekends} className="data-[state=checked]:bg-blue-500" data-testid="switch-edit-skip-weekends" />
+                          <div className="flex gap-1.5">
+                            {[
+                              { key: "0", label: "D" },
+                              { key: "1", label: "S" },
+                              { key: "2", label: "T" },
+                              { key: "3", label: "Q" },
+                              { key: "4", label: "Q" },
+                              { key: "5", label: "S" },
+                              { key: "6", label: "S" },
+                            ].map((day) => {
+                              const isSelected = editRestDays.includes(day.key);
+                              return (
+                                <button
+                                  key={day.key}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setEditRestDays(editRestDays.filter(d => d !== day.key));
+                                    } else {
+                                      setEditRestDays([...editRestDays, day.key]);
+                                    }
+                                  }}
+                                  className={`flex-1 h-9 rounded-lg border-2 font-bold text-xs transition-all ${
+                                    isSelected
+                                      ? "border-blue-500 bg-blue-500/20 text-blue-500"
+                                      : "border-border bg-background hover:bg-muted text-foreground"
+                                  }`}
+                                  data-testid={`button-edit-rest-day-${day.key}`}
+                                >
+                                  {day.label}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
@@ -941,7 +980,13 @@ export default function ChallengeDetails() {
                       {challenge.isPrivate ? <Lock size={14} /> : <Unlock size={14} />}
                       <span>{challenge.isPrivate ? "Desafio Privado" : "Desafio Público"}</span>
                     </div>
-                    {(challenge as any).skipWeekends && (
+                    {((challenge as any).restDays?.length > 0) && (
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <Clock size={14} />
+                        <span>Folga: {(challenge as any).restDays.map((d: string) => ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][parseInt(d)]).join(", ")}</span>
+                      </div>
+                    )}
+                    {(challenge as any).skipWeekends && !((challenge as any).restDays?.length > 0) && (
                       <div className="flex items-center gap-2 text-blue-500">
                         <Clock size={14} />
                         <span>Finais de semana liberados</span>

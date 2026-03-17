@@ -1221,11 +1221,12 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Confirmação inválida" });
       }
 
-      const beforeReset = await db.execute(sql`SELECT COUNT(*) as count, COALESCE(SUM(balance), 0) as total FROM wallets WHERE balance != 0`);
+      const beforeReset = await db.execute(sql`SELECT COUNT(*) as count, COALESCE(SUM(ABS(balance)), 0) as total FROM wallets WHERE balance != 0`);
       const usersAffected = Number(beforeReset.rows[0]?.count || 0);
       const totalCleared = Number(beforeReset.rows[0]?.total || 0);
 
-      await db.execute(sql`UPDATE wallets SET balance = 0 WHERE balance != 0`);
+      await db.execute(sql`UPDATE wallets SET balance = 0`);
+      await db.execute(sql`UPDATE wallet_transactions SET status = 'cancelled' WHERE status = 'pending'`);
 
       res.json({ message: "Todos os saldos foram resetados para R$ 0,00", usersAffected, totalCleared });
     } catch (error: any) {

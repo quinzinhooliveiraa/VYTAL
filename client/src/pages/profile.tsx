@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("ativos");
-  const [selectedMedal, setSelectedMedal] = useState<{ name: string; desc: string; color: string; bg: string; border: string; icon: any; earned: boolean } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
@@ -251,13 +250,18 @@ export default function Profile() {
 
         {/* Botão editar banner */}
         <label
-          htmlFor="banner-upload"
-          className="absolute bottom-2 right-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 z-10 cursor-pointer"
+          className="absolute bottom-2 right-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 z-10 cursor-pointer overflow-hidden"
           data-testid="button-edit-banner"
         >
           <ImageIcon size={12} /> Editar capa
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleBannerSelect}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+            style={{ fontSize: 0 }}
+          />
         </label>
-        <input id="banner-upload" type="file" className="hidden" accept="image/*" onChange={handleBannerSelect} />
       </div>
 
       <div className="px-4 space-y-5 -mt-10 relative z-10">
@@ -344,49 +348,23 @@ export default function Profile() {
           const locked = allMedals.filter(m => !m.check());
           if (earned.length === 0 && locked.length === 0) return null;
           return (
-            <div className="space-y-2">
-              <div className="flex gap-4 px-1 overflow-x-auto no-scrollbar pb-2 pt-1">
-                {earned.map((badge, i) => (
-                  <button
-                    key={`e-${i}`}
-                    className="flex flex-col items-center gap-1.5 shrink-0 transition-transform active:scale-90"
-                    onClick={() => setSelectedMedal(selectedMedal?.name === badge.name ? null : { ...badge, earned: true })}
-                    data-testid={`medal-earned-${badge.name.replace(/\s+/g, '-').toLowerCase()}`}
-                  >
-                    <div className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center shadow-sm ${selectedMedal?.name === badge.name ? 'ring-2 ring-offset-2 ring-primary' : ''} ${badge.bg} ${badge.border}`}>
-                      <badge.icon className={badge.color} size={22} />
-                    </div>
-                    <span className="text-[10px] text-foreground font-semibold">{badge.name}</span>
-                  </button>
-                ))}
-                {locked.map((badge, i) => (
-                  <button
-                    key={`l-${i}`}
-                    className="flex flex-col items-center gap-1.5 shrink-0 opacity-30 grayscale transition-transform active:scale-90"
-                    onClick={() => setSelectedMedal(selectedMedal?.name === badge.name ? null : { ...badge, earned: false })}
-                    data-testid={`medal-locked-${badge.name.replace(/\s+/g, '-').toLowerCase()}`}
-                  >
-                    <div className="w-14 h-14 rounded-full border-[3px] flex items-center justify-center shadow-sm bg-muted border-border">
-                      <badge.icon className="text-muted-foreground" size={22} />
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-semibold">{badge.name}</span>
-                  </button>
-                ))}
-              </div>
-              {selectedMedal && (
-                <div className={`mx-1 rounded-2xl border px-4 py-3 flex items-center gap-3 transition-all ${selectedMedal.earned ? `${selectedMedal.bg} ${selectedMedal.border}` : 'bg-muted border-border'}`}>
-                  <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedMedal.earned ? `${selectedMedal.bg} ${selectedMedal.border}` : 'bg-background border-border grayscale opacity-50'}`}>
-                    <selectedMedal.icon className={selectedMedal.earned ? selectedMedal.color : 'text-muted-foreground'} size={18} />
+            <div className="flex gap-4 px-1 overflow-x-auto no-scrollbar pb-2 pt-1">
+              {earned.map((badge, i) => (
+                <div key={`e-${i}`} className="flex flex-col items-center gap-1.5 shrink-0">
+                  <div className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center shadow-sm ${badge.bg} ${badge.border}`}>
+                    <badge.icon className={badge.color} size={22} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-bold ${selectedMedal.earned ? 'text-foreground' : 'text-muted-foreground'}`}>{selectedMedal.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedMedal.desc}</p>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${selectedMedal.earned ? 'bg-emerald-500/20 text-emerald-500' : 'bg-muted-foreground/10 text-muted-foreground'}`}>
-                    {selectedMedal.earned ? 'Conquistada' : 'Bloqueada'}
-                  </span>
+                  <span className="text-[10px] text-foreground font-semibold">{badge.name}</span>
                 </div>
-              )}
+              ))}
+              {locked.map((badge, i) => (
+                <div key={`l-${i}`} className="flex flex-col items-center gap-1.5 shrink-0 opacity-30 grayscale">
+                  <div className="w-14 h-14 rounded-full border-[3px] flex items-center justify-center shadow-sm bg-muted border-border">
+                    <badge.icon className="text-muted-foreground" size={22} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-semibold">{badge.name}</span>
+                </div>
+              ))}
             </div>
           );
         })()}

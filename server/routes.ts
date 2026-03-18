@@ -2306,7 +2306,7 @@ export async function registerRoutes(
       const [withdrawAll] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(txWhere("withdraw_request"));
+      }).from(transactions).where(txWhere("withdraw_request", sql`${transactions.status} != 'failed'`));
 
       const [walletResult] = await database.select({
         totalBalance: sql<string>`COALESCE(SUM(balance), 0)`,

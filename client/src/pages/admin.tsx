@@ -6,7 +6,7 @@ import {
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
   Trophy, ChevronRight, ChevronDown, Loader2, Bell, BellOff, Volume2,
   MessageSquare, Search, Eye, X, Calendar, Hash, Send, Megaphone, CheckCircle2, Link2,
-  Smartphone, Wifi, WifiOff, Clock, RotateCcw
+  Smartphone, Wifi, WifiOff, Clock, RotateCcw, Wallet, ShieldAlert, Landmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -427,7 +427,7 @@ export default function Admin() {
         {/* ====== OVERVIEW ====== */}
         {tab === "overview" && (
           <div className="space-y-6">
-            {/* KPI Principal */}
+            {/* KPI Principal - Receita */}
             <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-1">
                 <Percent size={16} className="text-emerald-500" />
@@ -435,29 +435,80 @@ export default function Admin() {
               </div>
               <p className="text-3xl font-bold text-emerald-500" data-testid="text-platform-revenue">{formatBRL(stats?.platformFees?.total || 0)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats?.platformFees?.count || 0} cobranças realizadas</p>
-              {stats?.gatewayFees && (
-                <div className="mt-3 pt-3 border-t border-emerald-500/20 space-y-1">
+            </div>
+
+            {/* Gateway - Painel financeiro completo */}
+            {stats?.gateway && (
+              <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Landmark size={16} className="text-blue-400" />
+                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gateway AbacatePay</span>
+                </div>
+
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs text-muted-foreground">Saldo estimado no gateway</span>
+                  <span className="text-2xl font-bold text-blue-400">{formatBRL(stats.gateway.estimatedBalance)}</span>
+                </div>
+
+                <div className="border-t border-blue-500/20 pt-3 space-y-2">
+                  <p className="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldAlert size={12} />
+                    Obrigações (pior cenário)
+                  </p>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Taxas AbacatePay ({stats.depositsCompleted?.count || 0} depósitos)</span>
-                    <span className="text-destructive font-bold">- {formatBRL(stats.gatewayFees.depositFees)}</span>
+                    <span className="text-muted-foreground">Saldos disponíveis dos usuários</span>
+                    <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.userAvailableBalances)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Taxa de saque</span>
-                    <span className="text-destructive font-bold">- {formatBRL(stats.gatewayFees.withdrawalFee)}</span>
+                    <span className="text-muted-foreground">Custo se todos sacarem ({stats.gateway.withdrawableUsersCount} aptos)</span>
+                    <span className="text-orange-400 font-medium">- {formatBRL(stats.gateway.obligations.worstCaseWithdrawCost)}</span>
                   </div>
-                  <div className="flex justify-between text-sm pt-1 border-t border-emerald-500/10">
-                    <span className="font-bold text-emerald-500">Lucro líquido sacável</span>
-                    <span className="font-bold text-emerald-500">{formatBRL(stats.withdrawableRevenue || 0)}</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Saldos travados em desafios</span>
+                    <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.challengeLockedFunds)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs pt-1 border-t border-blue-500/10">
+                    <span className="font-semibold text-orange-400">Total de obrigações</span>
+                    <span className="font-bold text-orange-400">- {formatBRL(stats.gateway.obligations.total)}</span>
                   </div>
                 </div>
-              )}
-            </div>
+
+                <div className="border-t border-blue-500/20 pt-3 space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Seguro para sacar</span>
+                    <span className="text-emerald-400 font-bold">{formatBRL(stats.gateway.safeToWithdraw)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Taxa do seu saque</span>
+                    <span className="text-destructive font-medium">- {formatBRL(stats.gateway.adminWithdrawFee)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-2 border-t border-emerald-500/20">
+                    <span className="font-bold text-emerald-400 text-sm">Você pode sacar</span>
+                    <span className="font-bold text-emerald-400 text-xl">{formatBRL(stats.gateway.adminWithdrawable)}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <div className={`flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg ${
+                    stats.gateway.safetyMargin > 20 ? 'bg-emerald-500/10 text-emerald-400' :
+                    stats.gateway.safetyMargin > 5 ? 'bg-yellow-500/10 text-yellow-400' :
+                    'bg-red-500/10 text-red-400'
+                  }`}>
+                    <Shield size={14} />
+                    Margem de segurança: {stats.gateway.safetyMargin}%
+                    {stats.gateway.safetyMargin > 20 ? ' — Saudável' :
+                     stats.gateway.safetyMargin > 5 ? ' — Atenção' :
+                     ' — Crítico'}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Cards secundários */}
             <div className="grid grid-cols-2 gap-3">
               <MiniCard icon={ArrowDownLeft} label="Depósitos" value={formatBRL(stats?.depositsCompleted?.total || 0)} sub={`${stats?.depositsCompleted?.count || 0} confirmados`} color="green" testId="text-deposits" />
               <MiniCard icon={ArrowUpRight} label="Saques" value={formatBRL(stats?.withdrawals?.total || 0)} sub={`${stats?.withdrawals?.count || 0} solicitados`} color="orange" testId="text-withdrawals" />
-              <MiniCard icon={DollarSign} label="Saldo em contas" value={formatBRL(stats?.usersBalance?.total || 0)} sub={`${formatBRL(stats?.usersBalance?.locked || 0)} travado`} color="blue" testId="text-users-balance" />
+              <MiniCard icon={Wallet} label="Saldo em contas" value={formatBRL(stats?.usersBalance?.total || 0)} sub={`${formatBRL(stats?.usersBalance?.locked || 0)} travado / ${formatBRL(stats?.usersBalance?.available || 0)} disponível`} color="blue" testId="text-users-balance" />
               <MiniCard icon={Trophy} label="Desafios" value={`${stats?.activeChallenges || 0} ativos`} sub={`${stats?.totalChallenges || 0} total`} color="violet" testId="text-challenges" />
             </div>
 

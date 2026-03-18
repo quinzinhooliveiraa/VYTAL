@@ -2323,27 +2323,65 @@ export async function registerRoutes(
       }).from(transactions).where(txWhere("challenge_win"));
 
       const ABACATEPAY_FEE = 0.80;
-      const depositFees = Number(depositCompleted.count) * ABACATEPAY_FEE;
+      const WITHDRAW_FEE_USER = 1.60;
+
+      const depositsTotal = Number(depositCompleted.total);
+      const depositsCount = Number(depositCompleted.count);
+      const withdrawalsTotal = Number(withdrawAll.total);
+      const withdrawalsCount = Number(withdrawAll.count);
       const platformFeesTotal = Number(feeResult.total);
-      const netRevenue = platformFeesTotal - depositFees;
-      const withdrawalFee = netRevenue > 0 ? ABACATEPAY_FEE : 0;
-      const withdrawableRevenue = Math.max(netRevenue - withdrawalFee, 0);
+
+      const gatewayBalance = (depositsTotal - (depositsCount * ABACATEPAY_FEE)) - (withdrawalsTotal - (withdrawalsCount * ABACATEPAY_FEE));
+
+      const allUserBalances = Number(walletResult.totalBalance);
+      const allUserLocked = Number(walletResult.totalLocked);
+      const allUserAvailable = allUserBalances - allUserLocked;
+
+      const [usersWithBalance] = await database.select({
+        count: sql<number>`COUNT(*)`,
+      }).from(wallets).where(sql`(${wallets.balance}::numeric - ${wallets.lockedBalance}::numeric) >= 30`);
+      const withdrawableUsersCount = Number(usersWithBalance.count);
+
+      const worstCaseWithdrawals = allUserAvailable > 0
+        ? allUserAvailable - (withdrawableUsersCount * ABACATEPAY_FEE)
+        : 0;
+
+      const challengeLockedInGateway = allUserLocked;
+
+      const totalObligations = worstCaseWithdrawals + challengeLockedInGateway;
+
+      const safeToWithdraw = Math.max(gatewayBalance - totalObligations, 0);
+      const adminWithdrawFee = safeToWithdraw > 0 ? ABACATEPAY_FEE : 0;
+      const adminWithdrawable = Math.max(safeToWithdraw - adminWithdrawFee, 0);
+
+      const safetyMargin = gatewayBalance > 0 ? ((gatewayBalance - totalObligations) / gatewayBalance * 100) : 0;
 
       res.json({
         platformFees: { total: platformFeesTotal, count: Number(feeResult.count) },
-        depositsCompleted: { total: Number(depositCompleted.total), count: Number(depositCompleted.count) },
+        depositsCompleted: { total: depositsTotal, count: depositsCount },
         depositsAll: { total: Number(depositAll.total), count: Number(depositAll.count) },
-        withdrawals: { total: Number(withdrawAll.total), count: Number(withdrawAll.count) },
-        usersBalance: { total: Number(walletResult.totalBalance), locked: Number(walletResult.totalLocked) },
+        withdrawals: { total: withdrawalsTotal, count: withdrawalsCount },
+        usersBalance: { total: allUserBalances, locked: allUserLocked, available: allUserAvailable },
         challengeEntries: { total: Number(challengeEntries.total), count: Number(challengeEntries.count) },
         challengeWins: { total: Number(challengeWins.total), count: Number(challengeWins.count) },
         totalUsers: Number(userCountResult.count),
         totalChallenges: Number(challengeCount.count),
         activeChallenges: Number(activeChallenges.count),
         dateFilter: { from: from || null, to: to || null },
-        gatewayFees: { depositFees, withdrawalFee, total: depositFees + withdrawalFee },
-        netRevenue,
-        withdrawableRevenue,
+        gateway: {
+          estimatedBalance: gatewayBalance,
+          obligations: {
+            userAvailableBalances: allUserAvailable,
+            worstCaseWithdrawCost: worstCaseWithdrawals,
+            challengeLockedFunds: challengeLockedInGateway,
+            total: totalObligations,
+          },
+          withdrawableUsersCount,
+          safeToWithdraw,
+          adminWithdrawFee,
+          adminWithdrawable,
+          safetyMargin: Math.round(safetyMargin * 100) / 100,
+        },
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

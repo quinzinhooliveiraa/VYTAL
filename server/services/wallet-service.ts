@@ -20,7 +20,16 @@ export class WalletService {
 
   async getBalance(userId: string) {
     const wallet = await this.getOrCreateWallet(userId);
-    const balance = Number(wallet.balance);
+
+    const [result] = await db.select({
+      deposits: sql<string>`COALESCE(SUM(CASE WHEN type = 'deposit' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
+      withdrawals: sql<string>`COALESCE(SUM(CASE WHEN type = 'withdraw_request' AND status IN ('completed', 'processing') THEN amount ELSE 0 END), 0)`,
+      challengeEntries: sql<string>`COALESCE(SUM(CASE WHEN type = 'challenge_entry' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
+      challengeWins: sql<string>`COALESCE(SUM(CASE WHEN type = 'challenge_win' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
+      refunds: sql<string>`COALESCE(SUM(CASE WHEN type = 'refund' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
+    }).from(transactions).where(eq(transactions.userId, userId));
+
+    const realBalance = Number(result.deposits) - Number(result.withdrawals) - Number(result.challengeEntries) + Number(result.challengeWins) + Number(result.refunds);
 
     const parts = await db.select().from(challengeParticipants).where(eq(challengeParticipants.userId, userId));
     let realLocked = 0;
@@ -31,16 +40,17 @@ export class WalletService {
       }
     }
 
-    if (realLocked !== Number(wallet.lockedBalance)) {
+    const correctedBalance = Math.max(realBalance, 0);
+    if (correctedBalance !== Number(wallet.balance) || realLocked !== Number(wallet.lockedBalance)) {
       await db.update(wallets)
-        .set({ lockedBalance: String(realLocked), updatedAt: new Date() })
+        .set({ balance: String(correctedBalance), lockedBalance: String(realLocked), updatedAt: new Date() })
         .where(eq(wallets.userId, userId));
     }
 
     return {
-      balance,
+      balance: correctedBalance,
       lockedBalance: realLocked,
-      availableBalance: balance - realLocked,
+      availableBalance: correctedBalance - realLocked,
     };
   }
 

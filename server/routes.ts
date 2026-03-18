@@ -2116,6 +2116,12 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Você já tem um saque pendente" });
       }
 
+      const WITHDRAW_FEE = 0.80;
+      const netAmount = numAmount - WITHDRAW_FEE;
+      if (netAmount <= 0) {
+        return res.status(400).json({ message: `Valor mínimo para saque é R$ ${(WITHDRAW_FEE + 1).toFixed(2)}` });
+      }
+
       await walletService.lockBalance(userId, numAmount);
 
       const idempotencyKey = transactionService.generateIdempotencyKey();
@@ -2126,14 +2132,14 @@ export async function registerRoutes(
         status: TRANSACTION_STATUS.PENDING,
         idempotencyKey,
         description: "Saque via Pix",
-        metadata: { pixKey, pixKeyType: pixKeyType || "CPF" },
+        metadata: { pixKey, pixKeyType: pixKeyType || "CPF", fee: WITHDRAW_FEE, netAmount },
       });
 
       if (paymentService.isConfigured()) {
         try {
-          const amountInCents = Math.round(numAmount * 100);
+          const netAmountInCents = Math.round(netAmount * 100);
           const withdraw = await paymentService.createPixWithdraw(
-            amountInCents,
+            netAmountInCents,
             pixKey,
             pixKeyType || "CPF",
             "Saque FitStake"

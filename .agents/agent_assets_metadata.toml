@@ -12,3 +12,9 @@ id = "HsiMMn24efTEw_zkFwKmh"
 uri = "file://docs/VYTAL_Modelo_Negocio.md"
 type = "text"
 title = "VYTAL - Documento de Negócio Completo"
+
+[[outputs]]
+id = "fSO6bZf-EjNnrZ1CsK820"
+uri = "file://VYTAL_Relatorio_Tecnico_INPI.md"
+type = "text"
+title = "VYTAL — Relatório Técnico Descritivo (INPI)"

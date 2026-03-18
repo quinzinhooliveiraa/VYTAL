@@ -38,21 +38,10 @@ export class WebhookService {
       return { success: true, message: "Já processado" };
     }
 
-    await walletService.deductLockedBalance(tx.userId, Number(tx.amount));
-
     await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED, {
       ...(tx.metadata as any || {}),
       withdrawCompletedAt: new Date().toISOString(),
       ...metadata,
-    });
-
-    await transactionService.create({
-      userId: tx.userId,
-      type: TRANSACTION_TYPES.WITHDRAW_COMPLETED,
-      amount: Number(tx.amount),
-      status: TRANSACTION_STATUS.COMPLETED,
-      description: "Saque Pix concluído",
-      metadata: { originalTransactionId: tx.id },
     });
 
     return { success: true, message: "Saque confirmado" };
@@ -68,7 +57,9 @@ export class WebhookService {
       return { success: true, message: "Já processado" };
     }
 
-    await walletService.unlockBalance(tx.userId, Number(tx.amount));
+    if (tx.status === TRANSACTION_STATUS.COMPLETED) {
+      await walletService.addBalance(tx.userId, Number(tx.amount));
+    }
 
     await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {
       ...(tx.metadata as any || {}),

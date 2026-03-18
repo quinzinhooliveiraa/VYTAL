@@ -2116,8 +2116,6 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Você já tem um saque pendente" });
       }
 
-      await walletService.lockBalance(userId, numAmount);
-
       const idempotencyKey = transactionService.generateIdempotencyKey();
       const tx = await transactionService.create({
         userId,
@@ -2141,15 +2139,16 @@ export async function registerRoutes(
             "Saque FitStake"
           );
 
+          await walletService.deductBalance(userId, numAmount);
+
           await transactionService.setExternalId(tx.id, withdraw.id);
-          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.PROCESSING);
+          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED);
 
           res.status(201).json({
-            transaction: { ...tx, status: TRANSACTION_STATUS.PROCESSING },
-            message: "Saque solicitado. O processamento pode levar alguns minutos.",
+            transaction: { ...tx, status: TRANSACTION_STATUS.COMPLETED },
+            message: "Saque processado com sucesso!",
           });
         } catch (gatewayError: any) {
-          await walletService.unlockBalance(userId, numAmount);
           const errorMsg = gatewayError.message || "Erro desconhecido";
           await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {
             error: errorMsg,
@@ -2167,7 +2166,7 @@ export async function registerRoutes(
           res.status(400).json({ message: userMessage });
         }
       } else {
-        await walletService.deductLockedBalance(userId, numAmount);
+        await walletService.deductBalance(userId, numAmount);
         await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED);
 
         res.status(201).json({

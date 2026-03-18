@@ -45,6 +45,22 @@ export class WalletService {
     if (!updated) throw new Error("Falha ao atualizar saldo");
   }
 
+  async deductBalance(userId: string, amount: number): Promise<void> {
+    if (amount <= 0) throw new Error("Valor deve ser positivo");
+
+    const wallet = await this.getOrCreateWallet(userId);
+    if (Number(wallet.balance) - Number(wallet.lockedBalance) < amount) {
+      throw new Error("Saldo insuficiente");
+    }
+
+    await db.update(wallets)
+      .set({
+        balance: sql`${wallets.balance}::numeric - ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(wallets.userId, userId));
+  }
+
   async lockBalance(userId: string, amount: number): Promise<void> {
     if (amount <= 0) throw new Error("Valor deve ser positivo");
 

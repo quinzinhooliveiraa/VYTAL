@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { wallets, transactions, TRANSACTION_TYPES, TRANSACTION_STATUS } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { wallets, transactions, TRANSACTION_TYPES, TRANSACTION_STATUS, challengeParticipants, challenges } from "@shared/schema";
+import { eq, sql, and, inArray } from "drizzle-orm";
 
 export class WalletService {
   async getOrCreateWallet(userId: string) {
@@ -21,11 +21,26 @@ export class WalletService {
   async getBalance(userId: string) {
     const wallet = await this.getOrCreateWallet(userId);
     const balance = Number(wallet.balance);
-    const lockedBalance = Number(wallet.lockedBalance);
+
+    const parts = await db.select().from(challengeParticipants).where(eq(challengeParticipants.userId, userId));
+    let realLocked = 0;
+    for (const p of parts) {
+      const [ch] = await db.select().from(challenges).where(eq(challenges.id, p.challengeId));
+      if (ch && (ch.status === "active" || ch.status === "pending")) {
+        realLocked += Number(ch.entryFee || 0);
+      }
+    }
+
+    if (realLocked !== Number(wallet.lockedBalance)) {
+      await db.update(wallets)
+        .set({ lockedBalance: String(realLocked), updatedAt: new Date() })
+        .where(eq(wallets.userId, userId));
+    }
+
     return {
       balance,
-      lockedBalance,
-      availableBalance: balance - lockedBalance,
+      lockedBalance: realLocked,
+      availableBalance: balance - realLocked,
     };
   }
 

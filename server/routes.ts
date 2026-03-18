@@ -2376,7 +2376,7 @@ export async function registerRoutes(
           obligations: {
             userAvailableBalances: allUserAvailable,
             worstCaseWithdrawCost: worstCaseGatewayCost,
-            challengeLockedFunds: challengeLockedInGateway,
+            challengeLockedFunds: challengeLockedGatewayCost,
             total: totalObligations,
           },
           withdrawableUsersCount,

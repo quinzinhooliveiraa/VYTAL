@@ -387,19 +387,20 @@ export default function Messages() {
                         </p>
                       </div>
                     )}
-                    <div className="px-4 py-2.5 text-sm">
-                      {hasAudio ? (
-                        <AudioPlayer src={msg.audioUrl} isMe={isMe} />
-                      ) : (
-                        msg.text
-                      )}
+                    <div className="px-4 py-2 text-sm flex items-end gap-2">
+                      <span className="flex-1 min-w-0">
+                        {hasAudio ? (
+                          <AudioPlayer src={msg.audioUrl} isMe={isMe} />
+                        ) : (
+                          msg.text
+                        )}
+                      </span>
+                      <span className={`text-[9px] shrink-0 translate-y-0.5 ${isMe ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
+                        {msg.createdAt ? formatTime(msg.createdAt) : ""}
+                      </span>
                     </div>
                   </div>
                 </div>
-
-                <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                  {msg.createdAt ? formatTime(msg.createdAt) : ""}
-                </span>
               </div>
               </div>
             );

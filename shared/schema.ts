@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   bio: text("bio").default(""),
   avatar: text("avatar").default(""),
+  banner: text("banner").default(""),
   cpf: text("cpf").default(""),
   phone: text("phone").default(""),
   goals: jsonb("goals").default([]),

@@ -709,8 +709,8 @@ export async function registerRoutes(
 
   app.patch("/api/users/me", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
-    const { name, bio, avatar, goals, publicEarnings, isPrivate, cpf, phone } = req.body;
-    const updated = await storage.updateUser(userId, { name, bio, avatar, goals, publicEarnings, isPrivate, cpf, phone });
+    const { name, bio, avatar, banner, goals, publicEarnings, isPrivate, cpf, phone } = req.body;
+    const updated = await storage.updateUser(userId, { name, bio, avatar, banner, goals, publicEarnings, isPrivate, cpf, phone });
     if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
     const { password, twoFactorSecret, ...safeUser } = updated;
     res.json(safeUser);

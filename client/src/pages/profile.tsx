@@ -1,8 +1,7 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2, Share2 } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2, Share2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,6 +17,8 @@ export default function Profile() {
   const [showFollowing, setShowFollowing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [avatarLightbox, setAvatarLightbox] = useState(false);
+  const [avatarSheet, setAvatarSheet] = useState(false);
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -25,10 +26,12 @@ export default function Profile() {
   const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
   const [bio, setBio] = useState(user?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
+  const [bannerUrl, setBannerUrl] = useState((user as any)?.banner || "");
 
   const [cropperOpen, setCropperOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const { data: followersData } = useQuery({
     queryKey: ["/api/follows/followers"],
@@ -134,7 +137,11 @@ export default function Profile() {
   });
 
   const handleAvatarClick = () => {
-    fileInputRef.current?.click();
+    if (avatarUrl) {
+      setAvatarSheet(true);
+    } else {
+      fileInputRef.current?.click();
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +158,21 @@ export default function Profile() {
     avatarMutation.mutate(croppedDataUrl);
     setCropperOpen(false);
     setSelectedFile(null);
+    setAvatarSheet(false);
+  };
+
+  const handleBannerSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (e.target) e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setBannerUrl(dataUrl);
+      updateProfileMutation.mutate({ banner: dataUrl });
+      toast({ title: "Banner atualizado!" });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = () => {
@@ -180,52 +202,81 @@ export default function Profile() {
     { label: "Desafios", value: String(myChallenges.length || 0) },
   ];
 
+  const hasBanner = bannerUrl && bannerUrl.length > 10;
+
   return (
     <div className="pb-32 animate-in fade-in duration-500 bg-background min-h-screen">
-      <header className="px-6 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-50 border-b border-border/50">
-        <h1 className="text-xl font-bold flex items-center gap-2">{profileName.toLowerCase().replace(' ', '_')} <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary border-none">PRO</Badge></h1>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" onClick={() => {
-            const url = window.location.origin;
-            const text = "Entra no VYTAL comigo! Desafios esportivos com dinheiro real. 💪";
-            if (navigator.share) { navigator.share({ title: "Convite VYTAL", text, url }).catch(() => {}); }
-            else { navigator.clipboard.writeText(`${text}\n${url}`); }
-          }} data-testid="button-profile-invite">
-            <Share2 size={22} />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" onClick={() => { setShowSearch(true); setSearchQuery(""); }} data-testid="button-search-users">
-            <UserPlus size={22} />
-          </Button>
-          {user?.isAdmin && (
-            <Link href="/admin">
-              <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" data-testid="button-admin">
-                <Shield size={22} />
+
+      {/* Banner */}
+      <div className="relative h-36">
+        {hasBanner ? (
+          <img src={bannerUrl} alt="banner" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+
+        {/* Header sobre o banner */}
+        <header className="absolute top-0 left-0 right-0 px-4 pt-4 pb-2 flex items-center justify-between z-10">
+          <h1 className="text-base font-bold text-white drop-shadow flex items-center gap-2">
+            {profileName.toLowerCase().replace(' ', '_')}
+            <Badge variant="secondary" className="text-[9px] bg-primary/20 text-primary border-none">PRO</Badge>
+          </h1>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 bg-black/30 text-white backdrop-blur-sm" onClick={() => {
+              const url = window.location.origin;
+              const text = "Entra no VYTAL comigo! Desafios esportivos com dinheiro real. 💪";
+              if (navigator.share) { navigator.share({ title: "Convite VYTAL", text, url }).catch(() => {}); }
+              else { navigator.clipboard.writeText(`${text}\n${url}`); }
+            }} data-testid="button-profile-invite">
+              <Share2 size={18} />
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 bg-black/30 text-white backdrop-blur-sm" onClick={() => { setShowSearch(true); setSearchQuery(""); }} data-testid="button-search-users">
+              <UserPlus size={18} />
+            </Button>
+            {user?.isAdmin && (
+              <Link href="/admin">
+                <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 bg-black/30 text-white backdrop-blur-sm" data-testid="button-admin">
+                  <Shield size={18} />
+                </Button>
+              </Link>
+            )}
+            <Link href="/settings">
+              <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 bg-black/30 text-white backdrop-blur-sm" data-testid="button-settings">
+                <Settings size={18} />
               </Button>
             </Link>
-          )}
-          <Link href="/settings">
-            <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted" data-testid="button-settings">
-              <Settings size={22} />
-            </Button>
-          </Link>
-        </div>
-      </header>
+          </div>
+        </header>
 
-      <div className="px-4 space-y-6 pt-4">
-        <div className="flex items-center gap-6 px-2">
-          <div className="relative" onClick={handleAvatarClick}>
+        {/* Botão editar banner */}
+        <button
+          className="absolute bottom-2 right-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 z-10"
+          onClick={() => bannerInputRef.current?.click()}
+          data-testid="button-edit-banner"
+        >
+          <ImageIcon size={12} /> Editar capa
+        </button>
+        <input ref={bannerInputRef} type="file" className="hidden" accept="image/*" onChange={handleBannerSelect} />
+      </div>
+
+      <div className="px-4 space-y-5 -mt-10 relative z-10">
+
+        {/* Avatar + stats */}
+        <div className="flex items-end gap-5 px-1">
+          <div className="relative shrink-0" onClick={handleAvatarClick}>
             <input ref={fileInputRef} type="file" id="avatar-upload" className="hidden" accept="image/*" onChange={handleFileSelect} />
-            <div className="w-22 h-22 rounded-full border-2 border-background p-0.5 bg-gradient-to-tr from-yellow-400 via-primary to-accent relative group cursor-pointer">
-              <Avatar className="w-20 h-20 border-2 border-background">
+            <div className="w-[84px] h-[84px] rounded-full border-[3px] border-background bg-gradient-to-tr from-yellow-400 via-primary to-accent relative group cursor-pointer shadow-xl">
+              <Avatar className="w-full h-full border-2 border-background">
                 {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                 <AvatarFallback className="text-lg font-bold">{profileName.substring(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera size={20} className="text-white" />
+                <Camera size={18} className="text-white" />
               </div>
             </div>
           </div>
-          <div className="flex-1 grid grid-cols-3 gap-2 text-center">
+          <div className="flex-1 grid grid-cols-3 gap-1 text-center pb-1">
             {stats.map((stat, i) => (
               <div
                 key={i}
@@ -235,22 +286,24 @@ export default function Profile() {
                   if (stat.label === "Seguindo") setShowFollowing(true);
                 }}
               >
-                <span className="font-bold text-lg">{stat.value}</span>
+                <span className="font-bold text-lg leading-tight">{stat.value}</span>
                 <span className="text-[10px] text-muted-foreground">{stat.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="px-2 space-y-1">
+        {/* Nome + bio + editar */}
+        <div className="px-1 space-y-1">
           <h2 className="font-bold">{profileName}</h2>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{bio}</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{bio || "Sem bio ainda."}</p>
           <div className="flex pt-2">
             <Button variant="outline" className="w-full font-bold h-9 text-xs" onClick={() => setIsEditing(true)} data-testid="button-edit-profile">Editar Perfil</Button>
           </div>
         </div>
 
-        <div className="px-2">
+        {/* Ganhos */}
+        <div className="px-1">
           <div className="bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/30 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-primary/5">
             <div>
               <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-1 flex items-center gap-1">
@@ -264,6 +317,7 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Medalhas */}
         {(() => {
           const allMedals = [
             { name: "Invicto", icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", check: () => {
@@ -278,23 +332,21 @@ export default function Profile() {
           ];
           const earned = allMedals.filter(m => m.check());
           const locked = allMedals.filter(m => !m.check());
-
           if (earned.length === 0 && locked.length === 0) return null;
-
           return (
-            <div className="flex gap-4 px-2 overflow-x-auto no-scrollbar pb-2 pt-2">
+            <div className="flex gap-4 px-1 overflow-x-auto no-scrollbar pb-2 pt-1">
               {earned.map((badge, i) => (
                 <div key={`e-${i}`} className="flex flex-col items-center gap-1.5 shrink-0">
-                  <div className={`w-16 h-16 rounded-full border-[3px] p-0.5 flex items-center justify-center shadow-sm ${badge.bg} ${badge.border}`}>
-                    <badge.icon className={badge.color} size={24} />
+                  <div className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center shadow-sm ${badge.bg} ${badge.border}`}>
+                    <badge.icon className={badge.color} size={22} />
                   </div>
                   <span className="text-[10px] text-foreground font-semibold">{badge.name}</span>
                 </div>
               ))}
               {locked.map((badge, i) => (
                 <div key={`l-${i}`} className="flex flex-col items-center gap-1.5 shrink-0 opacity-30 grayscale">
-                  <div className={`w-16 h-16 rounded-full border-[3px] p-0.5 flex items-center justify-center shadow-sm bg-muted border-border`}>
-                    <badge.icon className="text-muted-foreground" size={24} />
+                  <div className="w-14 h-14 rounded-full border-[3px] flex items-center justify-center shadow-sm bg-muted border-border">
+                    <badge.icon className="text-muted-foreground" size={22} />
                   </div>
                   <span className="text-[10px] text-muted-foreground font-semibold">{badge.name}</span>
                 </div>
@@ -303,6 +355,7 @@ export default function Profile() {
           );
         })()}
 
+        {/* Tabs */}
         <div className="flex border-t border-border/50 pt-1">
           <button
             onClick={() => setActiveTab("ativos")}
@@ -323,7 +376,7 @@ export default function Profile() {
         </div>
 
         {activeTab === "ativos" && (
-          <div className="space-y-4 px-2">
+          <div className="space-y-4 px-1">
             {activeChallenges.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Zap size={40} className="mx-auto mb-3 opacity-30" />
@@ -341,9 +394,7 @@ export default function Profile() {
                       <div className="flex justify-between items-start">
                         <div>
                           <h4 className="font-bold text-sm">{challenge.title}</h4>
-                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
-                            {count}/{max} participantes
-                          </p>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">{count}/{max} participantes</p>
                         </div>
                         <Badge variant="default" className={`text-[9px] border-none ${waiting ? 'bg-yellow-500/20 text-yellow-600' : 'bg-primary/10 text-primary'}`}>
                           {waiting ? "AGUARDANDO" : "ATIVO"}
@@ -365,7 +416,7 @@ export default function Profile() {
         )}
 
         {activeTab === "concluidos" && (
-          <div className="space-y-4 px-2">
+          <div className="space-y-4 px-1">
             {completedChallenges.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <History size={40} className="mx-auto mb-3 opacity-30" />
@@ -379,13 +430,9 @@ export default function Profile() {
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-bold text-sm">{challenge.title}</h4>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {challenge.participantCount || 0} participantes
-                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{challenge.participantCount || 0} participantes</p>
                       </div>
-                      <Badge variant="secondary" className="text-[9px]">
-                        CONCLUÍDO
-                      </Badge>
+                      <Badge variant="secondary" className="text-[9px]">CONCLUÍDO</Badge>
                     </div>
                   </div>
                 </Link>
@@ -395,16 +442,73 @@ export default function Profile() {
         )}
       </div>
 
+      {/* Lightbox avatar */}
+      {avatarLightbox && avatarUrl && (
+        <div
+          className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center"
+          onClick={() => setAvatarLightbox(false)}
+        >
+          <button className="absolute top-5 right-5 text-white/80 hover:text-white" data-testid="button-close-lightbox">
+            <XCircle size={32} />
+          </button>
+          <img
+            src={avatarUrl}
+            alt="Foto de perfil"
+            className="max-w-[90vw] max-h-[90vh] rounded-3xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* Sheet: ver/alterar avatar */}
+      {avatarSheet && (
+        <div className="fixed inset-0 bg-black/60 z-[80] flex items-end" onClick={() => setAvatarSheet(false)}>
+          <div className="w-full bg-card border-t border-border rounded-t-3xl p-6 pb-10 space-y-3 animate-in slide-in-from-bottom-4" onClick={e => e.stopPropagation()}>
+            {avatarUrl && (
+              <div className="flex justify-center mb-4">
+                <img src={avatarUrl} alt="Foto atual" className="w-24 h-24 rounded-full object-cover border-4 border-primary shadow-xl" />
+              </div>
+            )}
+            <button
+              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-muted/50 hover:bg-muted transition-colors font-bold"
+              onClick={() => { setAvatarSheet(false); setAvatarLightbox(true); }}
+              data-testid="button-view-photo"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <Search size={20} />
+              </div>
+              Ver foto em tamanho real
+            </button>
+            <button
+              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-muted/50 hover:bg-muted transition-colors font-bold"
+              onClick={() => { fileInputRef.current?.click(); }}
+              data-testid="button-change-photo"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <Camera size={20} />
+              </div>
+              Alterar foto de perfil
+            </button>
+            <button
+              className="w-full p-4 rounded-2xl text-muted-foreground font-bold hover:bg-muted/50 transition-colors"
+              onClick={() => setAvatarSheet(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Editar perfil */}
       {isEditing && (
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[60] p-6 flex flex-col justify-end animate-in fade-in" onClick={() => setIsEditing(false)}>
-          <div className="bg-card border border-border rounded-t-3xl p-6 pb-28 space-y-6 w-full max-w-md mx-auto translate-y-0 animate-in slide-in-from-bottom-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-card border border-border rounded-t-3xl p-6 pb-28 space-y-6 w-full max-w-md mx-auto animate-in slide-in-from-bottom-full" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-bold">Editar Perfil</h3>
               <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)}>
-                <Settings size={20} />
+                <X size={20} />
               </Button>
             </div>
-
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Nome</label>
@@ -432,6 +536,7 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Seguidores */}
       {showFollowers && (
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowers(false)}>
           <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[70vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
@@ -476,16 +581,14 @@ export default function Profile() {
             ) : (
               <div className="space-y-4">
                 {followersData.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setShowFollowers(false); setLocation(`/user/${f.follower?.username}`); }}>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border border-border">
-                        <AvatarImage src={f.follower?.avatar} />
-                        <AvatarFallback>{(f.follower?.name || "U").charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-bold text-sm">{f.follower?.name || `Usuário ${i+1}`}</p>
-                        <p className="text-[10px] text-muted-foreground">@{f.follower?.username}</p>
-                      </div>
+                  <div key={i} className="flex items-center gap-3 cursor-pointer hover:opacity-70" onClick={() => { setShowFollowers(false); setLocation(`/user/${f.username}`); }}>
+                    <Avatar className="w-10 h-10 border border-border">
+                      <AvatarImage src={f.avatar} />
+                      <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-sm">{f.name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{f.username}</p>
                     </div>
                   </div>
                 ))}
@@ -495,6 +598,7 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Seguindo */}
       {showFollowing && (
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowing(false)}>
           <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[70vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
@@ -503,22 +607,19 @@ export default function Profile() {
               <Button variant="ghost" size="icon" onClick={() => setShowFollowing(false)}><XCircle size={24} /></Button>
             </div>
             {(!followingData || followingData.length === 0) ? (
-              <p className="text-center text-muted-foreground text-sm py-10">Não segue ninguém ainda</p>
+              <p className="text-center text-muted-foreground text-sm py-10">Não está seguindo ninguém ainda</p>
             ) : (
               <div className="space-y-4">
                 {followingData.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-xl p-2 transition-colors" onClick={() => { setShowFollowing(false); setLocation(`/user/${f.following?.username}`); }}>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border border-border">
-                        <AvatarImage src={f.following?.avatar} />
-                        <AvatarFallback>{(f.following?.name || "U").charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-bold text-sm">{f.following?.name || `Usuário ${i+1}`}</p>
-                        <p className="text-[10px] text-muted-foreground">@{f.following?.username}</p>
-                      </div>
+                  <div key={i} className="flex items-center gap-3 cursor-pointer hover:opacity-70" onClick={() => { setShowFollowing(false); setLocation(`/user/${f.username}`); }}>
+                    <Avatar className="w-10 h-10 border border-border">
+                      <AvatarImage src={f.avatar} />
+                      <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-sm">{f.name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{f.username}</p>
                     </div>
-                    <Button variant="outline" size="sm" className="h-8 text-xs font-bold rounded-lg border-border">Seguindo</Button>
                   </div>
                 ))}
               </div>
@@ -527,88 +628,56 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Busca de usuários */}
       {showSearch && (
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[60] flex flex-col justify-end animate-in fade-in" onClick={() => setShowSearch(false)}>
-          <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[80vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Adicionar Pessoas</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowSearch(false)}><XCircle size={24} /></Button>
-            </div>
-
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <Input
-                placeholder="Buscar por @username ou nome..."
-                className="pl-10 h-12 bg-muted/50 border-none rounded-2xl"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-                data-testid="input-search-users"
-              />
-            </div>
-
-            {isSearching && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="animate-spin text-primary" size={24} />
-              </div>
-            )}
-
-            {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Search size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium">Nenhum usuário encontrado</p>
-                <p className="text-xs mt-1">Tente outro nome ou username</p>
-              </div>
-            )}
-
-            {searchQuery.length < 2 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <UserPlus size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium">Busque por username</p>
-                <p className="text-xs mt-1">Digite pelo menos 2 caracteres</p>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {searchResults.filter((u: any) => u.id !== user?.id).map((u: any) => {
-                const isFollowing = followingData?.some((f: any) => f.following?.id === u.id);
-                return (
-                  <div key={u.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl">
-                    <Avatar className="w-12 h-12 border border-border cursor-pointer" onClick={() => { setShowSearch(false); setLocation(`/user/${u.username}`); }}>
-                      {u.avatar && <AvatarImage src={u.avatar} />}
-                      <AvatarFallback className="text-sm font-bold">{(u.name || u.username || "?").charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setShowSearch(false); setLocation(`/user/${u.username}`); }}>
-                      <p className="font-bold text-sm truncate">{u.name}</p>
-                      <p className="text-[10px] text-muted-foreground">@{u.username}</p>
-                    </div>
-                    {isFollowing ? (
-                      <Badge className="bg-muted text-muted-foreground border-none text-[10px]">Seguindo</Badge>
-                    ) : (
-                      <Button
-                        size="sm"
-                        className="h-8 rounded-xl bg-primary text-primary-foreground font-bold text-xs"
-                        onClick={() => followMutation.mutate(u.username)}
-                        disabled={followMutation.isPending}
-                        data-testid={`button-follow-${u.id}`}
-                      >
-                        <UserPlus size={14} className="mr-1" /> Seguir
-                      </Button>
-                    )}
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col p-6 animate-in fade-in">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={() => setShowSearch(false)} className="text-muted-foreground">
+              <X size={24} />
+            </button>
+            <h3 className="text-lg font-bold">Encontrar Pessoas</h3>
+          </div>
+          <div className="relative mb-4">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Buscar por nome ou usuário..."
+              className="w-full bg-muted border border-border rounded-xl h-12 pl-11 pr-4 focus:border-primary outline-none"
+              autoFocus
+              data-testid="input-search-users"
+            />
+          </div>
+          {isSearching && <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" size={24} /></div>}
+          <div className="space-y-3 overflow-y-auto flex-1">
+            {searchResults.map((u: any) => (
+              <div key={u.id} className="flex items-center justify-between bg-card border border-border rounded-2xl p-3">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setShowSearch(false); setLocation(`/user/${u.username}`); }}>
+                  <Avatar className="w-10 h-10 border border-border">
+                    <AvatarImage src={u.avatar} />
+                    <AvatarFallback>{(u.name || "?").charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-bold text-sm">{u.name}</p>
+                    <p className="text-[10px] text-muted-foreground">@{u.username}</p>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+                <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs" onClick={() => followMutation.mutate(u.username)} disabled={followMutation.isPending} data-testid={`button-follow-${u.username}`}>
+                  Seguir
+                </Button>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      <ImageCropper
-        open={cropperOpen}
-        onClose={() => { setCropperOpen(false); setSelectedFile(null); }}
-        onCrop={handleCropDone}
-        imageFile={selectedFile}
-      />
+      {cropperOpen && selectedFile && (
+        <ImageCropper
+          file={selectedFile}
+          onDone={handleCropDone}
+          onCancel={() => { setCropperOpen(false); setSelectedFile(null); setAvatarSheet(false); }}
+        />
+      )}
     </div>
   );
 }

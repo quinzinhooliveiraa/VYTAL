@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, Flame, Medal, UserCheck, Loader2, Swords, DollarSign, Target, Calendar, X, Hourglass } from "lucide-react";
+import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, Flame, Medal, UserCheck, Loader2, Swords, DollarSign, Target, Calendar, X, Hourglass, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,7 @@ export default function PublicProfile() {
   const { username } = useParams();
   const [followersOpen, setFollowersOpen] = useState(false);
   const [followingOpen, setFollowingOpen] = useState(false);
+  const [avatarLightbox, setAvatarLightbox] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -138,10 +139,16 @@ export default function PublicProfile() {
         </header>
 
         <div className="absolute -bottom-16 left-6 flex items-end gap-4">
-          <Avatar className="w-28 h-28 border-4 border-background shadow-xl rounded-[2rem]">
-            {avatarUrl && <AvatarImage src={avatarUrl} />}
-            <AvatarFallback className="text-3xl font-bold">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <div
+            className="cursor-pointer"
+            onClick={() => avatarUrl && setAvatarLightbox(true)}
+            data-testid="button-view-avatar"
+          >
+            <Avatar className="w-28 h-28 border-4 border-background shadow-xl rounded-[2rem]">
+              {avatarUrl && <AvatarImage src={avatarUrl} />}
+              <AvatarFallback className="text-3xl font-bold">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </div>
         </div>
       </div>
 
@@ -374,6 +381,24 @@ export default function PublicProfile() {
           </motion.div>
         )}
       </div>
+
+      {/* Lightbox avatar */}
+      {avatarLightbox && avatarUrl && (
+        <div
+          className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center"
+          onClick={() => setAvatarLightbox(false)}
+        >
+          <button className="absolute top-5 right-5 text-white/80 hover:text-white" data-testid="button-close-lightbox">
+            <XCircle size={32} />
+          </button>
+          <img
+            src={avatarUrl}
+            alt={`Foto de ${displayName}`}
+            className="max-w-[90vw] max-h-[90vh] rounded-3xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       <Dialog open={followersOpen} onOpenChange={setFollowersOpen}>
         <DialogContent className="max-w-sm rounded-2xl max-h-[70vh]">

@@ -841,8 +841,14 @@ export async function registerRoutes(
   });
 
   app.get("/api/challenges/:id", async (req, res) => {
-    const challenge = await storage.getChallenge(req.params.id);
+    let challenge = await storage.getChallenge(req.params.id);
     if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+
+    // Auto-end challenge when endDate has passed and it's still marked active
+    if (challenge.endDate && new Date(challenge.endDate) < new Date() && challenge.isActive && challenge.status === "active") {
+      await db.update(challenges).set({ isActive: false }).where(eq(challenges.id, req.params.id));
+      challenge = { ...challenge, isActive: false } as any;
+    }
     
     const participants = await storage.getChallengeParticipants(req.params.id);
     const userId = (req.session as any)?.userId;
@@ -858,6 +864,16 @@ export async function registerRoutes(
 
     const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : false;
 
+    // Compute if the current user checked in today (for daily-type challenges)
+    const today = new Date().toISOString().slice(0, 10);
+    let checkedInToday = false;
+    if (userId && isParticipant) {
+      const myParticipant = participants.find(p => p.userId === userId);
+      if (myParticipant && (myParticipant as any).lastCheckInDate === today) {
+        checkedInToday = true;
+      }
+    }
+
     const visibleParticipants = isParticipant || isCreator
       ? participants
       : participants.map((p: any) => {
@@ -867,7 +883,7 @@ export async function registerRoutes(
           return p;
         });
     
-    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted });
+    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted, isCreator, checkedInToday });
   });
 
   app.post("/api/challenges", requireAuth, async (req, res) => {
@@ -1202,6 +1218,10 @@ export async function registerRoutes(
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
       if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode finalizar" });
+      if (challenge.status === "completed") return res.status(400).json({ message: "Este desafio já foi finalizado e os prêmios distribuídos." });
+
+      const hasEnded = challenge.endDate ? new Date(challenge.endDate) < new Date() : !challenge.isActive;
+      if (!hasEnded) return res.status(400).json({ message: "O desafio ainda está em andamento." });
       
       const { winnerUserIds } = req.body;
       if (!Array.isArray(winnerUserIds) || winnerUserIds.length === 0) {
@@ -1395,10 +1415,20 @@ export async function registerRoutes(
 
       const participant = await storage.getParticipant(challengeId, userId);
       if (!participant) return res.status(400).json({ message: "Você não está neste desafio" });
+      if (!participant.isActive) return res.status(400).json({ message: "Você foi eliminado deste desafio." });
 
       const existing = await db.select().from(checkIns)
         .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.userId, userId), eq(checkIns.status, "active")));
       if (existing.length > 0) return res.status(400).json({ message: "Você já tem um check-in ativo", checkIn: existing[0] });
+
+      // For daily presence types (checkin/survival), block multiple check-ins on same day
+      const challengeType = challenge.type || "checkin";
+      if (challengeType === "checkin" || challengeType === "survival") {
+        const today = new Date().toISOString().slice(0, 10);
+        if ((participant as any).lastCheckInDate === today) {
+          return res.status(400).json({ message: "Você já fez check-in hoje! Volte amanhã." });
+        }
+      }
 
       const locName = await reverseGeocode(latitude, longitude);
 

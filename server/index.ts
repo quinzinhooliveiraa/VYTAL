@@ -2,6 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { db } from "./db";
+import { challenges, challengeParticipants } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,6 +64,58 @@ app.use((req, res, next) => {
   next();
 });
 
+async function processMissedDaysAuto() {
+  try {
+    const allChallenges = await db.select().from(challenges);
+    const activeChallenges = allChallenges.filter((c: any) => c.status === "active" && c.isActive);
+    const today = new Date().toISOString().slice(0, 10);
+    let totalEliminated = 0;
+
+    for (const challenge of activeChallenges) {
+      const cType = challenge.type;
+      if (cType !== "checkin" && cType !== "survival") continue;
+
+      const todayDate = new Date(today);
+      const dayOfWeek = todayDate.getDay().toString();
+      const challengeRestDays: string[] = (challenge as any).restDays || [];
+      if (challengeRestDays.length > 0 && challengeRestDays.includes(dayOfWeek)) continue;
+      if ((challenge as any).skipWeekends && (dayOfWeek === "0" || dayOfWeek === "6")) continue;
+
+      const maxMissed = cType === "checkin" ? 0 : ((challenge as any).maxMissedDays ?? 3);
+      const restDaysAllowed = (challenge as any).restDaysAllowed || 0;
+
+      const participants = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challenge.id), eq(challengeParticipants.isActive, true)));
+
+      for (const p of participants) {
+        if ((p as any).isAdmin) continue;
+        if ((p as any).lastCheckInDate === today) continue;
+
+        const restDaysUsed = (p as any).restDaysUsed || 0;
+        if (restDaysAllowed > 0 && restDaysUsed < restDaysAllowed) {
+          await db.update(challengeParticipants).set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: today } as any)
+            .where(eq(challengeParticipants.id, p.id));
+          continue;
+        }
+
+        const currentMissed = ((p as any).missedDays || 0) + 1;
+        await db.update(challengeParticipants).set({ missedDays: currentMissed, lastCheckInDate: today } as any)
+          .where(eq(challengeParticipants.id, p.id));
+
+        if (currentMissed > maxMissed) {
+          await db.update(challengeParticipants).set({ isActive: false } as any)
+            .where(eq(challengeParticipants.id, p.id));
+          totalEliminated++;
+        }
+      }
+    }
+
+    log(`[Auto] Missed days processed: ${activeChallenges.length} desafios, ${totalEliminated} eliminados`);
+  } catch (err: any) {
+    log(`[Auto] Erro ao processar missed days: ${err.message}`);
+  }
+}
+
 (async () => {
   await registerRoutes(httpServer, app);
 
@@ -102,4 +157,8 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  // Auto-process missed days every 24 hours (and once 5 seconds after startup)
+  setTimeout(processMissedDaysAuto, 5000);
+  setInterval(processMissedDaysAuto, 24 * 60 * 60 * 1000);
 })();

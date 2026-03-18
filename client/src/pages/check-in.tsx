@@ -163,11 +163,14 @@ export default function CheckIn() {
 
   const sport = challenge?.sport || "";
   const vType = challenge?.validationType || "foto";
+  const cType = challenge?.type || "checkin";
   const isGymType = /academia|gym|muscula|crossfit|yoga|pilates|luta|box|mma|jiu|funcional|hiit/i.test(sport);
   const tracksDistance = vType === "distancia" || vType === "combinacao";
   const tracksTime = vType === "tempo" || vType === "combinacao";
   const showDistanceUI = tracksDistance && !isGymType;
   const showCalories = vType === "tempo" || vType === "distancia" || vType === "combinacao";
+  const isDailyType = cType === "checkin" || cType === "survival";
+  const doneToday = isDailyType && (challenge as any)?.checkedInToday === true;
 
   useEffect(() => {
     if (activeCheckIn) {
@@ -659,7 +662,26 @@ export default function CheckIn() {
         </div>
       )}
 
-      {phase === "ready" && (
+      {phase === "ready" && doneToday && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6 text-center">
+          <div className="w-24 h-24 rounded-3xl bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+            <CheckCircle size={48} className="text-green-400" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-green-400">Check-in Feito Hoje!</h1>
+            <p className="text-sm text-white/60 max-w-xs mx-auto">{challenge?.title || "Desafio"}</p>
+            <p className="text-xs text-white/40 mt-2">Você já registrou presença hoje. Volte amanhã para o próximo check-in.</p>
+          </div>
+          <button
+            className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-sm font-bold"
+            onClick={() => setLocation(`/challenge/${id}`)}
+          >
+            Voltar ao Desafio
+          </button>
+        </div>
+      )}
+
+      {phase === "ready" && !doneToday && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
           <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center relative">
             <Camera size={40} className="text-primary" />

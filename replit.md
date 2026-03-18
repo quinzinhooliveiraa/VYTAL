@@ -100,6 +100,21 @@ Fitness/sports challenge web app with financial stakes (Pix payments). Users cre
 - After checkout, push notification sent to all other participants in the challenge (`checkin_activity` type)
 - Notification preference `checkinActivity` in localStorage `vytal-notif-prefs` (can be disabled in settings)
 
+## Challenge Workflow (complete lifecycle)
+1. **Create** — organizer sets type, sport, entry fee, duration, start date, privacy, rules. Fee locked from balance immediately.
+2. **Join** — via direct join (public, before start) or request-join (private, needs moderator approval). Fee locked on join/approval.
+3. **Check-in** — daily via `/check-in/:id`. Dual photo (selfie + environment). ranking/corrida: multiple per day allowed. checkin/survival: one per day (enforced via `lastCheckInDate === today` in backend).
+4. **Auto-missed-days** — runs every 24h via `setInterval` in `server/index.ts` (also on startup +5s). Eliminates participants who exceeded missed day tolerance.
+5. **Auto-end** — when `endDate` passes, `GET /api/challenges/:id` auto-sets `isActive: false` in DB. Mod tab then shows "Selecionar Vencedores" button.
+6. **Finalize** — moderator selects winners. Ranking with splitPrize: ordered podium (1st/2nd/3rd) with % from `splitPercentages`. Others: equal split. Backend prevents double-finalization.
+7. **Prize distribution** — `challengeFinanceService.finalizeChallenge()` deducts locked balance, distributes prizes, records platform_fee transaction.
+
+## Split Prize (Ranking type)
+- `challenges.splitPrize: boolean` + `challenges.splitPercentages: jsonb` (default `{1:50, 2:30, 3:20}`)
+- Configured at challenge creation, stored in DB
+- Finalize dialog shows ordered position slots with % and prize amount per slot
+- Backend uses stored percentages when `type==="ranking" && splitPrize===true`
+
 ## Key Notes
 - Session stored in PostgreSQL via connect-pg-simple
 - Use `drizzle-orm/node-postgres` (NOT neon-serverless)

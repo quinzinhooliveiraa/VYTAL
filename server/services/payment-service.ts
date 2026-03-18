@@ -80,9 +80,20 @@ export class PaymentService {
   }
 
   async createPixWithdraw(amountInCents: number, pixKey: string, pixKeyType: string, description: string): Promise<PixWithdrawResult> {
+    const methodMap: Record<string, string> = {
+      cpf: "CPF",
+      cnpj: "CNPJ",
+      email: "EMAIL",
+      phone: "PHONE",
+      random: "RANDOM_KEY",
+      evp: "RANDOM_KEY",
+    };
+    const method = methodMap[pixKeyType?.toLowerCase()] || "RANDOM_KEY";
+
     const data = await this.request("POST", "/withdraw/create", {
       amount: amountInCents,
       pixKey,
+      method,
       notes: description,
     });
 

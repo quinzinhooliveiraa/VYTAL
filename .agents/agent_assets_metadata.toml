@@ -6,3 +6,9 @@ id = "6tF0DYcdb428Zs6HxABuJ"
 uri = "file://docs/VYTAL_Contrato_Social_Gateway.md"
 type = "text"
 title = "VYTAL — Contrato Social para Gateway de Pagamento"
+
+[[outputs]]
+id = "HsiMMn24efTEw_zkFwKmh"
+uri = "file://docs/VYTAL_Modelo_Negocio.md"
+type = "text"
+title = "VYTAL - Documento de Negócio Completo"

@@ -2375,7 +2375,7 @@ export async function registerRoutes(
           estimatedBalance: gatewayBalance,
           obligations: {
             userAvailableBalances: allUserAvailable,
-            worstCaseWithdrawCost: worstCaseWithdrawals,
+            worstCaseWithdrawCost: worstCaseGatewayCost,
             challengeLockedFunds: challengeLockedInGateway,
             total: totalObligations,
           },

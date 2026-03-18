@@ -2148,14 +2148,6 @@ export async function registerRoutes(
             transaction: { ...tx, status: TRANSACTION_STATUS.PROCESSING },
             message: "Saque sendo processado!",
           });
-
-          setTimeout(async () => {
-            try {
-              await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED);
-            } catch (e) {
-              console.error("[Withdraw] Error updating to completed:", e);
-            }
-          }, 5000);
         } catch (gatewayError: any) {
           const errorMsg = gatewayError.message || "Erro desconhecido";
           await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {

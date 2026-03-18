@@ -41,6 +41,7 @@ function haversineDistanceServer(lat1: number, lon1: number, lat2: number, lon2:
 import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
+import { decrypt } from "./utils/encryption";
 import * as oidcClient from "openid-client";
 import memoize from "memoizee";
 import { OAuth2Client } from "google-auth-library";
@@ -2693,7 +2694,13 @@ export async function registerRoutes(
         .leftJoin(sql`wallets w`, sql`w.user_id = ${usersTable.id}`)
         .orderBy(desc(usersTable.createdAt));
 
-      res.json(allUsers);
+      const decryptedUsers = allUsers.map((u: any) => ({
+        ...u,
+        cpf: u.cpf ? decrypt(u.cpf) : u.cpf,
+        phone: u.phone ? decrypt(u.phone) : u.phone,
+      }));
+
+      res.json(decryptedUsers);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

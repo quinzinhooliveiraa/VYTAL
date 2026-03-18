@@ -85,3 +85,4 @@ integrations = ["javascript_log_in_with_replit:2.0.0"]
 VAPID_PUBLIC_KEY = "BBOwg1HIvosngX_bonDunQK8dE-TkBa9wkwjpTHVQBL_i3iWB2UlRxk-DoH9kyGrM8TOSjSqggUYSDQtrIAT-aM"
 GOOGLE_CLIENT_ID = "376587519485-an9p30conn0gk0hoou8a62977cphchan.apps.googleusercontent.com"
 VITE_GOOGLE_CLIENT_ID = "376587519485-an9p30conn0gk0hoou8a62977cphchan.apps.googleusercontent.com"
+ENCRYPTION_KEY = "33348a74682ca7941a57d82d61c3227317b0d9cbae04d8b255b62309ddd384e5"

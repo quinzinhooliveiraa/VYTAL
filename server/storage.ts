@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { encrypt, decrypt } from "./utils/encryption";
 import { eq, and, or, desc, sql, ne, ilike, inArray } from "drizzle-orm";
 import { count as drizzleCount } from "drizzle-orm";
 import {
@@ -104,19 +105,27 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   // Users
+  private decryptUser(user: User): User {
+    return {
+      ...user,
+      cpf: user.cpf ? decrypt(user.cpf) : user.cpf,
+      phone: user.phone ? decrypt(user.phone) : user.phone,
+    };
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user ? this.decryptUser(user) : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    return user ? this.decryptUser(user) : undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    return user ? this.decryptUser(user) : undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -125,8 +134,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
-    const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
-    return user;
+    const toSave = { ...data };
+    if (toSave.cpf !== undefined && toSave.cpf !== null && toSave.cpf !== "") {
+      toSave.cpf = encrypt(toSave.cpf);
+    }
+    if (toSave.phone !== undefined && toSave.phone !== null && toSave.phone !== "") {
+      toSave.phone = encrypt(toSave.phone);
+    }
+    const [user] = await db.update(users).set(toSave).where(eq(users.id, id)).returning();
+    return user ? this.decryptUser(user) : undefined;
   }
 
   async searchUsers(query: string, limit = 20): Promise<User[]> {

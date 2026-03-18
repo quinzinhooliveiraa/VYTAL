@@ -1607,7 +1607,9 @@ export async function registerRoutes(
       const userId = (req.session as any).userId;
       const challengeId = req.params.challengeId;
       const challenge = await storage.getChallenge(challengeId);
-      if (!challenge || challenge.createdBy !== userId) {
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const isAdmin = await storage.getUser(userId).then(u => u?.isAdmin);
+      if (challenge.createdBy !== userId && !isAdmin) {
         return res.status(403).json({ message: "Sem permissão" });
       }
       const flaggedCheckIns = await db.select({
@@ -1620,6 +1622,82 @@ export async function registerRoutes(
       res.json(flaggedCheckIns);
     } catch (error: any) {
       res.json([]);
+    }
+  });
+
+  // ====== MODERATION ACTIONS ======
+
+  // Dismiss flag (reviewer approved the activity)
+  app.post("/api/check-ins/:checkInId/unflag", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const [ci] = await db.select().from(checkIns).where(eq(checkIns.id, req.params.checkInId));
+      if (!ci) return res.status(404).json({ message: "Check-in não encontrado" });
+      const challenge = await storage.getChallenge(ci.challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const isAdmin = await storage.getUser(userId).then(u => u?.isAdmin);
+      if (challenge.createdBy !== userId && !isAdmin) return res.status(403).json({ message: "Sem permissão" });
+      await db.update(checkIns).set({ flagged: false, flagReason: "" }).where(eq(checkIns.id, req.params.checkInId));
+      res.json({ success: true, message: "Alerta removido — atividade aprovada" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Invalidate check-in (remove it and deduct score)
+  app.post("/api/check-ins/:checkInId/invalidate", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const [ci] = await db.select().from(checkIns).where(eq(checkIns.id, req.params.checkInId));
+      if (!ci) return res.status(404).json({ message: "Check-in não encontrado" });
+      const challenge = await storage.getChallenge(ci.challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const isAdmin = await storage.getUser(userId).then(u => u?.isAdmin);
+      if (challenge.createdBy !== userId && !isAdmin) return res.status(403).json({ message: "Sem permissão" });
+
+      const [participant] = await db.select()
+        .from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, ci.challengeId), eq(challengeParticipants.userId, ci.userId)));
+      if (participant) {
+        const newScore = Math.max(0, (participant.score || 0) - 1);
+        await db.update(challengeParticipants).set({ score: newScore }).where(eq(challengeParticipants.id, participant.id));
+      }
+      await db.delete(checkIns).where(eq(checkIns.id, req.params.checkInId));
+      res.json({ success: true, message: "Check-in invalidado e pontuação deduzida" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Eliminate participant from challenge
+  app.post("/api/challenges/:id/participants/:participantUserId/eliminate", requireAuth, async (req, res) => {
+    try {
+      const moderatorId = (req.session as any).userId;
+      const { id: challengeId, participantUserId } = req.params;
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const isAdmin = await storage.getUser(moderatorId).then(u => u?.isAdmin);
+      if (challenge.createdBy !== moderatorId && !isAdmin) return res.status(403).json({ message: "Sem permissão" });
+      if (participantUserId === challenge.createdBy) return res.status(400).json({ message: "Não é possível eliminar o criador do desafio" });
+
+      await db.update(challengeParticipants)
+        .set({ isActive: false })
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, participantUserId)));
+
+      // Refund locked balance if the challenge is still active
+      if (challenge.status === "active") {
+        const wallet = await storage.getWallet(participantUserId);
+        if (wallet) {
+          const entryFee = Number(challenge.entryFee);
+          await storage.updateWallet(participantUserId, {
+            lockedBalance: (Number(wallet.lockedBalance) - entryFee).toFixed(2),
+            balance: (Number(wallet.balance) + entryFee).toFixed(2),
+          });
+        }
+      }
+      res.json({ success: true, message: "Participante eliminado do desafio" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

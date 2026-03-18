@@ -80,6 +80,35 @@ export default function ChallengeDetails() {
     refetchInterval: 30000,
   });
 
+  const unflagMutation = useMutation({
+    mutationFn: (checkInId: string) => apiRequest("POST", `/api/check-ins/${checkInId}/unflag`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
+      toast({ title: "Atividade aprovada", description: "O alerta foi removido." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const invalidateMutation = useMutation({
+    mutationFn: (checkInId: string) => apiRequest("POST", `/api/check-ins/${checkInId}/invalidate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+      toast({ title: "Check-in invalidado", description: "Ponto deduzido do participante." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const eliminateMutation = useMutation({
+    mutationFn: (participantUserId: string) => apiRequest("POST", `/api/challenges/${id}/participants/${participantUserId}/eliminate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+      toast({ title: "Participante eliminado", description: "O usuário foi removido do desafio." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
   const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
     queryKey: [`/api/challenges/${id}/join-requests`],
     queryFn: async () => {
@@ -856,6 +885,38 @@ export default function ChallengeDetails() {
                             )}
                           </div>
                         )}
+                        <div className="grid grid-cols-3 gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[11px] rounded-xl text-green-500 border-green-500/30 hover:bg-green-500/10"
+                            onClick={() => unflagMutation.mutate(c.id)}
+                            disabled={unflagMutation.isPending}
+                            data-testid={`btn-unflag-${c.id}`}
+                          >
+                            {unflagMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : "✓ Liberar"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[11px] rounded-xl text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10"
+                            onClick={() => invalidateMutation.mutate(c.id)}
+                            disabled={invalidateMutation.isPending}
+                            data-testid={`btn-invalidate-${c.id}`}
+                          >
+                            {invalidateMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : "✕ Invalidar"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[11px] rounded-xl text-red-500 border-red-500/30 hover:bg-red-500/10"
+                            onClick={() => eliminateMutation.mutate(u.id)}
+                            disabled={eliminateMutation.isPending}
+                            data-testid={`btn-eliminate-${u.id}`}
+                          >
+                            {eliminateMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : "⊘ Eliminar"}
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}

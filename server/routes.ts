@@ -2131,7 +2131,9 @@ export async function registerRoutes(
 
       if (paymentService.isConfigured()) {
         try {
-          const amountInCents = Math.round(numAmount * 100);
+          const GATEWAY_DEPOSIT_FEE = 0.80;
+          const gatewayAmount = numAmount - GATEWAY_DEPOSIT_FEE;
+          const amountInCents = Math.round(gatewayAmount * 100);
           const withdraw = await paymentService.createPixWithdraw(
             amountInCents,
             pixKey,

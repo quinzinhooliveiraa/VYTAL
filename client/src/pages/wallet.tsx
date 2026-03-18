@@ -620,12 +620,12 @@ export default function Wallet() {
                       <span className="font-bold">{formatBRL(Number(withdrawAmount))}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Taxa de saque</span>
-                      <span className="font-bold text-destructive">- R$ 0,80</span>
+                      <span className="text-muted-foreground">Taxa de processamento</span>
+                      <span className="font-bold text-destructive">- R$ 1,60</span>
                     </div>
                     <div className="border-t border-border pt-2 flex justify-between text-sm">
                       <span className="font-bold">Você recebe via Pix</span>
-                      <span className="font-bold text-primary">{formatBRL(Number(withdrawAmount) - 0.80)}</span>
+                      <span className="font-bold text-primary">{formatBRL(Number(withdrawAmount) - 1.60)}</span>
                     </div>
                   </div>
                 )}

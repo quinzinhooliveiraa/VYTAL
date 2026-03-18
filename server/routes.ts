@@ -2322,8 +2322,15 @@ export async function registerRoutes(
         count: sql<number>`COUNT(*)`,
       }).from(transactions).where(txWhere("challenge_win"));
 
+      const ABACATEPAY_FEE = 0.80;
+      const depositFees = Number(depositCompleted.count) * ABACATEPAY_FEE;
+      const platformFeesTotal = Number(feeResult.total);
+      const netRevenue = platformFeesTotal - depositFees;
+      const withdrawalFee = netRevenue > 0 ? ABACATEPAY_FEE : 0;
+      const withdrawableRevenue = Math.max(netRevenue - withdrawalFee, 0);
+
       res.json({
-        platformFees: { total: Number(feeResult.total), count: Number(feeResult.count) },
+        platformFees: { total: platformFeesTotal, count: Number(feeResult.count) },
         depositsCompleted: { total: Number(depositCompleted.total), count: Number(depositCompleted.count) },
         depositsAll: { total: Number(depositAll.total), count: Number(depositAll.count) },
         withdrawals: { total: Number(withdrawAll.total), count: Number(withdrawAll.count) },
@@ -2334,6 +2341,9 @@ export async function registerRoutes(
         totalChallenges: Number(challengeCount.count),
         activeChallenges: Number(activeChallenges.count),
         dateFilter: { from: from || null, to: to || null },
+        gatewayFees: { depositFees, withdrawalFee, total: depositFees + withdrawalFee },
+        netRevenue,
+        withdrawableRevenue,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

@@ -435,6 +435,22 @@ export default function Admin() {
               </div>
               <p className="text-3xl font-bold text-emerald-500" data-testid="text-platform-revenue">{formatBRL(stats?.platformFees?.total || 0)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats?.platformFees?.count || 0} cobranças realizadas</p>
+              {stats?.gatewayFees && (
+                <div className="mt-3 pt-3 border-t border-emerald-500/20 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Taxas AbacatePay ({stats.depositsCompleted?.count || 0} depósitos)</span>
+                    <span className="text-destructive font-bold">- {formatBRL(stats.gatewayFees.depositFees)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Taxa de saque</span>
+                    <span className="text-destructive font-bold">- {formatBRL(stats.gatewayFees.withdrawalFee)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm pt-1 border-t border-emerald-500/10">
+                    <span className="font-bold text-emerald-500">Lucro líquido sacável</span>
+                    <span className="font-bold text-emerald-500">{formatBRL(stats.withdrawableRevenue || 0)}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Cards secundários */}

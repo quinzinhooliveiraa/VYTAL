@@ -53,7 +53,7 @@ export function ImageCropper({ open, onClose, onCrop, imageFile }: ImageCropperP
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const size = 280;
+    const size = 600;
     canvas.width = size;
     canvas.height = size;
 

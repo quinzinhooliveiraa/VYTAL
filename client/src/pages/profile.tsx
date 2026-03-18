@@ -31,7 +31,6 @@ export default function Profile() {
   const [cropperOpen, setCropperOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const { data: followersData } = useQuery({
     queryKey: ["/api/follows/followers"],
@@ -250,14 +249,14 @@ export default function Profile() {
         </header>
 
         {/* Botão editar banner */}
-        <button
-          className="absolute bottom-2 right-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 z-10"
-          onClick={() => bannerInputRef.current?.click()}
+        <label
+          htmlFor="banner-upload"
+          className="absolute bottom-2 right-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 z-10 cursor-pointer"
           data-testid="button-edit-banner"
         >
           <ImageIcon size={12} /> Editar capa
-        </button>
-        <input ref={bannerInputRef} type="file" className="hidden" accept="image/*" onChange={handleBannerSelect} />
+        </label>
+        <input id="banner-upload" type="file" className="hidden" accept="image/*" onChange={handleBannerSelect} />
       </div>
 
       <div className="px-4 space-y-5 -mt-10 relative z-10">
@@ -479,16 +478,17 @@ export default function Profile() {
               </div>
               Ver foto em tamanho real
             </button>
-            <button
-              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-muted/50 hover:bg-muted transition-colors font-bold"
-              onClick={() => { fileInputRef.current?.click(); }}
+            <label
+              htmlFor="avatar-upload"
+              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-muted/50 hover:bg-muted transition-colors font-bold cursor-pointer"
               data-testid="button-change-photo"
+              onClick={() => setAvatarSheet(false)}
             >
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                 <Camera size={20} />
               </div>
               Alterar foto de perfil
-            </button>
+            </label>
             <button
               className="w-full p-4 rounded-2xl text-muted-foreground font-bold hover:bg-muted/50 transition-colors"
               onClick={() => setAvatarSheet(false)}
@@ -671,13 +671,12 @@ export default function Profile() {
         </div>
       )}
 
-      {cropperOpen && selectedFile && (
-        <ImageCropper
-          file={selectedFile}
-          onDone={handleCropDone}
-          onCancel={() => { setCropperOpen(false); setSelectedFile(null); setAvatarSheet(false); }}
-        />
-      )}
+      <ImageCropper
+        open={cropperOpen}
+        imageFile={selectedFile}
+        onCrop={handleCropDone}
+        onClose={() => { setCropperOpen(false); setSelectedFile(null); setAvatarSheet(false); }}
+      />
     </div>
   );
 }

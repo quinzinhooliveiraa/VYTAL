@@ -6,7 +6,7 @@ import {
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
   Trophy, ChevronRight, ChevronDown, Loader2, Bell, BellOff, Volume2,
   MessageSquare, Search, Eye, X, Calendar, Hash, Send, Megaphone, CheckCircle2, Link2,
-  Smartphone, Wifi, WifiOff, Clock, RotateCcw, Wallet, ShieldAlert, Landmark
+  Smartphone, Wifi, WifiOff, Clock, RotateCcw, Wallet, ShieldAlert, Landmark, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -126,7 +126,7 @@ export default function Admin() {
     localStorage.setItem("admin-notif", next ? "on" : "off");
   }, [notificationsEnabled]);
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, refetch: refetchStats } = useQuery({
     queryKey: ["/api/admin/stats", dateRange.from, dateRange.to],
     queryFn: async () => {
       const res = await fetch(`/api/admin/stats${dateQS}`, { credentials: "include" });
@@ -136,7 +136,7 @@ export default function Admin() {
     refetchInterval: 15000,
   });
 
-  const { data: txs = [] } = useQuery({
+  const { data: txs = [], refetch: refetchTxs } = useQuery({
     queryKey: ["/api/admin/transactions", dateRange.from, dateRange.to],
     queryFn: async () => {
       const res = await fetch(`/api/admin/transactions${dateQS}`, { credentials: "include" });
@@ -145,6 +145,11 @@ export default function Admin() {
     enabled: tab === "overview" || tab === "transactions",
     refetchInterval: 15000,
   });
+
+  const handleRefresh = useCallback(() => {
+    refetchStats();
+    refetchTxs();
+  }, [refetchStats, refetchTxs]);
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/admin/users"],
@@ -334,6 +339,9 @@ export default function Admin() {
             <h1 className="font-display font-bold text-lg">Admin</h1>
             <p className="text-[10px] text-muted-foreground">{stats?.totalUsers || 0} usuários · {stats?.activeChallenges || 0} desafios ativos</p>
           </div>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onClick={handleRefresh} data-testid="button-refresh-stats" title="Atualizar dados">
+            <RefreshCw size={16} />
+          </Button>
           <Button variant="ghost" size="icon" className={`h-9 w-9 ${notificationsEnabled ? 'text-primary' : 'text-muted-foreground'}`} onClick={toggleNotifications} data-testid="button-toggle-notif">
             {notificationsEnabled ? <Bell size={18} /> : <BellOff size={18} />}
           </Button>
@@ -482,9 +490,20 @@ export default function Admin() {
                     <span className="text-muted-foreground">Taxa do seu saque</span>
                     <span className="text-destructive font-medium">- {formatBRL(stats.gateway.adminWithdrawFee)}</span>
                   </div>
-                  <div className="flex justify-between items-baseline pt-2 border-t border-emerald-500/20">
+                  <div className="flex justify-between items-center pt-2 border-t border-emerald-500/20">
                     <span className="font-bold text-emerald-400 text-sm">Você pode sacar</span>
-                    <span className="font-bold text-emerald-400 text-xl">{formatBRL(stats.gateway.adminWithdrawable)}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-emerald-400 text-xl">{formatBRL(stats.gateway.adminWithdrawable)}</span>
+                      <Button
+                        size="sm"
+                        className="h-8 px-3 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl"
+                        onClick={() => navigate("/wallet")}
+                        data-testid="button-admin-go-wallet"
+                        disabled={stats.gateway.adminWithdrawable <= 0}
+                      >
+                        <Wallet size={12} className="mr-1" /> Sacar
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

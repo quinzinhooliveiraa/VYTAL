@@ -11,7 +11,7 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
-import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns, challengeParticipants } from "@shared/schema";
+import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns, challengeParticipants, challengeMessages } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 async function reverseGeocode(lat: string | null, lng: string | null): Promise<string> {
@@ -1711,6 +1711,44 @@ export async function registerRoutes(
   app.get("/api/challenges/:id/messages", requireAuth, async (req, res) => {
     const msgs = await storage.getChallengeMessages(req.params.id);
     res.json(msgs);
+  });
+
+  app.delete("/api/challenges/:id/messages/:msgId", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { id: challengeId, msgId } = req.params;
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const isAdmin = await storage.getUser(userId).then(u => u?.isAdmin);
+      if (challenge.createdBy !== userId && !isAdmin) {
+        return res.status(403).json({ message: "Sem permissão" });
+      }
+      await db.delete(challengeMessages).where(eq(challengeMessages.id, msgId));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/challenges/:id/participants/:participantUserId/adjust-missed-days", requireAuth, async (req, res) => {
+    try {
+      const moderatorId = (req.session as any).userId;
+      const { id: challengeId, participantUserId } = req.params;
+      const { delta } = req.body;
+      if (delta !== 1 && delta !== -1) return res.status(400).json({ message: "Delta inválido (use 1 ou -1)" });
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const isAdmin = await storage.getUser(moderatorId).then(u => u?.isAdmin);
+      if (challenge.createdBy !== moderatorId && !isAdmin) return res.status(403).json({ message: "Sem permissão" });
+      const [participant] = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, participantUserId)));
+      if (!participant) return res.status(404).json({ message: "Participante não encontrado" });
+      const newMissed = Math.max(0, (participant.missedDays || 0) + delta);
+      await db.update(challengeParticipants).set({ missedDays: newMissed }).where(eq(challengeParticipants.id, participant.id));
+      res.json({ success: true, missedDays: newMissed });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   app.post("/api/challenges/:id/messages", requireAuth, async (req, res) => {

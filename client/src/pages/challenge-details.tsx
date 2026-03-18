@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -105,6 +105,16 @@ export default function ChallengeDetails() {
       queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
       queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
       toast({ title: "Participante eliminado", description: "O usuário foi removido do desafio." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const adjustMissedDaysMutation = useMutation({
+    mutationFn: ({ userId, delta }: { userId: string; delta: 1 | -1 }) =>
+      apiRequest("POST", `/api/challenges/${id}/participants/${userId}/adjust-missed-days`, { delta }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+      toast({ title: "Faltas ajustadas" });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -920,6 +930,63 @@ export default function ChallengeDetails() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {participants.filter((p: any) => p.isActive !== false).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                    <Users size={14} /> Participantes Ativos
+                  </h4>
+                  {participants.filter((p: any) => p.isActive !== false).sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).map((p: any) => (
+                    <div key={p.userId} className="bg-card border border-border rounded-2xl p-3 flex items-center gap-3">
+                      <Avatar className="w-9 h-9 border border-border shrink-0">
+                        <AvatarImage src={p.user?.avatar} />
+                        <AvatarFallback className="text-xs">{(p.user?.name || "?")[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs truncate">{p.user?.name || "Participante"}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground">🏆 {p.score || 0} pts</span>
+                          <span className="text-[10px] text-red-500">✕ {p.missedDays || 0} faltas</span>
+                          {challenge.maxMissedDays > 0 && (
+                            <span className="text-[10px] text-muted-foreground">/ {challenge.maxMissedDays} max</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-green-500 hover:border-green-500/50 transition-colors"
+                          onClick={() => adjustMissedDaysMutation.mutate({ userId: p.userId, delta: -1 })}
+                          disabled={adjustMissedDaysMutation.isPending || (p.missedDays || 0) === 0}
+                          title="Remover falta"
+                          data-testid={`btn-remove-missed-${p.userId}`}
+                        >
+                          <MinusCircle size={13} />
+                        </button>
+                        <button
+                          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-red-500 hover:border-red-500/50 transition-colors"
+                          onClick={() => adjustMissedDaysMutation.mutate({ userId: p.userId, delta: 1 })}
+                          disabled={adjustMissedDaysMutation.isPending}
+                          title="Adicionar falta"
+                          data-testid={`btn-add-missed-${p.userId}`}
+                        >
+                          <PlusCircle size={13} />
+                        </button>
+                        {p.userId !== challenge.createdBy && (
+                          <button
+                            className="w-7 h-7 rounded-lg border border-red-500/30 flex items-center justify-center text-red-500/60 hover:text-red-500 hover:border-red-500 transition-colors"
+                            onClick={() => eliminateMutation.mutate(p.userId)}
+                            disabled={eliminateMutation.isPending}
+                            title="Eliminar participante"
+                            data-testid={`btn-eliminate-participant-${p.userId}`}
+                          >
+                            <UserX size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

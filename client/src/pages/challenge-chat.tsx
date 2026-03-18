@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
-import { ArrowLeft, Send, Loader2, MessageCircle, Trophy, Users, Info, Mic, X, Play, Pause } from "lucide-react";
+import { ArrowLeft, Send, Loader2, MessageCircle, Trophy, Users, Info, Mic, X, Play, Pause, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -241,6 +241,16 @@ export default function ChallengeChat() {
   }
 
   const isParticipant = challenge.isParticipant;
+  const isCreator = user?.id === challenge?.createdBy;
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: (msgId: string) => apiRequest("DELETE", `/api/challenges/${id}/messages/${msgId}`),
+    onSuccess: () => {
+      refetchMessages();
+      toast({ title: "Mensagem apagada" });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
 
   const formatTime = (dateStr: string) => {
     if (!dateStr) return "";
@@ -317,7 +327,7 @@ export default function ChallengeChat() {
                     <span className="text-[10px] text-muted-foreground/60 bg-muted/50 px-3 py-1 rounded-full">{msgDate}</span>
                   </div>
                 )}
-                <div className={`flex gap-2.5 ${isMe ? "flex-row-reverse" : ""}`}>
+                <div className={`flex gap-2.5 items-end ${isMe ? "flex-row-reverse" : ""}`}>
                   {!isMe && (
                     <Avatar className="w-8 h-8 shrink-0">
                       <AvatarImage src={msg.user?.avatar} />
@@ -343,6 +353,16 @@ export default function ChallengeChat() {
                       {formatTime(msg.createdAt)}
                     </span>
                   </div>
+                  {isCreator && (
+                    <button
+                      className="shrink-0 p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                      onClick={() => deleteMessageMutation.mutate(msg.id)}
+                      disabled={deleteMessageMutation.isPending}
+                      data-testid={`btn-delete-msg-${msg.id}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
             );

@@ -520,7 +520,7 @@ export default function Admin() {
               <div className="divide-y divide-border">
                 <MovRow label="Entradas em desafios" value={formatBRL(stats?.challengeEntries?.total || 0)} count={stats?.challengeEntries?.count} />
                 <MovRow label="Prêmios distribuídos" value={formatBRL(stats?.challengeWins?.total || 0)} count={stats?.challengeWins?.count} />
-                <MovRow label="Total depositado" value={formatBRL(stats?.depositsAll?.total || 0)} count={stats?.depositsAll?.count} />
+                <MovRow label="Total depositado" value={formatBRL(stats?.depositsCompleted?.total || 0)} count={stats?.depositsCompleted?.count} />
                 <MovRow label="Total sacado" value={formatBRL(stats?.withdrawals?.total || 0)} count={stats?.withdrawals?.count} />
               </div>
             </div>

@@ -100,7 +100,7 @@ export default function Admin() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
-  const [confirmDialog, setConfirmDialog] = useState<{ type: string; userId?: string; userName?: string; challengeId?: string; challengeName?: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ type: string; userId?: string; userName?: string; challengeId?: string; challengeName?: string; isBanned?: boolean | null } | null>(null);
   const [txFilter, setTxFilter] = useState<string>("all");
   const [userSearch, setUserSearch] = useState("");
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
@@ -645,6 +645,7 @@ export default function Admin() {
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {u.pwaInstalled && <Badge className="text-[8px] px-1.5 py-0 bg-green-500/20 text-green-500 border-none gap-0.5"><Smartphone size={9} /> PWA</Badge>}
                         {!u.pwaInstalled && <Badge className="text-[8px] px-1.5 py-0 bg-muted text-muted-foreground border-none gap-0.5">Sem PWA</Badge>}
+                        {u.isBanned && <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-500 border-none gap-0.5"><Ban size={9} /> BANIDO</Badge>}
                         {(() => {
                           if (!u.lastActiveAt) return <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-500 border-none gap-0.5"><WifiOff size={9} /> Nunca ativo</Badge>;
                           const diff = Date.now() - new Date(u.lastActiveAt).getTime();
@@ -694,7 +695,7 @@ export default function Admin() {
                       <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg" onClick={() => setConfirmDialog({ type: "toggle-admin", userId: u.id, userName: u.name })} data-testid={`btn-toggle-admin-${u.id}`}>
                         {u.isAdmin ? <ShieldOff size={14} /> : <Shield size={14} />}
                       </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg text-yellow-500 border-yellow-500/30" onClick={() => setConfirmDialog({ type: "block", userId: u.id, userName: u.name })} data-testid={`btn-block-${u.id}`}>
+                      <Button size="icon" variant="outline" className={`h-8 w-8 rounded-lg ${u.isBanned ? "text-green-500 border-green-500/30" : "text-red-500 border-red-500/30"}`} onClick={() => setConfirmDialog({ type: "block", userId: u.id, userName: u.name, isBanned: u.isBanned })} data-testid={`btn-block-${u.id}`}>
                         <Ban size={14} />
                       </Button>
                       <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg text-destructive border-destructive/30" onClick={() => setConfirmDialog({ type: "delete", userId: u.id, userName: u.name })} data-testid={`btn-delete-${u.id}`}>
@@ -1024,13 +1025,16 @@ export default function Admin() {
           <DialogHeader>
             <DialogTitle className="font-display">
               {confirmDialog?.type === "toggle-admin" && "Alterar permissão"}
-              {confirmDialog?.type === "block" && "Bloquear usuário"}
+              {confirmDialog?.type === "block" && (confirmDialog?.isBanned ? "Desbanir usuário" : "Banir usuário")}
               {confirmDialog?.type === "delete" && "Apagar usuário"}
               {confirmDialog?.type === "delete-challenge" && "Apagar desafio"}
             </DialogTitle>
             <DialogDescription>
               {confirmDialog?.type === "toggle-admin" && `Alternar admin para ${confirmDialog?.userName}?`}
-              {confirmDialog?.type === "block" && `Bloquear ${confirmDialog?.userName}? A conta será desativada.`}
+              {confirmDialog?.type === "block" && (confirmDialog?.isBanned
+                ? `Remover banimento de ${confirmDialog?.userName}? O usuário poderá acessar o app novamente.`
+                : `Banir ${confirmDialog?.userName}? A conta será suspensa e o usuário não poderá mais acessar o app.`
+              )}
               {confirmDialog?.type === "delete" && `Apagar ${confirmDialog?.userName}? Todos os dados serão removidos permanentemente.`}
               {confirmDialog?.type === "delete-challenge" && `Apagar "${confirmDialog?.challengeName}"? Todos os participantes e dados serão removidos.`}
             </DialogDescription>

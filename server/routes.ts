@@ -246,6 +246,8 @@ export async function registerRoutes(
       const valid = await bcrypt.compare(data.password, user.password);
       if (!valid) return res.status(401).json({ message: "Email ou senha inválidos" });
 
+      if ((user as any).isBanned) return res.status(403).json({ message: "Sua conta foi suspensa. Entre em contato com o suporte." });
+
       if (user.twoFactorEnabled && user.twoFactorSecret) {
         const { token } = req.body;
         if (!token) {
@@ -378,6 +380,10 @@ export async function registerRoutes(
     if (!userId) return res.status(401).json({ message: "Não autenticado" });
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Usuário não encontrado" });
+    if ((user as any).isBanned) {
+      req.session.destroy(() => {});
+      return res.status(403).json({ message: "Sua conta foi suspensa. Entre em contato com o suporte." });
+    }
     const { password, twoFactorSecret, ...safeUser } = user;
     res.json(safeUser);
   });
@@ -2500,8 +2506,12 @@ export async function registerRoutes(
       const { users: usersTable } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
 
-      await database.update(usersTable).set({ online: false, isPrivate: true }).where(eq(usersTable.id, req.params.id));
-      res.json({ success: true, message: "Usuário bloqueado" });
+      const [target] = await database.select().from(usersTable).where(eq(usersTable.id, req.params.id));
+      if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const newBanned = !target.isBanned;
+      await database.update(usersTable).set({ isBanned: newBanned, online: false }).where(eq(usersTable.id, req.params.id));
+      res.json({ success: true, message: newBanned ? "Usuário banido" : "Banimento removido" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

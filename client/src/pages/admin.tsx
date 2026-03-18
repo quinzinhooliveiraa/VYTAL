@@ -76,6 +76,26 @@ const typeColors: Record<string, string> = {
   challenge_entry: "text-blue-500", challenge_win: "text-yellow-500", platform_fee: "text-emerald-500", refund: "text-red-500",
 };
 
+type DatePreset = "all" | "today" | "7d" | "30d" | "month" | "year" | "custom";
+
+const getDateRange = (preset: DatePreset, customFrom?: string, customTo?: string): { from?: string; to?: string } => {
+  const now = new Date();
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  switch (preset) {
+    case "today": return { from: fmt(now), to: fmt(now) };
+    case "7d": { const d = new Date(now); d.setDate(d.getDate() - 7); return { from: fmt(d), to: fmt(now) }; }
+    case "30d": { const d = new Date(now); d.setDate(d.getDate() - 30); return { from: fmt(d), to: fmt(now) }; }
+    case "month": return { from: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`, to: fmt(now) };
+    case "year": return { from: `${now.getFullYear()}-01-01`, to: fmt(now) };
+    case "custom": return { from: customFrom || undefined, to: customTo || undefined };
+    default: return {};
+  }
+};
+
+const presetLabels: Record<DatePreset, string> = {
+  all: "Tudo", today: "Hoje", "7d": "7 dias", "30d": "30 dias", month: "Este mês", year: "Este ano", custom: "Personalizado",
+};
+
 export default function Admin() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -89,6 +109,16 @@ export default function Admin() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("admin-notif") !== "off");
   const prevTxCountRef = useRef<number | null>(null);
   const prevStatsRef = useRef<any>(null);
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const dateRange = getDateRange(datePreset, customFrom, customTo);
+  const dateParams = new URLSearchParams();
+  if (dateRange.from) dateParams.set("from", dateRange.from);
+  if (dateRange.to) dateParams.set("to", dateRange.to);
+  const dateQS = dateParams.toString() ? `?${dateParams.toString()}` : "";
 
   const toggleNotifications = useCallback(() => {
     const next = !notificationsEnabled;
@@ -97,9 +127,9 @@ export default function Admin() {
   }, [notificationsEnabled]);
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["/api/admin/stats"],
+    queryKey: ["/api/admin/stats", dateRange.from, dateRange.to],
     queryFn: async () => {
-      const res = await fetch("/api/admin/stats", { credentials: "include" });
+      const res = await fetch(`/api/admin/stats${dateQS}`, { credentials: "include" });
       if (!res.ok) throw new Error("Acesso negado");
       return res.json();
     },
@@ -107,9 +137,9 @@ export default function Admin() {
   });
 
   const { data: txs = [] } = useQuery({
-    queryKey: ["/api/admin/transactions"],
+    queryKey: ["/api/admin/transactions", dateRange.from, dateRange.to],
     queryFn: async () => {
-      const res = await fetch("/api/admin/transactions", { credentials: "include" });
+      const res = await fetch(`/api/admin/transactions${dateQS}`, { credentials: "include" });
       return res.ok ? res.json() : [];
     },
     enabled: tab === "overview" || tab === "transactions",
@@ -339,6 +369,60 @@ export default function Admin() {
       </div>
 
       <div className="px-4 py-5 space-y-5">
+
+        {(tab === "overview" || tab === "transactions") && (
+          <div className="space-y-3">
+            <div className="flex gap-1.5 flex-wrap">
+              {(["all", "today", "7d", "30d", "month", "year", "custom"] as DatePreset[]).map(p => (
+                <button
+                  key={p}
+                  onClick={() => {
+                    setDatePreset(p);
+                    if (p === "custom") setShowDatePicker(true);
+                    else setShowDatePicker(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                    datePreset === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`date-filter-${p}`}
+                >
+                  {p === "custom" ? <><Calendar size={10} className="inline mr-1" />{presetLabels[p]}</> : presetLabels[p]}
+                </button>
+              ))}
+            </div>
+            {showDatePicker && datePreset === "custom" && (
+              <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-3">
+                <div className="flex-1">
+                  <label className="text-[10px] text-muted-foreground font-bold uppercase block mb-1">De</label>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg bg-background border border-border text-xs"
+                    data-testid="input-date-from"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] text-muted-foreground font-bold uppercase block mb-1">Até</label>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg bg-background border border-border text-xs"
+                    data-testid="input-date-to"
+                  />
+                </div>
+              </div>
+            )}
+            {datePreset !== "all" && (
+              <p className="text-[10px] text-primary font-bold px-1">
+                <Calendar size={10} className="inline mr-1" />
+                Filtrando: {dateRange.from ? new Date(dateRange.from + "T12:00:00").toLocaleDateString("pt-BR") : "..."} 
+                {dateRange.to ? ` até ${new Date(dateRange.to + "T12:00:00").toLocaleDateString("pt-BR")}` : ""}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ====== OVERVIEW ====== */}
         {tab === "overview" && (

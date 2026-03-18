@@ -2260,27 +2260,45 @@ export async function registerRoutes(
     try {
       const { db: database } = await import("./db");
       const { transactions, wallets, users: usersTable, challenges: challengesTable } = await import("@shared/schema");
-      const { sql, eq, and } = await import("drizzle-orm");
+      const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+
+      const from = req.query.from as string | undefined;
+      const to = req.query.to as string | undefined;
+
+      const dateFilters: any[] = [];
+      if (from) dateFilters.push(gte(transactions.createdAt, new Date(from)));
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        dateFilters.push(lte(transactions.createdAt, toDate));
+      }
+
+      const txWhere = (type: string, extra?: any) => {
+        const conditions: any[] = [eq(transactions.type, type)];
+        if (extra) conditions.push(extra);
+        conditions.push(...dateFilters);
+        return and(...conditions);
+      };
 
       const [feeResult] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(eq(transactions.type, "platform_fee"));
+      }).from(transactions).where(txWhere("platform_fee"));
 
       const [depositCompleted] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(and(eq(transactions.type, "deposit"), eq(transactions.status, "completed")));
+      }).from(transactions).where(txWhere("deposit", eq(transactions.status, "completed")));
 
       const [depositAll] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(eq(transactions.type, "deposit"));
+      }).from(transactions).where(txWhere("deposit"));
 
       const [withdrawAll] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(eq(transactions.type, "withdraw_request"));
+      }).from(transactions).where(txWhere("withdraw_request"));
 
       const [walletResult] = await database.select({
         totalBalance: sql<string>`COALESCE(SUM(balance), 0)`,
@@ -2294,12 +2312,12 @@ export async function registerRoutes(
       const [challengeEntries] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(eq(transactions.type, "challenge_entry"));
+      }).from(transactions).where(txWhere("challenge_entry"));
 
       const [challengeWins] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(eq(transactions.type, "challenge_win"));
+      }).from(transactions).where(txWhere("challenge_win"));
 
       res.json({
         platformFees: { total: Number(feeResult.total), count: Number(feeResult.count) },
@@ -2312,6 +2330,7 @@ export async function registerRoutes(
         totalUsers: Number(userCountResult.count),
         totalChallenges: Number(challengeCount.count),
         activeChallenges: Number(activeChallenges.count),
+        dateFilter: { from: from || null, to: to || null },
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -2322,7 +2341,18 @@ export async function registerRoutes(
     try {
       const { db: database } = await import("./db");
       const { transactions, users: usersTable } = await import("@shared/schema");
-      const { desc, eq } = await import("drizzle-orm");
+      const { desc, eq, and, gte, lte } = await import("drizzle-orm");
+
+      const from = req.query.from as string | undefined;
+      const to = req.query.to as string | undefined;
+
+      const conditions: any[] = [];
+      if (from) conditions.push(gte(transactions.createdAt, new Date(from)));
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        conditions.push(lte(transactions.createdAt, toDate));
+      }
 
       const allTxs = await database.select({
         id: transactions.id,
@@ -2337,8 +2367,9 @@ export async function registerRoutes(
         userEmail: usersTable.email,
       }).from(transactions)
         .leftJoin(usersTable, eq(transactions.userId, usersTable.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(transactions.createdAt))
-        .limit(200);
+        .limit(500);
       res.json(allTxs);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

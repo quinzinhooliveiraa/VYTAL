@@ -664,6 +664,7 @@ export default function Admin() {
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {u.pwaInstalled && <Badge className="text-[8px] px-1.5 py-0 bg-green-500/20 text-green-500 border-none gap-0.5"><Smartphone size={9} /> PWA</Badge>}
                         {!u.pwaInstalled && <Badge className="text-[8px] px-1.5 py-0 bg-muted text-muted-foreground border-none gap-0.5">Sem PWA</Badge>}
+                        {u.deviceInfo && <Badge className="text-[8px] px-1.5 py-0 bg-blue-500/10 text-blue-400 border-none gap-0.5"><Smartphone size={9} /> {u.deviceInfo}</Badge>}
                         {u.isBanned && <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-500 border-none gap-0.5"><Ban size={9} /> BANIDO</Badge>}
                         {(() => {
                           if (!u.lastActiveAt) return <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-500 border-none gap-0.5"><WifiOff size={9} /> Nunca ativo</Badge>;

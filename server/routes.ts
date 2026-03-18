@@ -176,6 +176,27 @@ export async function registerRoutes(
   // Auth middleware
   const lastActivityUpdate = new Map<string, number>();
 
+  function parseDeviceInfo(ua: string): string {
+    if (!ua) return "Desconhecido";
+    let os = "Desktop";
+    if (/iPhone/i.test(ua)) os = "iPhone";
+    else if (/iPad/i.test(ua)) os = "iPad";
+    else if (/Android/i.test(ua)) os = "Android";
+    else if (/Windows/i.test(ua)) os = "Windows";
+    else if (/Macintosh|Mac OS X/i.test(ua)) os = "Mac";
+    else if (/Linux/i.test(ua)) os = "Linux";
+    let browser = "Navegador";
+    if (/CriOS/i.test(ua)) browser = "Chrome (iOS)";
+    else if (/FxiOS/i.test(ua)) browser = "Firefox (iOS)";
+    else if (/EdgA?/i.test(ua)) browser = "Edge";
+    else if (/Chrome/i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+    else if (/Firefox/i.test(ua)) browser = "Firefox";
+    else if (/Samsung/i.test(ua)) browser = "Samsung Browser";
+    const isPwa = /standalone/i.test(ua) || ua.includes("VYTAL-PWA");
+    return `${os} · ${browser}${isPwa ? " · PWA" : ""}`;
+  }
+
   function requireAuth(req: any, res: any, next: any) {
     if (!req.session?.userId) {
       return res.status(401).json({ message: "Não autenticado" });
@@ -185,7 +206,9 @@ export async function registerRoutes(
     const last = lastActivityUpdate.get(userId) || 0;
     if (now - last > 5 * 60 * 1000) {
       lastActivityUpdate.set(userId, now);
-      storage.updateUser(userId, { lastActiveAt: new Date() } as any).catch(() => {});
+      const ua = req.headers["user-agent"] || "";
+      const deviceInfo = parseDeviceInfo(ua);
+      storage.updateUser(userId, { lastActiveAt: new Date(), deviceInfo } as any).catch(() => {});
     }
     next();
   }

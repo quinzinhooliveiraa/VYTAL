@@ -195,6 +195,21 @@ export default function ChallengeDetails() {
     },
   });
 
+  const joinMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/join`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Você entrou!", description: "Bem-vindo ao desafio. Bora!" });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
   const requestJoinMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/challenges/${id}/request-join`);
@@ -449,11 +464,11 @@ export default function ChallengeDetails() {
                   Criar Conta / Entrar
                 </Button>
               </>
-            ) : (
+            ) : challenge.isPrivate ? (
               <>
-                <h3 className="font-display font-bold text-lg">Quer participar?</h3>
+                <h3 className="font-display font-bold text-lg">Desafio privado</h3>
                 <p className="text-sm text-muted-foreground">
-                  Envie uma solicitação para o moderador. Após aprovação, a taxa de entrada de <strong>{formatBRL(entryFee)}</strong> será cobrada.
+                  Envie uma solicitação ao moderador. Após aprovação, a taxa de <strong>{formatBRL(entryFee)}</strong> será cobrada.
                 </p>
                 <Button
                   className="w-full h-14 rounded-2xl font-bold bg-primary text-primary-foreground shadow-xl shadow-primary/20"
@@ -467,6 +482,28 @@ export default function ChallengeDetails() {
                     <UserPlus className="mr-2" size={20} />
                   )}
                   Pedir para Participar
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display font-bold text-lg">Quer participar?</h3>
+                <p className="text-sm text-muted-foreground">
+                  {entryFee > 0
+                    ? <>Taxa de entrada: <strong>{formatBRL(entryFee)}</strong>. Será debitada do seu saldo imediatamente.</>
+                    : "Desafio gratuito — entre agora!"}
+                </p>
+                <Button
+                  className="w-full h-14 rounded-2xl font-bold bg-primary text-primary-foreground shadow-xl shadow-primary/20"
+                  onClick={() => joinMutation.mutate()}
+                  disabled={joinMutation.isPending}
+                  data-testid="button-join-challenge"
+                >
+                  {joinMutation.isPending ? (
+                    <Loader2 className="animate-spin mr-2" size={18} />
+                  ) : (
+                    <UserPlus className="mr-2" size={20} />
+                  )}
+                  Entrar no Desafio
                 </Button>
               </>
             )}

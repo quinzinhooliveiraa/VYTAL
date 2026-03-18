@@ -2323,7 +2323,6 @@ export async function registerRoutes(
       }).from(transactions).where(txWhere("challenge_win"));
 
       const ABACATEPAY_FEE = 0.80;
-      const WITHDRAW_FEE_USER = 1.60;
 
       const depositsTotal = Number(depositCompleted.total);
       const depositsCount = Number(depositCompleted.count);
@@ -2331,7 +2330,9 @@ export async function registerRoutes(
       const withdrawalsCount = Number(withdrawAll.count);
       const platformFeesTotal = Number(feeResult.total);
 
-      const gatewayBalance = (depositsTotal - (depositsCount * ABACATEPAY_FEE)) - (withdrawalsTotal - (withdrawalsCount * ABACATEPAY_FEE));
+      const gatewayReceived = depositsTotal - (depositsCount * ABACATEPAY_FEE);
+      const gatewaySent = withdrawalsTotal - (withdrawalsCount * ABACATEPAY_FEE);
+      const gatewayBalance = gatewayReceived - gatewaySent;
 
       const allUserBalances = Number(walletResult.totalBalance);
       const allUserLocked = Number(walletResult.totalLocked);
@@ -2342,13 +2343,15 @@ export async function registerRoutes(
       }).from(wallets).where(sql`(${wallets.balance}::numeric - ${wallets.lockedBalance}::numeric) >= 30`);
       const withdrawableUsersCount = Number(usersWithBalance.count);
 
-      const worstCaseWithdrawals = allUserAvailable > 0
+      const worstCaseGatewayCost = allUserAvailable > 0
         ? allUserAvailable - (withdrawableUsersCount * ABACATEPAY_FEE)
         : 0;
 
-      const challengeLockedInGateway = allUserLocked;
+      const challengeLockedGatewayCost = allUserLocked > 0
+        ? allUserLocked * 0.90
+        : 0;
 
-      const totalObligations = worstCaseWithdrawals + challengeLockedInGateway;
+      const totalObligations = worstCaseGatewayCost + challengeLockedGatewayCost;
 
       const safeToWithdraw = Math.max(gatewayBalance - totalObligations, 0);
       const adminWithdrawFee = safeToWithdraw > 0 ? ABACATEPAY_FEE : 0;

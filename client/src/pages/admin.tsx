@@ -460,11 +460,11 @@ export default function Admin() {
                     <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.userAvailableBalances)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Custo se todos sacarem ({stats.gateway.withdrawableUsersCount} aptos)</span>
-                    <span className="text-orange-400 font-medium">- {formatBRL(stats.gateway.obligations.worstCaseWithdrawCost)}</span>
+                    <span className="text-muted-foreground">Custo gateway se todos sacarem ({stats.gateway.withdrawableUsersCount} aptos)</span>
+                    <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.worstCaseWithdrawCost)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Saldos travados em desafios</span>
+                    <span className="text-muted-foreground">Desafios ativos (90% volta ao vencedor)</span>
                     <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.challengeLockedFunds)}</span>
                   </div>
                   <div className="flex justify-between text-xs pt-1 border-t border-blue-500/10">

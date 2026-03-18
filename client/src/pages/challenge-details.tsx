@@ -38,6 +38,8 @@ export default function ChallengeDetails() {
   const [selectedNewMod, setSelectedNewMod] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
+  const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -117,6 +119,16 @@ export default function ChallengeDetails() {
       toast({ title: "Faltas ajustadas" });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const finalizeMutation = useMutation({
+    mutationFn: (winnerUserIds: string[]) => apiRequest("POST", `/api/challenges/${id}/finalize`, { winnerUserIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+      setFinalizeDialogOpen(false);
+      toast({ title: "Desafio finalizado!", description: "Os prêmios foram distribuídos." });
+    },
+    onError: (e: any) => toast({ title: "Erro ao finalizar", description: e.message, variant: "destructive" }),
   });
 
   const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
@@ -784,18 +796,29 @@ export default function ChallengeDetails() {
                 </div>
               )}
 
-              {isChallengeEnded && (
+              {isChallengeEnded && challenge.status !== "completed" && (
                 <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center space-y-6">
                   <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto text-primary">
                     <Trophy size={40} />
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-xl font-display font-bold">Aprovação Final</h3>
-                    <p className="text-sm text-muted-foreground">O desafio terminou. Confirme os vencedores para distribuir <strong>{formatBRL(prizePool)}</strong>.</p>
+                    <p className="text-sm text-muted-foreground">O desafio terminou. Selecione os vencedores para distribuir <strong>{formatBRL(prizePool)}</strong>.</p>
                   </div>
-                  <Button className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-bold shadow-xl shadow-primary/20" data-testid="button-finalize">
-                    <CheckCircle2 className="mr-2" size={20} /> Liberar Pagamentos
+                  <Button
+                    className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-bold shadow-xl shadow-primary/20"
+                    onClick={() => { setSelectedWinners([]); setFinalizeDialogOpen(true); }}
+                    data-testid="button-finalize"
+                  >
+                    <Trophy className="mr-2" size={20} /> Selecionar Vencedores
                   </Button>
+                </div>
+              )}
+              {challenge.status === "completed" && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-[2rem] p-6 text-center space-y-2">
+                  <CheckCircle2 className="mx-auto text-green-500" size={32} />
+                  <p className="font-bold text-green-500">Desafio Finalizado</p>
+                  <p className="text-xs text-muted-foreground">Os prêmios já foram distribuídos.</p>
                 </div>
               )}
 
@@ -1134,6 +1157,107 @@ export default function ChallengeDetails() {
           )}
         </Tabs>
       </div>
+
+      <Dialog open={finalizeDialogOpen} onOpenChange={setFinalizeDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-[400px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="w-16 h-16 mx-auto bg-primary/15 rounded-full flex items-center justify-center mb-2">
+              <Trophy className="text-primary" size={32} />
+            </div>
+            <DialogTitle className="text-center text-xl font-display">Selecionar Vencedores</DialogTitle>
+            <DialogDescription className="text-center text-xs">
+              Marque quem ganhou. O prêmio será dividido igualmente entre os selecionados.
+            </DialogDescription>
+          </DialogHeader>
+
+          {(() => {
+            const sorted = [...activeParticipants].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+            const totalPool = activeParticipants.length * entryFee;
+            const platformFee = totalPool * 0.10;
+            const netPool = totalPool - platformFee;
+            const prizeEach = selectedWinners.length > 0 ? netPool / selectedWinners.length : 0;
+            return (
+              <div className="space-y-4">
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {sorted.map((p: any) => {
+                    const selected = selectedWinners.includes(p.userId);
+                    return (
+                      <button
+                        key={p.userId}
+                        onClick={() => {
+                          setSelectedWinners(prev =>
+                            prev.includes(p.userId)
+                              ? prev.filter(id => id !== p.userId)
+                              : [...prev, p.userId]
+                          );
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 transition-all text-left ${
+                          selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"
+                        }`}
+                        data-testid={`select-winner-${p.userId}`}
+                      >
+                        <Avatar className="w-10 h-10 border border-border shrink-0">
+                          <AvatarImage src={p.user?.avatar} />
+                          <AvatarFallback>{(p.user?.name || "?")[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm">{p.user?.name || "Participante"}</p>
+                          <p className="text-xs text-muted-foreground">{formatScore(p)} {scoreUnit}</p>
+                        </div>
+                        {selected
+                          ? <CheckCircle2 size={20} className="text-primary shrink-0" />
+                          : <div className="w-5 h-5 rounded-full border-2 border-border shrink-0" />
+                        }
+                      </button>
+                    );
+                  })}
+                  {sorted.length === 0 && (
+                    <p className="text-center text-sm text-muted-foreground py-4">Nenhum participante ativo</p>
+                  )}
+                </div>
+
+                <div className="bg-muted/50 rounded-2xl p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Pool total</span>
+                    <span className="font-bold">{formatBRL(totalPool)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Taxa plataforma (10%)</span>
+                    <span className="font-bold text-red-500">− {formatBRL(platformFee)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-border pt-2">
+                    <span className="font-bold">Prêmio líquido</span>
+                    <span className="font-bold text-primary">{formatBRL(netPool)}</span>
+                  </div>
+                  {selectedWinners.length > 0 && (
+                    <div className="flex justify-between text-green-500 font-bold">
+                      <span>Cada vencedor recebe</span>
+                      <span>{formatBRL(prizeEach)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setFinalizeDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl h-12 font-bold bg-primary"
+                    disabled={selectedWinners.length === 0 || finalizeMutation.isPending}
+                    onClick={() => finalizeMutation.mutate(selectedWinners)}
+                    data-testid="button-confirm-finalize"
+                  >
+                    {finalizeMutation.isPending
+                      ? <Loader2 className="animate-spin" size={18} />
+                      : <><CheckCircle2 className="mr-1" size={16} /> Distribuir Prêmios</>
+                    }
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
         <DialogContent className="rounded-3xl max-w-[380px] max-h-[90vh] overflow-y-auto">

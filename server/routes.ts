@@ -151,6 +151,34 @@ async function notifyAdminsNewUser(userName: string, userEmail: string, provider
   } catch {}
 }
 
+async function notifyAdminsDeposit(userName: string, amount: number) {
+  try {
+    const adminIds = await storage.getAdminUserIds();
+    for (const adminId of adminIds) {
+      notificationService.notify(adminId, {
+        type: "deposit_confirmed",
+        title: "💰 Depósito confirmado",
+        body: `${userName} depositou R$ ${Number(amount).toFixed(2).replace(".", ",")} via Pix.`,
+        actionUrl: "/admin",
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
+async function notifyAdminsNewChallenge(challengeTitle: string, creatorName: string, entryFee: number) {
+  try {
+    const adminIds = await storage.getAdminUserIds();
+    for (const adminId of adminIds) {
+      notificationService.notify(adminId, {
+        type: "new_challenge",
+        title: "🏆 Novo desafio criado",
+        body: `${creatorName} criou "${challengeTitle}" (entrada: R$ ${Number(entryFee).toFixed(2).replace(".", ",")}).`,
+        actionUrl: "/admin",
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -943,7 +971,12 @@ export async function registerRoutes(
       if (entryFee > 0) {
         await challengeFinanceService.processEntryFee(userId, challenge.id, entryFee, challenge.title);
       }
-      
+
+      try {
+        const creator = await storage.getUser(userId);
+        notifyAdminsNewChallenge(challenge.title, creator?.name || creator?.username || "Usuário", entryFee);
+      } catch {}
+
       res.status(201).json(challenge);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar desafio" });
@@ -2891,9 +2924,20 @@ export async function registerRoutes(
 
       switch (event) {
         case "billing.paid":
-        case "PAYMENT.RECEIVED":
-          result = await webhookService.processPaymentConfirmed(data.id || data.billing?.id, data);
+        case "PAYMENT.RECEIVED": {
+          const externalId = data.id || data.billing?.id;
+          result = await webhookService.processPaymentConfirmed(externalId, data);
+          if (result.success) {
+            try {
+              const tx = await transactionService.getByExternalId(externalId);
+              if (tx) {
+                const depositor = await storage.getUser(tx.userId);
+                notifyAdminsDeposit(depositor?.name || depositor?.username || "Usuário", Number(tx.amount));
+              }
+            } catch {}
+          }
           break;
+        }
         case "withdraw.completed":
         case "withdraw.paid":
           result = await webhookService.processWithdrawCompleted(data.id, data);

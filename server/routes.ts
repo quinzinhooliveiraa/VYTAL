@@ -1227,8 +1227,10 @@ export async function registerRoutes(
 
       await db.execute(sql`UPDATE wallets SET balance = 0, locked_balance = 0`);
       await db.execute(sql`DELETE FROM wallet_transactions`);
+      await db.execute(sql`DELETE FROM transactions`);
+      console.log(`[Admin] Full reset: wallets zeroed, all transactions deleted. ${usersAffected} users, ${totalCleared} cleared.`);
 
-      res.json({ message: "Todos os saldos foram resetados para R$ 0,00", usersAffected, totalCleared });
+      res.json({ message: "Todos os saldos e transações foram resetados", usersAffected, totalCleared });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao resetar saldos" });
     }
@@ -2608,36 +2610,8 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/reset-wallets", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { confirmation } = req.body;
-      if (confirmation !== "RESETAR_SALDOS") {
-        return res.status(400).json({ message: "Confirmação inválida. Envie 'RESETAR_SALDOS' para confirmar." });
-      }
-
-      const { db: database } = await import("./db");
-      const { users: usersTable, transactions } = await import("@shared/schema");
-      const { sql } = await import("drizzle-orm");
-
-      const [userCount] = await database.select({
-        count: sql<number>`COUNT(*)`.as("count"),
-        totalBalance: sql<string>`COALESCE(SUM(balance), 0)`.as("total_balance"),
-      }).from(usersTable).where(sql`balance > 0 OR locked_balance > 0`);
-
-      await database.execute(sql`UPDATE users SET balance = 0, locked_balance = 0`);
-
-      await database.execute(sql`UPDATE transactions SET status = 'reset' WHERE status IN ('pending', 'processing')`);
-
-      console.log(`[Admin] Wallets reset by admin. ${userCount.count} users affected, total balance cleared: ${userCount.totalBalance}`);
-
-      res.json({
-        message: "Todos os saldos foram zerados com sucesso",
-        usersAffected: Number(userCount.count),
-        totalCleared: Number(userCount.totalBalance),
-      });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
+  app.post("/api/admin/reset-wallets-legacy", requireAuth, requireAdmin, async (req, res) => {
+    res.redirect(307, "/api/admin/reset-wallets");
   });
 
   // ====== WEBHOOKS ======

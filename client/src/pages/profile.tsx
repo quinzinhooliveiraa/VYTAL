@@ -1,4 +1,4 @@
-import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2, Share2, ImageIcon } from "lucide-react";
+import { Settings, CheckCircle2, Camera, Trophy, Flame, Medal, Award, Zap, Activity, History, XCircle, Shield, UserPlus, Check, X, Search, Loader2, Share2, ImageIcon, Crown, Star, Users, TrendingUp, Heart, Gem } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -318,16 +318,26 @@ export default function Profile() {
 
         {/* Medalhas */}
         {(() => {
+          const deposits = walletTransactions.filter((t: any) => t.type === "deposit");
           const allMedals = [
+            { name: "Estreante", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30", check: () => myChallenges.length >= 1, desc: "Entrou no primeiro desafio" },
             { name: "Invicto", icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", check: () => {
               const active = activeChallenges.filter((c: any) => c.myParticipation?.isActive !== false);
               return active.length > 0;
             }, desc: "Participando de desafios sem desistir" },
+            { name: "Investidor", icon: TrendingUp, color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/30", check: () => deposits.length >= 1, desc: "Fez o primeiro depósito" },
+            { name: "Primeiro Prêmio", icon: Star, color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/30", check: () => totalEarned > 0, desc: "Ganhou o primeiro prêmio" },
+            { name: "Dedicado", icon: Heart, color: "text-pink-500", bg: "bg-pink-500/10", border: "border-pink-500/30", check: () => activeChallenges.length >= 3, desc: "3+ desafios ativos ao mesmo tempo" },
             { name: "Maratona", icon: Medal, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", check: () => completedChallenges.length >= 5, desc: "Completou 5+ desafios" },
+            { name: "Influente", icon: Users, color: "text-cyan-500", bg: "bg-cyan-500/10", border: "border-cyan-500/30", check: () => (followersData?.length || 0) >= 10, desc: "10+ seguidores" },
             { name: "Top 1%", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30", check: () => totalEarned >= 500, desc: "Ganhou R$ 500+ em prêmios" },
-            { name: "Ouro", icon: Award, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/30", check: () => totalEarned >= 1000, desc: "Ganhou R$ 1.000+ em prêmios" },
             { name: "Veterano", icon: Zap, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/30", check: () => myChallenges.length >= 10, desc: "Participou de 10+ desafios" },
-            { name: "Estreante", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30", check: () => myChallenges.length >= 1, desc: "Completou o primeiro desafio" },
+            { name: "Ouro", icon: Award, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/30", check: () => totalEarned >= 1000, desc: "Ganhou R$ 1.000+ em prêmios" },
+            { name: "Multitarefa", icon: Activity, color: "text-teal-500", bg: "bg-teal-500/10", border: "border-teal-500/30", check: () => completedChallenges.length >= 20, desc: "Completou 20+ desafios" },
+            { name: "Estrela", icon: Star, color: "text-fuchsia-500", bg: "bg-fuchsia-500/10", border: "border-fuchsia-500/30", check: () => (followersData?.length || 0) >= 50, desc: "50+ seguidores" },
+            { name: "Diamante", icon: Gem, color: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/30", check: () => totalEarned >= 2000, desc: "Ganhou R$ 2.000+ em prêmios" },
+            { name: "Lenda", icon: Crown, color: "text-yellow-600", bg: "bg-yellow-600/10", border: "border-yellow-600/30", check: () => myChallenges.length >= 25, desc: "Participou de 25+ desafios" },
+            { name: "GOAT", icon: Shield, color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/30", check: () => myChallenges.length >= 50, desc: "Participou de 50+ desafios" },
           ];
           const earned = allMedals.filter(m => m.check());
           const locked = allMedals.filter(m => !m.check());

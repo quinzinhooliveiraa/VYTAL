@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, Flame, Medal, UserCheck, Loader2, Swords, DollarSign, Target, Calendar, X, Hourglass, XCircle } from "lucide-react";
+import { ChevronLeft, UserPlus, MessageCircle, Trophy, ShieldCheck, CheckCircle2, Users, Flame, Medal, UserCheck, Loader2, Swords, DollarSign, Target, Calendar, X, Hourglass, XCircle, Crown, Star, TrendingUp, Heart, Gem, Award, Zap, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -309,40 +309,41 @@ export default function PublicProfile() {
               </motion.div>
             )}
 
-            {(stats.challengesWon > 0 || stats.challengesCompleted >= 5 || stats.checkInCount >= 10) && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
-                <h3 className="font-display font-bold flex items-center gap-2">
-                  <Flame size={18} className="text-orange-500" /> Conquistas
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {stats.challengesWon > 0 && (
-                    <div className="flex items-center gap-2 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-xl px-3 py-2 text-xs font-bold">
-                      <Trophy size={14} /> {stats.challengesWon}x Campeão
-                    </div>
-                  )}
-                  {stats.challengesCompleted >= 5 && (
-                    <div className="flex items-center gap-2 bg-blue-500/10 text-blue-500 rounded-xl px-3 py-2 text-xs font-bold">
-                      <Target size={14} /> Veterano
-                    </div>
-                  )}
-                  {stats.checkInCount >= 10 && (
-                    <div className="flex items-center gap-2 bg-primary/10 text-primary rounded-xl px-3 py-2 text-xs font-bold">
-                      <CheckCircle2 size={14} /> Dedicado
-                    </div>
-                  )}
-                  {stats.challengesCompleted >= 10 && (
-                    <div className="flex items-center gap-2 bg-purple-500/10 text-purple-500 rounded-xl px-3 py-2 text-xs font-bold">
-                      <Medal size={14} /> Lenda
-                    </div>
-                  )}
-                  {stats.checkInCount >= 50 && (
-                    <div className="flex items-center gap-2 bg-orange-500/10 text-orange-500 rounded-xl px-3 py-2 text-xs font-bold">
-                      <Flame size={14} /> Imparável
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
+            {(() => {
+              const badges = [
+                { show: stats.challengesWon > 0, icon: Trophy, label: `${stats.challengesWon}x Campeão`, color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10" },
+                { show: stats.challengesCompleted >= 1, icon: CheckCircle2, label: "Estreante", color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                { show: (stats.totalEarned || 0) > 0, icon: Star, label: "Primeiro Prêmio", color: "text-yellow-400", bg: "bg-yellow-400/10" },
+                { show: stats.checkInCount >= 10, icon: Heart, label: "Dedicado", color: "text-pink-500", bg: "bg-pink-500/10" },
+                { show: stats.challengesCompleted >= 5, icon: Medal, label: "Maratona", color: "text-blue-500", bg: "bg-blue-500/10" },
+                { show: (user.followerCount || 0) >= 10, icon: Users, label: "Influente", color: "text-cyan-500", bg: "bg-cyan-500/10" },
+                { show: (stats.totalEarned || 0) >= 500, icon: Trophy, label: "Top 1%", color: "text-yellow-500", bg: "bg-yellow-500/10" },
+                { show: stats.challengesCompleted >= 10, icon: Zap, label: "Veterano", color: "text-purple-500", bg: "bg-purple-500/10" },
+                { show: (stats.totalEarned || 0) >= 1000, icon: Award, label: "Ouro", color: "text-amber-500", bg: "bg-amber-500/10" },
+                { show: stats.checkInCount >= 50, icon: Flame, label: "Imparável", color: "text-orange-500", bg: "bg-orange-500/10" },
+                { show: stats.challengesCompleted >= 20, icon: Activity, label: "Multitarefa", color: "text-teal-500", bg: "bg-teal-500/10" },
+                { show: (user.followerCount || 0) >= 50, icon: Star, label: "Estrela", color: "text-fuchsia-500", bg: "bg-fuchsia-500/10" },
+                { show: (stats.totalEarned || 0) >= 2000, icon: Gem, label: "Diamante", color: "text-indigo-500", bg: "bg-indigo-500/10" },
+                { show: stats.challengesCompleted >= 25, icon: Crown, label: "Lenda", color: "text-yellow-600", bg: "bg-yellow-600/10" },
+                { show: stats.challengesCompleted >= 50, icon: Target, label: "GOAT", color: "text-red-500", bg: "bg-red-500/10" },
+              ].filter(b => b.show);
+
+              if (badges.length === 0) return null;
+              return (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
+                  <h3 className="font-display font-bold flex items-center gap-2">
+                    <Flame size={18} className="text-orange-500" /> Conquistas
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {badges.map((b, i) => (
+                      <div key={i} className={`flex items-center gap-2 ${b.bg} ${b.color} rounded-xl px-3 py-2 text-xs font-bold`}>
+                        <b.icon size={14} /> {b.label}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              );
+            })()}
           </>
         ) : (
           <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">

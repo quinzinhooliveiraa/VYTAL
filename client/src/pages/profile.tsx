@@ -580,18 +580,21 @@ export default function Profile() {
               <p className="text-center text-muted-foreground text-sm py-10">Nenhum seguidor ainda</p>
             ) : (
               <div className="space-y-4">
-                {followersData.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 cursor-pointer hover:opacity-70" onClick={() => { setShowFollowers(false); setLocation(`/user/${f.username}`); }}>
-                    <Avatar className="w-10 h-10 border border-border">
-                      <AvatarImage src={f.avatar} />
-                      <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-bold text-sm">{f.name}</p>
-                      <p className="text-[10px] text-muted-foreground">@{f.username}</p>
+                {followersData.map((f: any, i: number) => {
+                  const u = f.follower || f;
+                  return (
+                    <div key={i} className="flex items-center gap-3 cursor-pointer hover:opacity-70" onClick={() => { setShowFollowers(false); setLocation(`/user/${u.username}`); }}>
+                      <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={u.avatar} />
+                        <AvatarFallback>{(u.name || "?").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{u.name}</p>
+                        <p className="text-[10px] text-muted-foreground">@{u.username}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -610,18 +613,21 @@ export default function Profile() {
               <p className="text-center text-muted-foreground text-sm py-10">Não está seguindo ninguém ainda</p>
             ) : (
               <div className="space-y-4">
-                {followingData.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 cursor-pointer hover:opacity-70" onClick={() => { setShowFollowing(false); setLocation(`/user/${f.username}`); }}>
-                    <Avatar className="w-10 h-10 border border-border">
-                      <AvatarImage src={f.avatar} />
-                      <AvatarFallback>{(f.name || "?").charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-bold text-sm">{f.name}</p>
-                      <p className="text-[10px] text-muted-foreground">@{f.username}</p>
+                {followingData.map((f: any, i: number) => {
+                  const u = f.following || f;
+                  return (
+                    <div key={i} className="flex items-center gap-3 cursor-pointer hover:opacity-70" onClick={() => { setShowFollowing(false); setLocation(`/user/${u.username}`); }}>
+                      <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={u.avatar} />
+                        <AvatarFallback>{(u.name || "?").charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{u.name}</p>
+                        <p className="text-[10px] text-muted-foreground">@{u.username}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

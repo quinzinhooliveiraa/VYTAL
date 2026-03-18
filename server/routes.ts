@@ -1505,6 +1505,7 @@ export async function registerRoutes(
       }).where(eq(checkIns.id, checkInId)).returning();
 
       const [challenge] = await db.select().from(challenges).where(eq(challenges.id, checkIn.challengeId));
+      const currentUser = await storage.getUser(userId);
       const participant = await storage.getParticipant(checkIn.challengeId, userId);
       if (participant) {
         const challengeType = challenge?.type || "checkin";
@@ -1525,8 +1526,8 @@ export async function registerRoutes(
         if (challengeType === "corrida" && vType === "distancia") {
           updates.score = Math.round(newTotalDist * 100);
         } else if (challengeType === "corrida" && vType === "repeticoes") {
-          const totalReps = newScore;
-          updates.score = totalReps;
+          const r = reps ? parseInt(reps) : 0;
+          updates.score = (participant.score || 0) + r;
         } else if (challengeType === "corrida" && vType === "tempo") {
           updates.score = newTotalDuration;
         } else if (challengeType === "ranking" && vType === "distancia") {
@@ -1543,9 +1544,38 @@ export async function registerRoutes(
             eq(challengeParticipants.challengeId, checkIn.challengeId),
             eq(challengeParticipants.userId, userId)
           ));
+
+        // Auto-detect winner for "corrida" mode when goalTarget is reached
+        if (challengeType === "corrida" && challenge?.goalTarget && challenge.isActive && challenge.status === "active") {
+          const finalScore = updates.score as number;
+          const goalTarget = challenge.goalTarget;
+          let reached = false;
+          if (vType === "distancia") {
+            reached = finalScore >= goalTarget * 100;
+          } else if (vType === "tempo") {
+            reached = finalScore >= goalTarget;
+          } else if (vType === "repeticoes") {
+            reached = finalScore >= goalTarget;
+          }
+          if (reached) {
+            await db.update(challenges)
+              .set({ isActive: false })
+              .where(eq(challenges.id, checkIn.challengeId));
+            notificationService.notifyChallengeParticipants(
+              checkIn.challengeId,
+              userId,
+              {
+                type: "challenge_winner",
+                title: "🏆 Meta atingida!",
+                body: `${currentUser?.name || "Alguém"} bateu a meta no desafio "${challenge?.title || ""}" e venceu!`,
+                icon: "trophy",
+                actionUrl: `/challenge/${checkIn.challengeId}`,
+              }
+            ).catch(() => {});
+          }
+        }
       }
 
-      const currentUser = await storage.getUser(userId);
       const userName = currentUser?.name || "Alguém";
       const dLabel = updated.durationMins ? `${updated.durationMins} min` : "";
       const distLabel = updated.distanceKm && parseFloat(updated.distanceKm) > 0 ? ` • ${parseFloat(updated.distanceKm).toFixed(1)}km` : "";

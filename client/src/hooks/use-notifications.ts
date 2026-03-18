@@ -2,6 +2,35 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "./use-auth";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
+function playMoneySound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    const playTone = (freq: number, startTime: number, duration: number, gainPeak: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, startTime + 0.05);
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+
+    const now = ctx.currentTime;
+    playTone(1047, now,        0.18, 0.4);
+    playTone(1319, now + 0.08, 0.18, 0.35);
+    playTone(1568, now + 0.16, 0.22, 0.30);
+    playTone(2093, now + 0.25, 0.32, 0.25);
+
+    setTimeout(() => ctx.close(), 1000);
+  } catch {}
+}
+
 export function useNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -33,6 +62,9 @@ export function useNotifications() {
       try {
         const payload = JSON.parse(e.data);
         if (payload.unreadCount !== undefined) setUnreadCount(payload.unreadCount);
+        if (payload.notification?.type === "deposit_confirmed") {
+          playMoneySound();
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       } catch {}
     });

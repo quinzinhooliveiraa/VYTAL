@@ -538,7 +538,7 @@ export default function Profile() {
 
       {/* Seguidores */}
       {showFollowers && (
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowers(false)}>
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowers(false)}>
           <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[70vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">Seguidores ({followersData?.length || 0})</h3>
@@ -600,7 +600,7 @@ export default function Profile() {
 
       {/* Seguindo */}
       {showFollowing && (
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowing(false)}>
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] flex flex-col justify-end animate-in fade-in" onClick={() => setShowFollowing(false)}>
           <div className="bg-card border border-border rounded-t-3xl p-6 pb-safe h-[70vh] overflow-y-auto w-full max-w-md mx-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">Seguindo ({followingData?.length || 0})</h3>
@@ -630,7 +630,7 @@ export default function Profile() {
 
       {/* Busca de usuários */}
       {showSearch && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col p-6 animate-in fade-in">
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[70] flex flex-col p-6 animate-in fade-in">
           <div className="flex items-center gap-3 mb-6">
             <button onClick={() => setShowSearch(false)} className="text-muted-foreground">
               <X size={24} />

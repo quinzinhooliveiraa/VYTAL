@@ -63,20 +63,42 @@ export class ChallengeFinanceService {
       await walletService.deductLockedBalance(participant.userId, entryFee);
     }
 
-    if (winnerUserIds.length > 0) {
-      const prizePerWinner = prizePool / winnerUserIds.length;
+    const isRankingWithSplit = challenge.type === "ranking" && (challenge as any).splitPrize === true;
+    const splitPercentages = (challenge as any).splitPercentages as Record<string, number> | null;
 
-      for (const winnerId of winnerUserIds) {
-        await walletService.addBalance(winnerId, prizePerWinner);
+    if (winnerUserIds.length > 0) {
+      for (let i = 0; i < winnerUserIds.length; i++) {
+        const winnerId = winnerUserIds[i];
+        let prizeAmount: number;
+        let positionLabel = `${i + 1}° lugar`;
+
+        if (isRankingWithSplit && splitPercentages) {
+          const pct = splitPercentages[String(i + 1)] ?? 0;
+          prizeAmount = prizePool * (pct / 100);
+        } else {
+          prizeAmount = prizePool / winnerUserIds.length;
+        }
+
+        if (prizeAmount <= 0) continue;
+
+        await walletService.addBalance(winnerId, prizeAmount);
 
         await transactionService.create({
           userId: winnerId,
           type: TRANSACTION_TYPES.CHALLENGE_WIN,
-          amount: prizePerWinner,
+          amount: prizeAmount,
           status: TRANSACTION_STATUS.COMPLETED,
-          description: `Prêmio: ${challenge.title}`,
+          description: isRankingWithSplit
+            ? `Prêmio ${positionLabel}: ${challenge.title}`
+            : `Prêmio: ${challenge.title}`,
           challengeId,
-          metadata: { totalPool, platformFee, winnersCount: winnerUserIds.length },
+          metadata: {
+            totalPool,
+            platformFee,
+            winnersCount: winnerUserIds.length,
+            position: i + 1,
+            percentage: isRankingWithSplit && splitPercentages ? (splitPercentages[String(i + 1)] ?? null) : null,
+          },
         });
       }
     }

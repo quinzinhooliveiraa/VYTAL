@@ -48,6 +48,8 @@ export const challenges = pgTable("challenges", {
   isActive: boolean("is_active").default(true),
   status: text("status").default("active"),
   isPrivate: boolean("is_private").default(false),
+  splitPrize: boolean("split_prize").default(false),
+  splitPercentages: jsonb("split_percentages").default({ 1: 50, 2: 30, 3: 20 }),
   communityId: varchar("community_id"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   startDate: timestamp("start_date").defaultNow(),

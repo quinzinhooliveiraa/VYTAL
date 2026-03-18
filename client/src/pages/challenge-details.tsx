@@ -1164,9 +1164,14 @@ export default function ChallengeDetails() {
             <div className="w-16 h-16 mx-auto bg-primary/15 rounded-full flex items-center justify-center mb-2">
               <Trophy className="text-primary" size={32} />
             </div>
-            <DialogTitle className="text-center text-xl font-display">Selecionar Vencedores</DialogTitle>
+            <DialogTitle className="text-center text-xl font-display">
+              {challenge?.type === "ranking" && (challenge as any)?.splitPrize ? "Pódio — Top 3" : "Selecionar Vencedores"}
+            </DialogTitle>
             <DialogDescription className="text-center text-xs">
-              Marque quem ganhou. O prêmio será dividido igualmente entre os selecionados.
+              {challenge?.type === "ranking" && (challenge as any)?.splitPrize
+                ? "Defina o 1°, 2° e 3° lugar. Cada posição recebe um percentual diferente."
+                : "Marque quem ganhou. O prêmio será dividido igualmente entre os selecionados."
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -1175,6 +1180,81 @@ export default function ChallengeDetails() {
             const totalPool = activeParticipants.length * entryFee;
             const platformFee = totalPool * 0.10;
             const netPool = totalPool - platformFee;
+            const isRanking = challenge?.type === "ranking" && (challenge as any)?.splitPrize;
+            const splitPct = (challenge as any)?.splitPercentages || { 1: 50, 2: 30, 3: 20 };
+
+            if (isRanking) {
+              const podiumPositions = [1, 2, 3];
+              const medalColors = ["text-yellow-500", "text-slate-400", "text-amber-700"];
+              const medalLabels = ["🥇 1° Lugar", "🥈 2° Lugar", "🥉 3° Lugar"];
+              const assignedSet = new Set(selectedWinners.filter(Boolean));
+
+              const setPosition = (pos: number, userId: string | null) => {
+                setSelectedWinners(prev => {
+                  const arr = [...prev];
+                  while (arr.length < 3) arr.push("");
+                  if (userId && arr.includes(userId)) {
+                    const existing = arr.indexOf(userId);
+                    arr[existing] = arr[pos - 1] || "";
+                  }
+                  arr[pos - 1] = userId || "";
+                  return arr;
+                });
+              };
+
+              return (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    {podiumPositions.map((pos) => {
+                      const currentUserId = selectedWinners[pos - 1] || "";
+                      const currentP = activeParticipants.find((p: any) => p.userId === currentUserId);
+                      const pct = splitPct[String(pos)] ?? 0;
+                      const prizeForPos = netPool * (pct / 100);
+                      return (
+                        <div key={pos} className="bg-card border border-border rounded-2xl p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`font-bold text-sm ${medalColors[pos - 1]}`}>{medalLabels[pos - 1]}</span>
+                            <span className="ml-auto text-xs font-bold text-primary">{pct}% = {formatBRL(prizeForPos)}</span>
+                          </div>
+                          <select
+                            className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary"
+                            value={currentUserId}
+                            onChange={e => setPosition(pos, e.target.value || null)}
+                            data-testid={`select-position-${pos}`}
+                          >
+                            <option value="">— Selecionar participante —</option>
+                            {sorted.map((p: any) => (
+                              <option key={p.userId} value={p.userId} disabled={assignedSet.has(p.userId) && p.userId !== currentUserId}>
+                                {p.user?.name || "Participante"} ({formatScore(p)} {scoreUnit})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-muted/50 rounded-2xl p-4 space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Pool total</span><span className="font-bold">{formatBRL(totalPool)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Taxa plataforma (10%)</span><span className="font-bold text-red-500">− {formatBRL(platformFee)}</span></div>
+                    <div className="flex justify-between border-t border-border pt-2"><span className="font-bold">Prêmio líquido</span><span className="font-bold text-primary">{formatBRL(netPool)}</span></div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setFinalizeDialogOpen(false)}>Cancelar</Button>
+                    <Button
+                      className="flex-1 rounded-xl h-12 font-bold bg-primary"
+                      disabled={selectedWinners.filter(Boolean).length === 0 || finalizeMutation.isPending}
+                      onClick={() => finalizeMutation.mutate(selectedWinners.filter(Boolean))}
+                      data-testid="button-confirm-finalize"
+                    >
+                      {finalizeMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle2 className="mr-1" size={16} /> Distribuir Prêmios</>}
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
+
             const prizeEach = selectedWinners.length > 0 ? netPool / selectedWinners.length : 0;
             return (
               <div className="space-y-4">
@@ -1184,16 +1264,8 @@ export default function ChallengeDetails() {
                     return (
                       <button
                         key={p.userId}
-                        onClick={() => {
-                          setSelectedWinners(prev =>
-                            prev.includes(p.userId)
-                              ? prev.filter(id => id !== p.userId)
-                              : [...prev, p.userId]
-                          );
-                        }}
-                        className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 transition-all text-left ${
-                          selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"
-                        }`}
+                        onClick={() => setSelectedWinners(prev => prev.includes(p.userId) ? prev.filter(id => id !== p.userId) : [...prev, p.userId])}
+                        className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 transition-all text-left ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"}`}
                         data-testid={`select-winner-${p.userId}`}
                       >
                         <Avatar className="w-10 h-10 border border-border shrink-0">
@@ -1204,53 +1276,29 @@ export default function ChallengeDetails() {
                           <p className="font-bold text-sm">{p.user?.name || "Participante"}</p>
                           <p className="text-xs text-muted-foreground">{formatScore(p)} {scoreUnit}</p>
                         </div>
-                        {selected
-                          ? <CheckCircle2 size={20} className="text-primary shrink-0" />
-                          : <div className="w-5 h-5 rounded-full border-2 border-border shrink-0" />
-                        }
+                        {selected ? <CheckCircle2 size={20} className="text-primary shrink-0" /> : <div className="w-5 h-5 rounded-full border-2 border-border shrink-0" />}
                       </button>
                     );
                   })}
-                  {sorted.length === 0 && (
-                    <p className="text-center text-sm text-muted-foreground py-4">Nenhum participante ativo</p>
-                  )}
+                  {sorted.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">Nenhum participante ativo</p>}
                 </div>
 
                 <div className="bg-muted/50 rounded-2xl p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pool total</span>
-                    <span className="font-bold">{formatBRL(totalPool)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Taxa plataforma (10%)</span>
-                    <span className="font-bold text-red-500">− {formatBRL(platformFee)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border pt-2">
-                    <span className="font-bold">Prêmio líquido</span>
-                    <span className="font-bold text-primary">{formatBRL(netPool)}</span>
-                  </div>
-                  {selectedWinners.length > 0 && (
-                    <div className="flex justify-between text-green-500 font-bold">
-                      <span>Cada vencedor recebe</span>
-                      <span>{formatBRL(prizeEach)}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between"><span className="text-muted-foreground">Pool total</span><span className="font-bold">{formatBRL(totalPool)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Taxa plataforma (10%)</span><span className="font-bold text-red-500">− {formatBRL(platformFee)}</span></div>
+                  <div className="flex justify-between border-t border-border pt-2"><span className="font-bold">Prêmio líquido</span><span className="font-bold text-primary">{formatBRL(netPool)}</span></div>
+                  {selectedWinners.length > 0 && <div className="flex justify-between text-green-500 font-bold"><span>Cada vencedor recebe</span><span>{formatBRL(prizeEach)}</span></div>}
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setFinalizeDialogOpen(false)}>
-                    Cancelar
-                  </Button>
+                  <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setFinalizeDialogOpen(false)}>Cancelar</Button>
                   <Button
                     className="flex-1 rounded-xl h-12 font-bold bg-primary"
                     disabled={selectedWinners.length === 0 || finalizeMutation.isPending}
                     onClick={() => finalizeMutation.mutate(selectedWinners)}
                     data-testid="button-confirm-finalize"
                   >
-                    {finalizeMutation.isPending
-                      ? <Loader2 className="animate-spin" size={18} />
-                      : <><CheckCircle2 className="mr-1" size={16} /> Distribuir Prêmios</>
-                    }
+                    {finalizeMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle2 className="mr-1" size={16} /> Distribuir Prêmios</>}
                   </Button>
                 </div>
               </div>

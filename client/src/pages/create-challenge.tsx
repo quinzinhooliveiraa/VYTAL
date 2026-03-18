@@ -151,6 +151,8 @@ export default function CreateChallenge() {
           image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
           createdBy: "placeholder",
+          splitPrize: scoringSystem === "ranking" ? splitPrize : false,
+          splitPercentages: scoringSystem === "ranking" ? splitPercentages : { 1: 100, 2: 0, 3: 0 },
         }),
       });
       const data = await res.json();

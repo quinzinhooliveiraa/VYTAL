@@ -1179,7 +1179,7 @@ export default function ChallengeDetails() {
       </div>
 
       <Dialog open={finalizeDialogOpen} onOpenChange={setFinalizeDialogOpen}>
-        <DialogContent className="rounded-3xl max-w-[400px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-w-[400px] w-[calc(100vw-32px)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="w-16 h-16 mx-auto bg-primary/15 rounded-full flex items-center justify-center mb-2">
               <Trophy className="text-primary" size={32} />
@@ -1417,7 +1417,7 @@ export default function ChallengeDetails() {
       </Dialog>
 
       <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
-        <DialogContent className="rounded-3xl max-w-[380px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-w-[380px] w-[calc(100vw-32px)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="w-16 h-16 mx-auto bg-orange-500/15 rounded-full flex items-center justify-center mb-2">
               <ShieldAlert className="text-orange-500" size={32} />
@@ -1491,7 +1491,7 @@ export default function ChallengeDetails() {
       </Dialog>
 
       <Dialog open={quitDialogOpen} onOpenChange={setQuitDialogOpen}>
-        <DialogContent className="rounded-3xl max-w-[380px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-w-[380px] w-[calc(100vw-32px)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="w-16 h-16 mx-auto bg-red-500/15 rounded-full flex items-center justify-center mb-2">
               <AlertCircle className="text-red-500" size={32} />
@@ -1540,7 +1540,7 @@ export default function ChallengeDetails() {
       </Dialog>
 
       <Dialog open={shareDialogOpen} onOpenChange={(open) => { setShareDialogOpen(open); if (!open) setLinkCopied(false); }}>
-        <DialogContent className="rounded-3xl max-w-[380px]">
+        <DialogContent className="rounded-3xl max-w-[380px] w-[calc(100vw-32px)]">
           <DialogHeader>
             <div className="w-14 h-14 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-2 border border-primary/20">
               <Share2 className="text-primary" size={24} />
@@ -1551,7 +1551,7 @@ export default function ChallengeDetails() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-4 gap-3 py-2">
+          <div className={`grid gap-3 py-2 ${typeof navigator !== "undefined" && typeof navigator.share === "function" ? "grid-cols-4" : "grid-cols-3"}`}>
             <button
               onClick={() => {
                 const url = `${window.location.origin}/challenge/${id}`;

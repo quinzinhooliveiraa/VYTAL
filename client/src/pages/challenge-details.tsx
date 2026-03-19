@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX, Scale } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX, Scale, ArrowDownLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { DepositDrawer } from "@/components/deposit-drawer";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -43,6 +44,7 @@ export default function ChallengeDetails() {
   const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
   const [tieWith2nd, setTieWith2nd] = useState(false);
   const [tieWith3rd, setTieWith3rd] = useState(false);
+  const [depositDrawerOpen, setDepositDrawerOpen] = useState(false);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -474,6 +476,17 @@ export default function ChallengeDetails() {
                   )}
                   Pedir para Participar
                 </Button>
+                {entryFee > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-2xl font-semibold border-dashed"
+                    onClick={() => setDepositDrawerOpen(true)}
+                    data-testid="button-deposit-from-challenge"
+                  >
+                    <ArrowDownLeft className="mr-2" size={16} />
+                    Depositar via Pix
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -1649,6 +1662,14 @@ export default function ChallengeDetails() {
           </div>
         </DrawerContent>
       </Drawer>
+
+      <DepositDrawer
+        open={depositDrawerOpen}
+        onOpenChange={setDepositDrawerOpen}
+        defaultAmount={entryFee > 0 ? entryFee : undefined}
+        title="Depositar via Pix"
+        description={entryFee > 0 ? `Taxa de entrada: ${formatBRL(entryFee)}. Sem taxas adicionais.` : "Mínimo R$ 30,00. Sem taxas."}
+      />
     </div>
   );
 }

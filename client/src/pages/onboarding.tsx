@@ -728,90 +728,116 @@ const Step4NotifPwa = ({ onNext }: { onNext: () => void }) => {
   );
 };
 
-const Step5Final = ({ onComplete }: { onComplete: () => void }) => (
-  <motion.div {...pageTransition} className="flex flex-col items-center text-center h-full justify-between py-4">
-    <div />
+const Step5Final = ({ onComplete }: { onComplete: () => void }) => {
+  const [, setLocation] = useLocation();
 
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 w-full">
-      <motion.div variants={scaleIn} className="flex items-center justify-center">
-        <motion.div
-          animate={{
-            boxShadow: [
-              "0 0 0 0 rgba(34,197,94,0)",
-              "0 0 0 20px rgba(34,197,94,0.1)",
-              "0 0 0 40px rgba(34,197,94,0)",
-            ],
-          }}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
-          className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20"
-        >
+  const finish = (path: string) => {
+    localStorage.setItem("fitstake-onboarding-done", "true");
+    setLocation(path);
+  };
+
+  return (
+    <motion.div {...pageTransition} className="flex flex-col items-center text-center h-full justify-between py-4">
+      <div />
+
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6 w-full">
+        <motion.div variants={scaleIn} className="flex items-center justify-center">
           <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+            animate={{
+              boxShadow: [
+                "0 0 0 0 rgba(34,197,94,0)",
+                "0 0 0 20px rgba(34,197,94,0.1)",
+                "0 0 0 40px rgba(34,197,94,0)",
+              ],
+            }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
+            className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20"
           >
-            <CheckCircle2 size={40} />
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+            >
+              <CheckCircle2 size={40} />
+            </motion.div>
           </motion.div>
+        </motion.div>
+
+        <motion.div variants={fadeUp} className="space-y-2">
+          <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
+          <p className="text-muted-foreground text-sm px-4">
+            Que tal criar seu primeiro desafio agora?
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="px-2 space-y-3"
+        >
+          <div className="bg-card border border-border rounded-2xl p-4 text-left space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Trophy size={16} className="text-primary" />
+              </div>
+              <p className="text-sm font-bold">Você no comando</p>
+            </div>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              Defina as regras, o valor de entrada e o prêmio. Convide amigos e acompanhe cada check-in como moderador.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: "Convite VYTAL",
+                  text: "Entre no VYTAL comigo! Desafios esportivos com dinheiro real.",
+                  url: window.location.origin,
+                }).catch(() => {});
+              }
+            }}
+            className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
+            data-testid="button-share-invite"
+          >
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+              <Users size={20} className="text-purple-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">Convide amigos</p>
+              <p className="text-[11px] text-muted-foreground">Treinar com amigos é 3x mais eficaz</p>
+            </div>
+            <ExternalLink size={14} className="text-muted-foreground shrink-0" />
+          </button>
         </motion.div>
       </motion.div>
 
-      <motion.div variants={fadeUp} className="space-y-2">
-        <h2 className="text-3xl font-display font-bold">Tudo pronto!</h2>
-        <p className="text-muted-foreground text-sm px-4">
-          Sua jornada para a consistência começa agora.
-        </p>
-      </motion.div>
-
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="px-2"
+        transition={{ delay: 0.7 }}
+        className="w-full space-y-3"
       >
-        <button
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: "Convite VYTAL",
-                text: "Entre no VYTAL comigo! Desafios esportivos com dinheiro real.",
-                url: window.location.origin,
-              }).catch(() => {});
-            }
-          }}
-          className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-2xl text-left hover:border-primary/30 transition-all"
-          data-testid="button-share-invite"
+        <Button
+          className="w-full h-14 text-base font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+          onClick={() => finish("/create")}
+          data-testid="button-onboarding-create-challenge"
         >
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-            <Users size={20} className="text-purple-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold">Convide amigos</p>
-            <p className="text-[11px] text-muted-foreground">Treinar com amigos é 3x mais eficaz</p>
-          </div>
-          <ExternalLink size={14} className="text-muted-foreground shrink-0" />
+          <Plus className="mr-2" size={20} />
+          Criar meu 1º Desafio
+        </Button>
+        <button
+          className="w-full h-11 rounded-2xl text-sm text-muted-foreground font-medium hover:text-foreground transition-colors"
+          onClick={() => finish("/dashboard")}
+          data-testid="button-onboarding-skip-create"
+        >
+          Explorar desafios primeiro
         </button>
       </motion.div>
     </motion.div>
-
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.7 }}
-      className="w-full"
-    >
-      <Button
-        className="w-full h-14 text-lg font-bold rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-        onClick={() => {
-          localStorage.setItem("fitstake-onboarding-done", "true");
-          onComplete();
-        }}
-        data-testid="button-onboarding-complete"
-      >
-        Explorar Desafios <ArrowRight className="ml-2" size={18} />
-      </Button>
-    </motion.div>
-  </motion.div>
-);
+  );
+};
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();

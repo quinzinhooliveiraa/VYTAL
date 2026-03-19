@@ -235,6 +235,156 @@ const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
   );
 };
 
+const StepChallengeTypes = ({ onNext }: { onNext: () => void }) => {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  const types = [
+    {
+      icon: Camera,
+      color: "text-purple-500 bg-purple-500/10 border-purple-500/20",
+      activeColor: "border-purple-500 bg-purple-500/10",
+      title: "Check-in Foto",
+      short: "Prove que treinou",
+      detail: "Tire uma foto ao vivo no local do treino. Moderadores da comunidade validam a autenticidade — sem foto de galeria.",
+    },
+    {
+      icon: Activity,
+      color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+      activeColor: "border-blue-500 bg-blue-500/10",
+      title: "Corrida / GPS",
+      short: "Registre sua distância",
+      detail: "O GPS do celular registra o percurso em tempo real. Defina uma distância mínima diária e prove que correu.",
+    },
+    {
+      icon: Trophy,
+      color: "text-yellow-500 bg-yellow-500/10 border-yellow-500/20",
+      activeColor: "border-yellow-500 bg-yellow-500/10",
+      title: "Ranking",
+      short: "Compita por posição",
+      detail: "Cada check-in acumula pontos. Ao fim do desafio, 1º, 2º e 3º lugar dividem o pote conforme o peso definido.",
+    },
+    {
+      icon: Flame,
+      color: "text-red-500 bg-red-500/10 border-red-500/20",
+      activeColor: "border-red-500 bg-red-500/10",
+      title: "Survival",
+      short: "Sem falhas permitidas",
+      detail: "Falhou um único dia? Foi eliminado e perdeu o depósito. O último de pé leva o pote inteiro. Alta adrenalina!",
+    },
+  ];
+
+  return (
+    <motion.div {...pageTransition} className="flex flex-col h-full justify-between">
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 flex-1 overflow-y-auto pb-4">
+        <motion.div variants={fadeUp} className="text-center space-y-1">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto border border-primary/20"
+          >
+            <Trophy size={28} />
+          </motion.div>
+          <h2 className="text-2xl font-display font-bold">Tipos de Desafio</h2>
+          <p className="text-xs text-muted-foreground">Toque para conhecer cada modalidade</p>
+        </motion.div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {types.map((t, i) => {
+            const isOpen = selected === i;
+            return (
+              <motion.button
+                key={i}
+                variants={staggerItem}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setSelected(isOpen ? null : i)}
+                className={`text-left p-3 rounded-2xl border-2 transition-all flex flex-col gap-2 ${isOpen ? t.activeColor : "border-border bg-card hover:border-primary/30"}`}
+                data-testid={`button-challenge-type-${i}`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${t.color}`}>
+                  <t.icon size={18} />
+                </div>
+                <div>
+                  <p className="font-bold text-sm">{t.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{t.short}</p>
+                </div>
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-[11px] text-foreground leading-relaxed overflow-hidden"
+                    >
+                      {t.detail}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="p-3.5 bg-primary/5 border border-primary/15 rounded-2xl space-y-2"
+        >
+          <p className="text-xs font-bold text-primary flex items-center gap-1.5">
+            <Zap size={13} /> Como funciona o pote
+          </p>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] shrink-0">1</span>
+              <span>10 pessoas entram × R$50 = <strong className="text-foreground">R$500 no pote</strong></span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-5 h-5 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 font-bold text-[10px] shrink-0">2</span>
+              <span>3 pessoas desistem → R$150 fica no pote</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-5 h-5 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500 font-bold text-[10px] shrink-0">3</span>
+              <span>7 completam e <strong className="text-foreground">dividem R$450</strong> — cada um sai no lucro!</span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+          className="space-y-1.5"
+        >
+          {[
+            { icon: Plus, text: "Crie desafios para seus grupos ou amigos" },
+            { icon: Users, text: "Públicos (aparecem no Explorar) ou privados" },
+            { icon: CheckCircle2, text: "Prêmio automático via Pix ao finalizar" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-3 p-2.5 bg-card border border-border rounded-xl">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <item.icon size={14} className="text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">{item.text}</p>
+            </div>
+          ))}
+        </motion.div>
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+        <Button
+          className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
+          onClick={onNext}
+          data-testid="button-onboarding-challenge-types"
+        >
+          Entendi, vamos lá! <ArrowRight className="ml-2" size={18} />
+        </Button>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const Step3Personalize = ({ onNext }: { onNext: () => void }) => {
   const [name, setName] = useState(localStorage.getItem("fitstake-user-name") || "");
   const [goals, setGoals] = useState<string[]>([]);
@@ -645,7 +795,7 @@ const Step5Final = ({ onComplete }: { onComplete: () => void }) => (
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 6;
 
   const next = () => {
     if (step < totalSteps) setStep(step + 1);
@@ -695,8 +845,9 @@ export default function Onboarding() {
           {step === 1 && <Step1Terms key="1" onNext={next} />}
           {step === 2 && <Step4NotifPwa key="2" onNext={next} />}
           {step === 3 && <Step2HowItWorks key="3" onNext={next} />}
-          {step === 4 && <Step3Personalize key="4" onNext={next} />}
-          {step === 5 && <Step5Final key="5" onComplete={next} />}
+          {step === 4 && <StepChallengeTypes key="4" onNext={next} />}
+          {step === 5 && <Step3Personalize key="5" onNext={next} />}
+          {step === 6 && <Step5Final key="6" onComplete={next} />}
         </AnimatePresence>
       </div>
     </div>

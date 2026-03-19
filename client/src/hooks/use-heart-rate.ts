@@ -11,11 +11,12 @@ export function useHeartRate() {
   const [deviceName, setDeviceName] = useState<string>("");
 
   const bpmSamplesRef = useRef<number[]>([]);
-  const deviceRef = useRef<BluetoothDevice | null>(null);
-  const charRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const deviceRef = useRef<any>(null);
+  const charRef = useRef<any>(null);
 
   const handleHRMeasurement = useCallback((event: Event) => {
-    const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
+    const char = event.target as any;
+    const value: DataView = char.value;
     if (!value) return;
     const flags = value.getUint8(0);
     const is16bit = flags & 0x1;
@@ -43,7 +44,7 @@ export function useHeartRate() {
         setCurrentBpm(null);
       });
 
-      const server = await device.gatt!.connect();
+      const server = await device.gatt.connect();
       const service = await server.getPrimaryService("heart_rate");
       const characteristic = await service.getCharacteristic("heart_rate_measurement");
       charRef.current = characteristic;

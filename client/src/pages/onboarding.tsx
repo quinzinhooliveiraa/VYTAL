@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Plus,
   Info,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -369,6 +370,26 @@ const StepChallengeTypes = ({ onNext }: { onNext: () => void }) => {
               <p className="text-xs text-muted-foreground">{item.text}</p>
             </div>
           ))}
+
+          <div className="flex items-start gap-3 p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Calendar size={14} className="text-blue-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Dias de folga</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">Ao criar o desafio, você define quais dias da semana são folga — fim de semana, por exemplo. Nesses dias ninguém precisa fazer check-in e ninguém é eliminado.</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-yellow-500/5 border border-yellow-500/15 rounded-xl">
+            <div className="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Scale size={14} className="text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400">Empate no Ranking</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">Se dois participantes empatarem numa posição premiada, o moderador pode declarar o empate — o prêmio das posições é somado e dividido igualmente entre os empatados.</p>
+            </div>
+          </div>
         </motion.div>
       </motion.div>
 

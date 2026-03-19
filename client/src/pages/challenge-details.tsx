@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1539,17 +1540,17 @@ export default function ChallengeDetails() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={shareDialogOpen} onOpenChange={(open) => { setShareDialogOpen(open); if (!open) setLinkCopied(false); }}>
-        <DialogContent className="rounded-3xl max-w-[380px] w-[calc(100vw-32px)]">
-          <DialogHeader>
-            <div className="w-14 h-14 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-2 border border-primary/20">
+      <Drawer open={shareDialogOpen} onOpenChange={(open) => { setShareDialogOpen(open); if (!open) setLinkCopied(false); }}>
+        <DrawerContent className="px-4 pb-8">
+          <DrawerHeader className="text-center pt-2 pb-2">
+            <div className="w-14 h-14 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-3 border border-primary/20">
               <Share2 className="text-primary" size={24} />
             </div>
-            <DialogTitle className="text-center text-xl font-display">Compartilhar Desafio</DialogTitle>
-            <DialogDescription className="text-center text-sm">
+            <DrawerTitle className="text-xl font-display">Compartilhar Desafio</DrawerTitle>
+            <DrawerDescription className="text-sm">
               Convide seus amigos para participar do desafio!
-            </DialogDescription>
-          </DialogHeader>
+            </DrawerDescription>
+          </DrawerHeader>
 
           <div className="flex justify-around py-2">
             <button
@@ -1646,8 +1647,8 @@ export default function ChallengeDetails() {
               Quem abrir o link poderá ver os detalhes e pedir para participar.
             </p>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

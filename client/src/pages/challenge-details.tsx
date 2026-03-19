@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -573,6 +573,15 @@ export default function ChallengeDetails() {
                 )}
                 {challenge.description && (
                   <div className="flex items-start gap-3"><Info size={16} className="text-primary shrink-0 mt-0.5" /> <span>{challenge.description}</span></div>
+                )}
+                {(challenge as any).tiebreaker && (
+                  <div className="flex items-start gap-3 pt-1 border-t border-border/50">
+                    <Scale size={16} className="text-orange-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-orange-400 block">Critério de Desempate</span>
+                      <span className="text-xs">{(challenge as any).tiebreaker}</span>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1185,6 +1194,16 @@ export default function ChallengeDetails() {
               }
             </DialogDescription>
           </DialogHeader>
+
+          {(challenge as any)?.tiebreaker && (
+            <div className="flex items-start gap-2 mx-2 p-3 bg-orange-400/10 border border-orange-400/30 rounded-2xl text-xs">
+              <Scale size={14} className="text-orange-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-orange-400 block text-[10px] uppercase tracking-wide mb-0.5">Critério de Desempate</span>
+                <span className="text-foreground">{(challenge as any).tiebreaker}</span>
+              </div>
+            </div>
+          )}
 
           {(() => {
             const sorted = [...activeParticipants].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));

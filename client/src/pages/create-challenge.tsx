@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2, Plus, Loader2, Wallet, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Info, Dumbbell, Route, Target, Waves, Zap, Timer, Repeat, Ruler, Camera, Users, Flame, ShieldAlert, XCircle, Trophy, Lock, Globe, CheckCircle2, Copy, Share2, Plus, Loader2, Wallet, AlertTriangle, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,6 +68,7 @@ export default function CreateChallenge() {
   const [entryValue, setEntryValue] = useState("50");
   const [splitPrize, setSplitPrize] = useState(true);
   const [splitPercentages, setSplitPercentages] = useState({ 1: 50, 2: 30, 3: 20 });
+  const [tiebreaker, setTiebreaker] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [showTopThreeExplain, setShowTopThreeExplain] = useState(false);
   const [combinationSpec, setCombinationSpec] = useState("");
@@ -93,6 +94,7 @@ export default function CreateChallenge() {
       if (draft.entryValue) setEntryValue(draft.entryValue);
       if (draft.splitPrize !== undefined) setSplitPrize(draft.splitPrize);
       if (draft.splitPercentages) setSplitPercentages(draft.splitPercentages);
+      if (draft.tiebreaker) setTiebreaker(draft.tiebreaker);
       if (draft.combinationSpec) setCombinationSpec(draft.combinationSpec);
       if (draft.maxMissedDays) setMaxMissedDays(draft.maxMissedDays);
       if (draft.skipWeekends !== undefined) setSkipWeekends(draft.skipWeekends);
@@ -109,7 +111,7 @@ export default function CreateChallenge() {
   const getCurrentDraft = () => ({
     modalidade, scoringSystem, validationType,
     challengeName, challengeDesc, startDate, durationDays,
-    numMembers, entryValue, splitPrize, splitPercentages,
+    numMembers, entryValue, splitPrize, splitPercentages, tiebreaker,
     combinationSpec, maxMissedDays, skipWeekends, restDays, restDaysAllowed, bannerUrl, isPublic, step,
   });
 
@@ -153,6 +155,7 @@ export default function CreateChallenge() {
           createdBy: "placeholder",
           splitPrize: scoringSystem === "ranking" ? splitPrize : false,
           splitPercentages: scoringSystem === "ranking" ? splitPercentages : { 1: 100, 2: 0, 3: 0 },
+          tiebreaker: tiebreaker.trim() || "",
         }),
       });
       const data = await res.json();
@@ -904,6 +907,21 @@ export default function CreateChallenge() {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold flex items-center gap-1.5">
+                <Scale size={13} className="text-muted-foreground" /> Critério de Desempate <span className="text-muted-foreground font-normal">(opcional)</span>
+              </label>
+              <Input
+                placeholder='Ex: "Em empate, vence quem fez menos tempo" ou "Mais check-ins válidos"'
+                value={tiebreaker}
+                onChange={e => setTiebreaker(e.target.value)}
+                maxLength={120}
+                className="rounded-xl text-sm"
+                data-testid="input-tiebreaker"
+              />
+              <p className="text-[10px] text-muted-foreground">Visível a todos os participantes. O moderador poderá usar isso como guia na hora de finalizar.</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/15">

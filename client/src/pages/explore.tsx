@@ -76,11 +76,11 @@ export default function Explorar() {
   const myIds = new Set(myChallenges.map((c: any) => c.id));
 
   const pendingChallenges = allChallenges.filter((c: any) =>
-    c.status === "pending" && !myIds.has(c.id)
+    c.status === "pending"
   );
 
   const activeChallenges = allChallenges.filter((c: any) =>
-    c.status === "active" && !myIds.has(c.id)
+    c.status === "active"
   );
 
   const availableChallenges = [...pendingChallenges, ...activeChallenges];
@@ -119,6 +119,7 @@ export default function Explorar() {
 
   const renderChallengeCard = (challenge: any, i: number) => {
     const isPending = challenge.status === "pending";
+    const isParticipating = myIds.has(challenge.id);
     const count = challenge.activeParticipantCount || challenge.participantCount || 0;
     const max = challenge.maxParticipants || "∞";
     const entryFee = Number(challenge.entryFee || 0);
@@ -161,9 +162,14 @@ export default function Explorar() {
                         <Flame size={9} /> Em Alta
                       </Badge>
                     )}
-                    {challenge.matchesGoal && (
+                    {challenge.matchesGoal && !isParticipating && (
                       <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 text-[9px] h-5 py-0 border-none font-bold gap-0.5">
                         <Sparkles size={9} /> Para você
+                      </Badge>
+                    )}
+                    {isParticipating && (
+                      <Badge className="bg-primary/15 text-primary text-[9px] h-5 py-0 border-none font-bold gap-0.5">
+                        <Users size={9} /> Participando
                       </Badge>
                     )}
                   </div>

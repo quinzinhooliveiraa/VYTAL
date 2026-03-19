@@ -180,6 +180,31 @@ async function notifyAdminsNewChallenge(challengeTitle: string, creatorName: str
   } catch {}
 }
 
+async function notifyUsersMatchingChallenge(challengeId: string, challengeTitle: string, sport: string, creatorUserId: string) {
+  try {
+    const subscribedIds = await storage.getAllPushSubscribedUserIds();
+    for (const userId of subscribedIds) {
+      if (userId === creatorUserId) continue;
+      const u = await storage.getUser(userId);
+      if (!u || u.isBanned) continue;
+      const goals = Array.isArray(u.goals) ? (u.goals as string[]) : [];
+      if (goals.length === 0) continue;
+      const matches = goals.some(g =>
+        g.toLowerCase().includes(sport.toLowerCase()) ||
+        sport.toLowerCase().includes(g.toLowerCase())
+      );
+      if (!matches) continue;
+      notificationService.notify(userId, {
+        type: "new_challenge",
+        title: `🏆 Novo desafio de ${sport}`,
+        body: `"${challengeTitle}" acabou de ser criado — veja e solicite sua vaga!`,
+        actionUrl: `/challenge/${challengeId}`,
+        challengeId,
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -976,6 +1001,7 @@ export async function registerRoutes(
       try {
         const creator = await storage.getUser(userId);
         notifyAdminsNewChallenge(challenge.title, creator?.name || creator?.username || "Usuário", entryFee);
+        notifyUsersMatchingChallenge(challenge.id, challenge.title, challenge.sport, userId);
       } catch {}
 
       res.status(201).json(challenge);

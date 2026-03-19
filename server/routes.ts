@@ -1306,12 +1306,19 @@ export async function registerRoutes(
       const hasEnded = challenge.endDate ? new Date(challenge.endDate) < new Date() : !challenge.isActive;
       if (!hasEnded) return res.status(400).json({ message: "O desafio ainda está em andamento." });
       
-      const { winnerUserIds } = req.body;
-      if (!Array.isArray(winnerUserIds) || winnerUserIds.length === 0) {
+      const { winnerUserIds, winnerGroups } = req.body;
+      const hasWinners = Array.isArray(winnerGroups)
+        ? winnerGroups.some((g: string[]) => Array.isArray(g) && g.length > 0)
+        : Array.isArray(winnerUserIds) && winnerUserIds.length > 0;
+      if (!hasWinners) {
         return res.status(400).json({ message: "Informe os vencedores" });
       }
       
-      const result = await challengeFinanceService.finalizeChallenge(challengeId, winnerUserIds);
+      const result = await challengeFinanceService.finalizeChallenge(
+        challengeId,
+        Array.isArray(winnerUserIds) ? winnerUserIds : [],
+        Array.isArray(winnerGroups) ? winnerGroups : undefined
+      );
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao finalizar desafio" });

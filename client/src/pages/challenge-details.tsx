@@ -40,6 +40,8 @@ export default function ChallengeDetails() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
   const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
+  const [tieWith2nd, setTieWith2nd] = useState(false);
+  const [tieWith3rd, setTieWith3rd] = useState(false);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -122,10 +124,13 @@ export default function ChallengeDetails() {
   });
 
   const finalizeMutation = useMutation({
-    mutationFn: (winnerUserIds: string[]) => apiRequest("POST", `/api/challenges/${id}/finalize`, { winnerUserIds }),
+    mutationFn: (payload: { winnerUserIds?: string[], winnerGroups?: string[][] }) =>
+      apiRequest("POST", `/api/challenges/${id}/finalize`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
       setFinalizeDialogOpen(false);
+      setTieWith2nd(false);
+      setTieWith3rd(false);
       toast({ title: "Desafio finalizado!", description: "Os prêmios foram distribuídos." });
     },
     onError: (e: any) => toast({ title: "Erro ao finalizar", description: e.message, variant: "destructive" }),
@@ -1190,7 +1195,6 @@ export default function ChallengeDetails() {
             const splitPct = (challenge as any)?.splitPercentages || { 1: 50, 2: 30, 3: 20 };
 
             if (isRanking) {
-              const podiumPositions = [1, 2, 3];
               const medalColors = ["text-yellow-500", "text-slate-400", "text-amber-700"];
               const medalLabels = ["🥇 1° Lugar", "🥈 2° Lugar", "🥉 3° Lugar"];
               const assignedSet = new Set(selectedWinners.filter(Boolean));
@@ -1208,37 +1212,117 @@ export default function ChallengeDetails() {
                 });
               };
 
+              // Build groups respecting ties for prize preview
+              const pos1 = selectedWinners[0] || "";
+              const pos2 = selectedWinners[1] || "";
+              const pos3 = selectedWinners[2] || "";
+
+              type PrizeGroup = { userIds: string[]; combinedPct: number; prizeEach: number; positions: string };
+              const buildGroups = (): PrizeGroup[] => {
+                const groups: PrizeGroup[] = [];
+                if (tieWith2nd && tieWith3rd) {
+                  const ids = [pos1, pos2, pos3].filter(Boolean);
+                  const pct = (splitPct["1"] ?? 50) + (splitPct["2"] ?? 30) + (splitPct["3"] ?? 20);
+                  groups.push({ userIds: ids, combinedPct: pct, prizeEach: ids.length ? (netPool * pct / 100) / ids.length : 0, positions: "1°-3° (empate)" });
+                } else if (tieWith2nd) {
+                  const ids12 = [pos1, pos2].filter(Boolean);
+                  const pct12 = (splitPct["1"] ?? 50) + (splitPct["2"] ?? 30);
+                  groups.push({ userIds: ids12, combinedPct: pct12, prizeEach: ids12.length ? (netPool * pct12 / 100) / ids12.length : 0, positions: "1°-2° (empate)" });
+                  if (pos3) { const pct3 = splitPct["3"] ?? 20; groups.push({ userIds: [pos3], combinedPct: pct3, prizeEach: netPool * pct3 / 100, positions: "3°" }); }
+                } else if (tieWith3rd) {
+                  if (pos1) { const pct1 = splitPct["1"] ?? 50; groups.push({ userIds: [pos1], combinedPct: pct1, prizeEach: netPool * pct1 / 100, positions: "1°" }); }
+                  const ids23 = [pos2, pos3].filter(Boolean);
+                  const pct23 = (splitPct["2"] ?? 30) + (splitPct["3"] ?? 20);
+                  groups.push({ userIds: ids23, combinedPct: pct23, prizeEach: ids23.length ? (netPool * pct23 / 100) / ids23.length : 0, positions: "2°-3° (empate)" });
+                } else {
+                  if (pos1) { const p = splitPct["1"] ?? 50; groups.push({ userIds: [pos1], combinedPct: p, prizeEach: netPool * p / 100, positions: "1°" }); }
+                  if (pos2) { const p = splitPct["2"] ?? 30; groups.push({ userIds: [pos2], combinedPct: p, prizeEach: netPool * p / 100, positions: "2°" }); }
+                  if (pos3) { const p = splitPct["3"] ?? 20; groups.push({ userIds: [pos3], combinedPct: p, prizeEach: netPool * p / 100, positions: "3°" }); }
+                }
+                return groups;
+              };
+              const prizeGroups = buildGroups();
+              const prizeMap: Record<string, number> = {};
+              prizeGroups.forEach(g => g.userIds.forEach(id => { prizeMap[id] = g.prizeEach; }));
+
+              const buildWinnerGroups = (): string[][] => {
+                if (tieWith2nd && tieWith3rd) return [[pos1, pos2, pos3].filter(Boolean)];
+                if (tieWith2nd) return [[pos1, pos2].filter(Boolean), ...(pos3 ? [[pos3]] : [])];
+                if (tieWith3rd) return [...(pos1 ? [[pos1]] : []), [pos2, pos3].filter(Boolean)];
+                return [[pos1].filter(Boolean), [pos2].filter(Boolean), [pos3].filter(Boolean)].filter(g => g.length > 0);
+              };
+
+              const canSubmit = selectedWinners.filter(Boolean).length > 0 && !finalizeMutation.isPending;
+
               return (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    {podiumPositions.map((pos) => {
+                    {[1, 2, 3].map((pos) => {
                       const currentUserId = selectedWinners[pos - 1] || "";
-                      const currentP = activeParticipants.find((p: any) => p.userId === currentUserId);
-                      const pct = splitPct[String(pos)] ?? 0;
-                      const prizeForPos = netPool * (pct / 100);
+                      const isTiedWithPrev = (pos === 2 && tieWith2nd) || (pos === 3 && tieWith3rd);
+                      const isTiedWithNext = (pos === 1 && tieWith2nd) || (pos === 2 && tieWith3rd);
+                      const prize = prizeMap[currentUserId];
                       return (
-                        <div key={pos} className="bg-card border border-border rounded-2xl p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`font-bold text-sm ${medalColors[pos - 1]}`}>{medalLabels[pos - 1]}</span>
-                            <span className="ml-auto text-xs font-bold text-primary">{pct}% = {formatBRL(prizeForPos)}</span>
+                        <div key={pos}>
+                          <div className={`bg-card border rounded-2xl p-3 ${isTiedWithPrev || isTiedWithNext ? "border-orange-400" : "border-border"}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`font-bold text-sm ${medalColors[pos - 1]}`}>{medalLabels[pos - 1]}</span>
+                              {currentUserId && prize !== undefined && (
+                                <span className={`ml-auto text-xs font-bold ${isTiedWithPrev || isTiedWithNext ? "text-orange-400" : "text-primary"}`}>
+                                  {(isTiedWithPrev || isTiedWithNext) ? "empate → " : ""}{formatBRL(prize)}
+                                </span>
+                              )}
+                              {(!currentUserId || prize === undefined) && (
+                                <span className="ml-auto text-xs text-muted-foreground">{splitPct[String(pos)] ?? 0}%</span>
+                              )}
+                            </div>
+                            <select
+                              className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary"
+                              value={currentUserId}
+                              onChange={e => setPosition(pos, e.target.value || null)}
+                              data-testid={`select-position-${pos}`}
+                            >
+                              <option value="">— Selecionar participante —</option>
+                              {sorted.map((p: any) => (
+                                <option key={p.userId} value={p.userId} disabled={assignedSet.has(p.userId) && p.userId !== currentUserId}>
+                                  {p.user?.name || "Participante"} ({formatScore(p)} {scoreUnit})
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                          <select
-                            className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary"
-                            value={currentUserId}
-                            onChange={e => setPosition(pos, e.target.value || null)}
-                            data-testid={`select-position-${pos}`}
-                          >
-                            <option value="">— Selecionar participante —</option>
-                            {sorted.map((p: any) => (
-                              <option key={p.userId} value={p.userId} disabled={assignedSet.has(p.userId) && p.userId !== currentUserId}>
-                                {p.user?.name || "Participante"} ({formatScore(p)} {scoreUnit})
-                              </option>
-                            ))}
-                          </select>
+                          {pos === 1 && (
+                            <button
+                              onClick={() => { setTieWith2nd(v => !v); if (!tieWith2nd) setTieWith3rd(false); }}
+                              className={`w-full mt-1 py-1 text-xs rounded-xl border transition-all ${tieWith2nd ? "bg-orange-400/20 border-orange-400 text-orange-400 font-bold" : "border-dashed border-border text-muted-foreground hover:border-orange-400 hover:text-orange-400"}`}
+                              data-testid="toggle-tie-1-2"
+                            >
+                              {tieWith2nd ? "↕ 1° e 2° empatados — desfazer" : "+ 1° e 2° empataram"}
+                            </button>
+                          )}
+                          {pos === 2 && (
+                            <button
+                              onClick={() => setTieWith3rd(v => !v)}
+                              className={`w-full mt-1 py-1 text-xs rounded-xl border transition-all ${tieWith3rd ? "bg-orange-400/20 border-orange-400 text-orange-400 font-bold" : "border-dashed border-border text-muted-foreground hover:border-orange-400 hover:text-orange-400"}`}
+                              data-testid="toggle-tie-2-3"
+                            >
+                              {tieWith3rd ? "↕ 2° e 3° empatados — desfazer" : "+ 2° e 3° empataram"}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
                   </div>
+
+                  {prizeGroups.length > 0 && (
+                    <div className="bg-muted/50 rounded-2xl p-3 space-y-1 text-xs">
+                      {prizeGroups.map((g, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-muted-foreground">{g.positions} ({g.combinedPct}%{g.userIds.length > 1 ? ` ÷ ${g.userIds.length}` : ""})</span>
+                          <span className="font-bold text-primary">{formatBRL(g.prizeEach)} cada</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="bg-muted/50 rounded-2xl p-4 space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Pool total</span><span className="font-bold">{formatBRL(totalPool)}</span></div>
@@ -1250,8 +1334,8 @@ export default function ChallengeDetails() {
                     <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setFinalizeDialogOpen(false)}>Cancelar</Button>
                     <Button
                       className="flex-1 rounded-xl h-12 font-bold bg-primary"
-                      disabled={selectedWinners.filter(Boolean).length === 0 || finalizeMutation.isPending}
-                      onClick={() => finalizeMutation.mutate(selectedWinners.filter(Boolean))}
+                      disabled={!canSubmit}
+                      onClick={() => finalizeMutation.mutate({ winnerGroups: buildWinnerGroups() })}
                       data-testid="button-confirm-finalize"
                     >
                       {finalizeMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle2 className="mr-1" size={16} /> Distribuir Prêmios</>}
@@ -1301,7 +1385,7 @@ export default function ChallengeDetails() {
                   <Button
                     className="flex-1 rounded-xl h-12 font-bold bg-primary"
                     disabled={selectedWinners.length === 0 || finalizeMutation.isPending}
-                    onClick={() => finalizeMutation.mutate(selectedWinners)}
+                    onClick={() => finalizeMutation.mutate({ winnerUserIds: selectedWinners })}
                     data-testid="button-confirm-finalize"
                   >
                     {finalizeMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle2 className="mr-1" size={16} /> Distribuir Prêmios</>}

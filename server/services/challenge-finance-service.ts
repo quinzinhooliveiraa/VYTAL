@@ -44,7 +44,7 @@ export class ChallengeFinanceService {
     });
   }
 
-  async finalizeChallenge(challengeId: string, winnerUserIds: string[]) {
+  async finalizeChallenge(challengeId: string, winnerUserIds: string[], winnerGroups?: string[][]) {
     const [challenge] = await db.select().from(challenges).where(eq(challenges.id, challengeId));
     if (!challenge) throw new Error("Desafio não encontrado");
 
@@ -66,7 +66,37 @@ export class ChallengeFinanceService {
     const isRankingWithSplit = challenge.type === "ranking" && (challenge as any).splitPrize === true;
     const splitPercentages = (challenge as any).splitPercentages as Record<string, number> | null;
 
-    if (winnerUserIds.length > 0) {
+    if (isRankingWithSplit && splitPercentages && winnerGroups && winnerGroups.length > 0) {
+      // Ranking with tie support: each group is a set of participants tied at the same position
+      let positionIndex = 0;
+      for (const group of winnerGroups) {
+        if (!group || group.length === 0) { positionIndex++; continue; }
+        // Combine percentages for all positions consumed by this tied group
+        let combinedPct = 0;
+        for (let k = 0; k < group.length; k++) {
+          combinedPct += splitPercentages[String(positionIndex + k + 1)] ?? 0;
+        }
+        const prizePerPerson = (prizePool * combinedPct / 100) / group.length;
+        const startPos = positionIndex + 1;
+        const endPos = positionIndex + group.length;
+        const posLabel = group.length > 1 ? `${startPos}°-${endPos}° (empate)` : `${startPos}° lugar`;
+
+        for (const winnerId of group) {
+          if (prizePerPerson <= 0) continue;
+          await walletService.addBalance(winnerId, prizePerPerson);
+          await transactionService.create({
+            userId: winnerId,
+            type: TRANSACTION_TYPES.CHALLENGE_WIN,
+            amount: prizePerPerson,
+            status: TRANSACTION_STATUS.COMPLETED,
+            description: `Prêmio ${posLabel}: ${challenge.title}`,
+            challengeId,
+            metadata: { totalPool, platformFee, position: startPos, isTie: group.length > 1, combinedPct, winnersInGroup: group.length },
+          });
+        }
+        positionIndex += group.length;
+      }
+    } else if (winnerUserIds.length > 0) {
       for (let i = 0; i < winnerUserIds.length; i++) {
         const winnerId = winnerUserIds[i];
         let prizeAmount: number;
@@ -82,7 +112,6 @@ export class ChallengeFinanceService {
         if (prizeAmount <= 0) continue;
 
         await walletService.addBalance(winnerId, prizeAmount);
-
         await transactionService.create({
           userId: winnerId,
           type: TRANSACTION_TYPES.CHALLENGE_WIN,
@@ -93,10 +122,7 @@ export class ChallengeFinanceService {
             : `Prêmio: ${challenge.title}`,
           challengeId,
           metadata: {
-            totalPool,
-            platformFee,
-            winnersCount: winnerUserIds.length,
-            position: i + 1,
+            totalPool, platformFee, winnersCount: winnerUserIds.length, position: i + 1,
             percentage: isRankingWithSplit && splitPercentages ? (splitPercentages[String(i + 1)] ?? null) : null,
           },
         });

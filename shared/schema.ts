@@ -93,6 +93,8 @@ export const checkIns = pgTable("check_ins", {
   caloriesBurned: integer("calories_burned"),
   avgPace: text("avg_pace"),
   reps: integer("reps"),
+  avgBpm: integer("avg_bpm"),
+  maxBpm: integer("max_bpm"),
   indoorProofPhotoUrl: text("indoor_proof_photo_url").default(""),
   isIndoor: boolean("is_indoor").default(false),
   approved: boolean("approved").default(false),

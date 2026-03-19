@@ -1544,7 +1544,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const { checkInId } = req.params;
-      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace, indoorProofPhotoUrl, reps } = req.body;
+      const { endPhotoUrl, endBackPhotoUrl, endLatitude, endLongitude, distanceKm, caloriesBurned, avgPace, indoorProofPhotoUrl, reps, avgBpm, maxBpm } = req.body;
 
       const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, checkInId));
       if (!checkIn) return res.status(404).json({ message: "Check-in não encontrado" });
@@ -1588,6 +1588,8 @@ export async function registerRoutes(
         caloriesBurned: caloriesBurned || null,
         avgPace: avgPace || null,
         reps: reps ? parseInt(reps) : null,
+        avgBpm: avgBpm ? parseInt(avgBpm) : null,
+        maxBpm: maxBpm ? parseInt(maxBpm) : null,
         indoorProofPhotoUrl: indoorProofPhotoUrl || "",
         flagged,
         flagReason,

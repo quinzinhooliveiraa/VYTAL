@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ChevronLeft, Camera, MapPin, Timer, Flame, Ruler, RotateCcw, CheckCircle, AlertTriangle, Navigation, Loader2, LogOut, SwitchCamera } from "lucide-react";
+import { ChevronLeft, Camera, MapPin, Timer, Flame, Ruler, RotateCcw, CheckCircle, AlertTriangle, Navigation, Loader2, LogOut, SwitchCamera, Heart, Bluetooth, BluetoothOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useHeartRate } from "@/hooks/use-heart-rate";
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -152,6 +153,7 @@ export default function CheckIn() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [indoorMode, setIndoorMode] = useState(false);
+  const hr = useHeartRate();
   const [manualDistanceKm, setManualDistanceKm] = useState("");
   const [distanceKm, setDistanceKm] = useState(0);
   const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
@@ -499,6 +501,8 @@ export default function CheckIn() {
         caloriesBurned: showCalories ? cal : null,
         avgPace: pace,
         reps: repsCount ? parseInt(repsCount) : null,
+        avgBpm: hr.getAvgBpm() ?? null,
+        maxBpm: hr.maxBpm ?? null,
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
@@ -829,9 +833,52 @@ export default function CheckIn() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-white/40">
-              <MapPin size={12} />
-              <span>{locationName}</span>
+            {hr.status === "connected" && hr.currentBpm && (
+              <div className="w-full max-w-sm bg-red-500/10 border border-red-500/40 rounded-2xl p-4 flex items-center gap-4">
+                <div className="relative flex items-center justify-center w-12 h-12 shrink-0">
+                  <Heart size={28} className="text-red-400 animate-pulse fill-red-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-white" data-testid="text-bpm-current">{hr.currentBpm}</span>
+                    <span className="text-sm text-white/50">bpm</span>
+                  </div>
+                  <p className="text-[10px] text-white/40 uppercase tracking-wide">{hr.deviceName}</p>
+                </div>
+                {hr.maxBpm && (
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-red-300">{hr.maxBpm}</p>
+                    <p className="text-[9px] text-white/40 uppercase">Máx</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 text-xs text-white/40">
+              <div className="flex items-center gap-1.5">
+                <MapPin size={12} />
+                <span>{locationName}</span>
+              </div>
+              {hr.status !== "unsupported" && hr.status !== "connected" && (
+                <button
+                  onClick={hr.connect}
+                  disabled={hr.status === "connecting"}
+                  className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-300 transition-all disabled:opacity-50"
+                  data-testid="button-connect-hr"
+                >
+                  {hr.status === "connecting" ? <Loader2 size={11} className="animate-spin" /> : <Bluetooth size={11} />}
+                  <span>{hr.status === "connecting" ? "Conectando..." : hr.status === "disconnected" ? "Reconectar FC" : "Monitor de FC"}</span>
+                </button>
+              )}
+              {hr.status === "connected" && (
+                <button
+                  onClick={hr.disconnect}
+                  className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-300 text-xs hover:bg-red-500/20 transition-all"
+                  data-testid="button-disconnect-hr"
+                >
+                  <BluetoothOff size={11} /> Desconectar
+                </button>
+              )}
             </div>
           </div>
 
@@ -935,6 +982,21 @@ export default function CheckIn() {
                     </div>
                   </div>
                 </>
+              )}
+              {hr.getAvgBpm() && (
+                <div className="col-span-2 bg-red-500/10 rounded-2xl p-4 border border-red-500/30 flex items-center gap-4">
+                  <Heart size={20} className="text-red-400 fill-red-400 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-lg font-bold" data-testid="text-bpm-avg">{hr.getAvgBpm()} bpm</p>
+                    <p className="text-[10px] text-white/50 uppercase">Freq. Cardíaca Média</p>
+                  </div>
+                  {hr.maxBpm && (
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-red-300">{hr.maxBpm} bpm</p>
+                      <p className="text-[9px] text-white/40 uppercase">Máxima</p>
+                    </div>
+                  )}
+                </div>
               )}
               {showDistanceUI && indoorMode && (
                 <div className="col-span-2 space-y-3">

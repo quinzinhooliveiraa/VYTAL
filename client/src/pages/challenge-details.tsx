@@ -484,7 +484,7 @@ export default function ChallengeDetails() {
                     data-testid="button-deposit-from-challenge"
                   >
                     <ArrowDownLeft className="mr-2" size={16} />
-                    Depositar via Pix
+                    Depositar na Carteira
                   </Button>
                 )}
               </>
@@ -1667,8 +1667,8 @@ export default function ChallengeDetails() {
         open={depositDrawerOpen}
         onOpenChange={setDepositDrawerOpen}
         defaultAmount={entryFee > 0 ? entryFee : undefined}
-        title="Depositar via Pix"
-        description={entryFee > 0 ? `Taxa de entrada: ${formatBRL(entryFee)}. Sem taxas adicionais.` : "Mínimo R$ 30,00. Sem taxas."}
+        title="Depositar na Carteira"
+        description={entryFee > 0 ? `Taxa de entrada: ${formatBRL(entryFee)}. Saldo adicionado ao seu perfil.` : "Mínimo R$ 30,00. Saldo adicionado ao seu perfil."}
       />
     </div>
   );

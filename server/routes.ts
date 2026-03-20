@@ -1282,30 +1282,59 @@ export async function registerRoutes(
 
       const entryFee = Number(challenge.entryFee);
 
+      // Determine if challenge has already started
+      const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : true;
+
       await storage.leaveChallenge(challengeId, userId);
 
       if (entryFee > 0) {
         const idempotencyKey = `challenge_entry_${userId}_${challengeId}`;
         const entryTx = await transactionService.getByIdempotencyKey(idempotencyKey);
-        if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {
-          await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.COMPLETED, { action: "quit", forfeit: true });
-        } else if (!entryTx) {
+
+        if (hasStarted) {
+          // Challenge already started → forfeit (entry stays in pot)
+          if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {
+            await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.COMPLETED, { action: "quit", forfeit: true });
+          } else if (!entryTx) {
+            await transactionService.create({
+              userId,
+              type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
+              amount: entryFee,
+              status: TRANSACTION_STATUS.COMPLETED,
+              idempotencyKey,
+              description: `Desistência: ${challenge.title} (valor perdido)`,
+              challengeId,
+              metadata: { action: "quit", forfeit: true },
+            });
+          }
+        } else {
+          // Challenge not started yet → full refund
+          if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {
+            await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.FAILED, { action: "quit", refunded: true });
+          }
+          // Refund to wallet
+          await walletService.addBalance(userId, entryFee);
           await transactionService.create({
             userId,
-            type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
+            type: TRANSACTION_TYPES.REFUND,
             amount: entryFee,
             status: TRANSACTION_STATUS.COMPLETED,
-            idempotencyKey,
-            description: `Desistência: ${challenge.title} (valor perdido)`,
+            description: `Reembolso: saiu de "${challenge.title}" antes do início`,
             challengeId,
-            metadata: { action: "quit", forfeit: true },
+            metadata: { action: "quit_before_start" },
           });
         }
       }
 
+      const hasStartedMsg = hasStarted
+        ? `O valor de entrada de R$ ${entryFee.toFixed(2)} foi perdido (desafio já iniciado).`
+        : entryFee > 0
+          ? `Seu valor de R$ ${entryFee.toFixed(2)} foi reembolsado na sua carteira.`
+          : "";
+
       res.json({
         success: true,
-        message: `Você desistiu do desafio "${challenge.title}". O valor de entrada de R$ ${entryFee.toFixed(2)} foi perdido e permanece no pote do desafio.`,
+        message: `Você saiu do desafio "${challenge.title}". ${hasStartedMsg}`.trim(),
       });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao desistir do desafio" });

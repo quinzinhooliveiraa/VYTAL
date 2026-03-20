@@ -508,8 +508,9 @@ export default function Wallet() {
               <div className="space-y-1">
                 <p className="font-bold text-xl">Saque solicitado!</p>
                 <p className="text-sm text-muted-foreground">
-                  {formatBRL(Number(withdrawAmount))} será enviado para sua chave Pix
+                  <span className="font-bold text-foreground">{formatBRL(Number(withdrawAmount) - 1.60)}</span> será enviado para sua chave Pix
                 </p>
+                <p className="text-xs text-muted-foreground">(Taxa de R$ 1,60 deduzida)</p>
               </div>
               <div className="px-3 py-2 rounded-lg bg-muted text-[11px] text-muted-foreground text-left space-y-1">
                 <p><span className="font-bold">Chave:</span> {pixKey}</p>

@@ -5,6 +5,7 @@ import { registerSchema, loginSchema, insertChallengeSchema, insertMessageSchema
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
+import rateLimit from "express-rate-limit";
 import { walletService } from "./services/wallet-service";
 import { transactionService } from "./services/transaction-service";
 import { paymentService } from "./services/payment-service";
@@ -13,6 +14,30 @@ import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
 import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns, challengeParticipants, challengeMessages } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Muitas tentativas. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const financialLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  message: { message: "Muitas operações financeiras. Tente novamente em 1 hora." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  message: { message: "Muitos uploads. Tente novamente em 10 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 async function reverseGeocode(lat: string | null, lng: string | null): Promise<string> {
   if (!lat || !lng) return "";
@@ -290,7 +315,7 @@ export async function registerRoutes(
     replit: "Replit",
   };
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       const data = registerSchema.parse(req.body);
 
@@ -322,7 +347,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const data = loginSchema.parse(req.body);
       const user = await storage.getUserByEmail(data.email);
@@ -389,7 +414,7 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/auth/forgot-password", async (req, res) => {
+  app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ message: "E-mail é obrigatório" });
@@ -1500,7 +1525,7 @@ export async function registerRoutes(
 
   // ====== CHECK-INS ======
 
-  app.post("/api/upload/challenge-banner", requireAuth, async (req, res) => {
+  app.post("/api/upload/challenge-banner", requireAuth, uploadLimiter, async (req, res) => {
     try {
       const buffer = req.body as Buffer;
       if (!buffer || buffer.length === 0) {
@@ -1519,7 +1544,7 @@ export async function registerRoutes(
   const checkinUploadDir = path.join(process.cwd(), "server/uploads/checkins");
   if (!fs.existsSync(checkinUploadDir)) fs.mkdirSync(checkinUploadDir, { recursive: true });
 
-  app.post("/api/upload/checkin-photo", requireAuth, async (req, res) => {
+  app.post("/api/upload/checkin-photo", requireAuth, uploadLimiter, async (req, res) => {
     try {
       const buffer = req.body as Buffer;
       if (!buffer || buffer.length === 0) {
@@ -2003,7 +2028,7 @@ export async function registerRoutes(
 
   app.use("/uploads", (await import("express")).default.static(path.join(process.cwd(), "server/uploads")));
 
-  app.post("/api/upload/audio", requireAuth, async (req, res) => {
+  app.post("/api/upload/audio", requireAuth, uploadLimiter, async (req, res) => {
     try {
       const buffer = req.body as Buffer;
       if (!buffer || buffer.length === 0) {
@@ -2312,7 +2337,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/wallet/deposit", requireAuth, async (req, res) => {
+  app.post("/api/wallet/deposit", requireAuth, financialLimiter, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
       const { amount } = req.body;
@@ -2387,7 +2412,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
+  app.post("/api/wallet/withdraw", requireAuth, financialLimiter, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
       const { amount, pixKey, pixKeyType } = req.body;

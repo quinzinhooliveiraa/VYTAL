@@ -180,6 +180,20 @@ async function notifyAdminsNewChallenge(challengeTitle: string, creatorName: str
   } catch {}
 }
 
+async function notifyAdminsNewSupportTicket(userName: string, ticketType: string, message: string) {
+  try {
+    const adminIds = await storage.getAdminUserIds();
+    for (const adminId of adminIds) {
+      notificationService.notify(adminId, {
+        type: "new_support_ticket",
+        title: "📩 Novo chamado recebido",
+        body: `${userName} enviou um chamado (${ticketType}): "${message.slice(0, 80)}${message.length > 80 ? "…" : ""}"`,
+        actionUrl: "/admin",
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
 async function notifyUsersMatchingChallenge(challengeId: string, challengeTitle: string, sport: string, creatorUserId: string) {
   try {
     const subscribedIds = await storage.getAllPushSubscribedUserIds();
@@ -2469,6 +2483,8 @@ export async function registerRoutes(
           if (gatewayStatus === "COMPLETED" || gatewayStatus === "PAID") {
             await webhookService.processPaymentConfirmed(tx.externalId);
             const updated = await transactionService.getTransaction(tx.id);
+            const depositor = await storage.getUser(tx.userId);
+            notifyAdminsDeposit(depositor?.name || depositor?.username || "Usuário", Number(tx.amount)).catch(() => {});
             return res.json(updated);
           }
         } catch (err: any) {
@@ -2497,6 +2513,14 @@ export async function registerRoutes(
       }
 
       const ticket = await storage.createSupportTicket({ userId, type, message: message.trim() });
+
+      const sender = await storage.getUser(userId);
+      notifyAdminsNewSupportTicket(
+        sender?.name || sender?.username || "Usuário",
+        type,
+        message.trim()
+      ).catch(() => {});
+
       res.status(201).json(ticket);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao enviar" });

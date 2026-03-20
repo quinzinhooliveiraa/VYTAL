@@ -2059,7 +2059,7 @@ export async function registerRoutes(
         type: "new_follower",
         title: "Novo seguidor",
         body: `${currentUser?.name || "Alguém"} começou a te seguir`,
-        actionUrl: `/profile/${currentUser?.username}`,
+        actionUrl: `/user/${currentUser?.username}`,
         fromUserId: userId,
       }).catch(() => {});
 
@@ -2128,7 +2128,7 @@ export async function registerRoutes(
         type: "follow_accepted",
         title: "Pedido aceito!",
         body: `${approver?.name || "Alguém"} aceitou seu pedido de seguir`,
-        actionUrl: `/profile/${approver?.username}`,
+        actionUrl: `/user/${approver?.username}`,
         fromUserId: request.targetId,
       }).catch(() => {});
 

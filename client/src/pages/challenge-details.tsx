@@ -83,7 +83,7 @@ export default function ChallengeDetails() {
       const res = await fetch(`/api/check-ins/${id}/flagged`, { credentials: "include" });
       return res.ok ? res.json() : [];
     },
-    enabled: !!id && !!challenge?.isCreator,
+    enabled: !!id && !!(challenge?.isCreator || challenge?.isCoModerator),
     refetchInterval: 30000,
   });
 
@@ -145,7 +145,7 @@ export default function ChallengeDetails() {
       const res = await fetch(`/api/challenges/${id}/join-requests`, { credentials: "include" });
       return res.ok ? res.json() : [];
     },
-    enabled: !!id && user?.id === challenge?.createdBy,
+    enabled: !!id && !!(user?.id === challenge?.createdBy || challenge?.isCoModerator),
     refetchInterval: 30000,
   });
 
@@ -249,6 +249,24 @@ export default function ChallengeDetails() {
     },
   });
 
+  const addCoModMutation = useMutation({
+    mutationFn: (targetUserId: string) => apiRequest("POST", `/api/challenges/${id}/comoderator/${targetUserId}`),
+    onSuccess: (res: any) => {
+      res.json().then((d: any) => toast({ title: "Co-moderador adicionado", description: d.message }));
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const removeCoModMutation = useMutation({
+    mutationFn: (targetUserId: string) => apiRequest("DELETE", `/api/challenges/${id}/comoderator/${targetUserId}`),
+    onSuccess: () => {
+      toast({ title: "Co-moderador removido" });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
   const editChallengeMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("PATCH", `/api/challenges/${id}`, data);
@@ -333,6 +351,8 @@ export default function ChallengeDetails() {
   const participants = challenge.participants || [];
   const activeParticipants = participants.filter((p: any) => p.isActive);
   const isCreator = user?.id === challenge.createdBy;
+  const isCoModerator = !isCreator && !!challenge.isCoModerator;
+  const canModerate = isCreator || isCoModerator;
   const isParticipant = challenge.isParticipant;
   const entryFee = Number(challenge.entryFee);
   const prizePool = activeParticipants.length * entryFee;
@@ -374,7 +394,7 @@ export default function ChallengeDetails() {
   };
   const sportGradient = sportGradients[challenge.sport?.toLowerCase()] || "from-primary/30 via-primary/10 to-background";
 
-  const tabCount = isCreator ? 4 : isParticipant ? 3 : 2;
+  const tabCount = canModerate ? 4 : isParticipant ? 3 : 2;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background pb-24">
@@ -405,6 +425,7 @@ export default function ChallengeDetails() {
             {isChallengeEnded && <Badge className="bg-red-500 text-white border-none">Finalizado</Badge>}
             {challenge.isPrivate && <Badge className="bg-yellow-600 text-white border-none flex gap-1 items-center px-2 py-0.5"><Lock size={10} /> Privado</Badge>}
             {isCreator && <Badge className="bg-orange-500 text-white border-none flex gap-1 items-center px-2 py-0.5"><ShieldAlert size={10} /> Criador</Badge>}
+            {isCoModerator && <Badge className="bg-blue-500 text-white border-none flex gap-1 items-center px-2 py-0.5"><ShieldAlert size={10} /> Co-mod</Badge>}
           </div>
           <h1 className={`text-3xl font-display font-bold drop-shadow-md ${hasBanner ? 'text-white' : 'text-foreground'}`}>{challenge.title}</h1>
         </div>
@@ -497,8 +518,8 @@ export default function ChallengeDetails() {
             <TabsTrigger value="progresso" className="rounded-lg font-bold">Resumo</TabsTrigger>
             <TabsTrigger value="ranking" className="rounded-lg font-bold">Ranking</TabsTrigger>
             {isParticipant && <TabsTrigger value="chat" className="rounded-lg font-bold">Chat</TabsTrigger>}
-            {isCreator && (
-              <TabsTrigger value="mod" className="rounded-lg font-bold flex gap-1 items-center text-orange-600 dark:text-orange-400">
+            {canModerate && (
+              <TabsTrigger value="mod" className={`rounded-lg font-bold flex gap-1 items-center ${isCreator ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>
                 <ShieldAlert size={14}/>
                 Mod
                 {pendingRequests.length > 0 && (
@@ -749,7 +770,11 @@ export default function ChallengeDetails() {
                     <AvatarFallback>{(p.user?.name || "?").charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-bold text-sm">{p.user?.name || "Usuário"}{p.userId === user?.id ? " (Você)" : ""}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-bold text-sm">{p.user?.name || "Usuário"}{p.userId === user?.id ? " (Você)" : ""}</p>
+                      {p.userId === challenge.createdBy && <span className="text-[9px] bg-orange-500/15 text-orange-500 border border-orange-500/30 px-1.5 py-0.5 rounded-full font-bold">MOD</span>}
+                      {p.isAdmin && p.userId !== challenge.createdBy && <span className="text-[9px] bg-blue-500/15 text-blue-500 border border-blue-500/30 px-1.5 py-0.5 rounded-full font-bold">CO-MOD</span>}
+                    </div>
                     {p.user?.username && p.userId !== user?.id && <p className="text-[10px] text-muted-foreground">@{p.user.username}</p>}
                     {!p.isActive && <Badge variant="destructive" className="text-[8px] h-4 py-0 font-bold uppercase tracking-tighter">Desistiu</Badge>}
                   </div>
@@ -820,7 +845,7 @@ export default function ChallengeDetails() {
             </TabsContent>
           )}
 
-          {isCreator && (
+          {canModerate && (
             <TabsContent value="mod" className="space-y-6 mt-4 animate-in fade-in slide-in-from-bottom-2">
               {pendingRequests.length === 0 && flaggedCheckIns.length === 0 && !isChallengeEnded && (
                 <div className="text-center py-12 text-muted-foreground">
@@ -830,7 +855,7 @@ export default function ChallengeDetails() {
                 </div>
               )}
 
-              {isChallengeEnded && challenge.status !== "completed" && (
+              {isCreator && isChallengeEnded && challenge.status !== "completed" && (
                 <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center space-y-6">
                   <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto text-primary">
                     <Trophy size={40} />
@@ -1002,7 +1027,10 @@ export default function ChallengeDetails() {
                         <AvatarFallback className="text-xs">{(p.user?.name || "?")[0]}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-xs truncate">{p.user?.name || "Participante"}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-xs truncate">{p.user?.name || "Participante"}</p>
+                          {p.isAdmin && p.userId !== challenge.createdBy && <span className="text-[8px] bg-blue-500/15 text-blue-500 border border-blue-500/30 px-1 py-0.5 rounded-full font-bold">CO-MOD</span>}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-muted-foreground">🏆 {p.score || 0} pts</span>
                           <span className="text-[10px] text-red-500">✕ {p.missedDays || 0} faltas</span>
@@ -1030,6 +1058,29 @@ export default function ChallengeDetails() {
                         >
                           <PlusCircle size={13} />
                         </button>
+                        {isCreator && p.userId !== challenge.createdBy && (
+                          p.isAdmin ? (
+                            <button
+                              className="w-7 h-7 rounded-lg border border-blue-500/30 flex items-center justify-center text-blue-500/60 hover:text-blue-500 hover:border-blue-500 transition-colors"
+                              onClick={() => removeCoModMutation.mutate(p.userId)}
+                              disabled={removeCoModMutation.isPending}
+                              title="Remover co-moderador"
+                              data-testid={`btn-remove-comod-${p.userId}`}
+                            >
+                              <ShieldAlert size={13} />
+                            </button>
+                          ) : (
+                            <button
+                              className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-blue-500 hover:border-blue-500/50 transition-colors"
+                              onClick={() => addCoModMutation.mutate(p.userId)}
+                              disabled={addCoModMutation.isPending}
+                              title="Tornar co-moderador"
+                              data-testid={`btn-add-comod-${p.userId}`}
+                            >
+                              <ShieldAlert size={13} />
+                            </button>
+                          )
+                        )}
                         {p.userId !== challenge.createdBy && (
                           <button
                             className="w-7 h-7 rounded-lg border border-red-500/30 flex items-center justify-center text-red-500/60 hover:text-red-500 hover:border-red-500 transition-colors"
@@ -1047,7 +1098,7 @@ export default function ChallengeDetails() {
                 </div>
               )}
 
-              <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+              {isCreator && (<div className="bg-card border border-border rounded-2xl p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-sm flex items-center gap-2"><Pencil size={14} /> Editar Desafio</h4>
                   {!editMode ? (
@@ -1186,7 +1237,7 @@ export default function ChallengeDetails() {
                     {challenge.description && <p className="text-muted-foreground text-xs">{challenge.description}</p>}
                   </div>
                 )}
-              </div>
+              </div>)}
             </TabsContent>
           )}
         </Tabs>

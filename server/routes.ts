@@ -990,7 +990,10 @@ export async function registerRoutes(
       }
     }
 
-    const visibleParticipants = isParticipant || isCreator
+    const myParticipantRecord = userId ? participants.find((p: any) => p.userId === userId) : null;
+    const isCoModerator = !isCreator && !!(myParticipantRecord as any)?.isAdmin;
+
+    const visibleParticipants = isParticipant || isCreator || isCoModerator
       ? participants
       : participants.map((p: any) => {
           if (p.user?.isPrivate) {
@@ -999,7 +1002,7 @@ export async function registerRoutes(
           return p;
         });
     
-    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted, isCreator, checkedInToday });
+    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted, isCreator, isCoModerator, checkedInToday });
   });
 
   app.post("/api/challenges", requireAuth, async (req, res) => {
@@ -1129,7 +1132,10 @@ export async function registerRoutes(
 
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
-      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode ver solicitações" });
+      const [myParticipant] = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
+      const canModerate = challenge.createdBy === userId || !!(myParticipant as any)?.isAdmin;
+      if (!canModerate) return res.status(403).json({ message: "Apenas o moderador pode ver solicitações" });
 
       const { users } = await import("@shared/schema");
       const requests = await db.select({
@@ -1159,7 +1165,9 @@ export async function registerRoutes(
 
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
-      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode aprovar" });
+      const [myPart] = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
+      if (challenge.createdBy !== userId && !(myPart as any)?.isAdmin) return res.status(403).json({ message: "Apenas o moderador pode aprovar" });
 
       const [request] = await db.select().from(challengeJoinRequests).where(eq(challengeJoinRequests.id, requestId));
       if (!request || request.challengeId !== challengeId) return res.status(404).json({ message: "Solicitação não encontrada" });
@@ -1211,7 +1219,9 @@ export async function registerRoutes(
 
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
-      if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode recusar" });
+      const [myPartR] = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)));
+      if (challenge.createdBy !== userId && !(myPartR as any)?.isAdmin) return res.status(403).json({ message: "Apenas o moderador pode recusar" });
 
       const [request] = await db.select().from(challengeJoinRequests).where(eq(challengeJoinRequests.id, requestId));
       if (!request || request.challengeId !== challengeId) return res.status(404).json({ message: "Solicitação não encontrada" });
@@ -1284,6 +1294,60 @@ export async function registerRoutes(
       res.json({ success: true, message: `Moderação transferida para ${newCreator?.name || "novo moderador"}` });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao transferir moderação" });
+    }
+  });
+
+  // ====== CO-MODERATOR ======
+
+  app.post("/api/challenges/:id/comoderator/:userId", requireAuth, async (req, res) => {
+    try {
+      const moderatorId = (req.session as any).userId;
+      const { id: challengeId, userId: targetUserId } = req.params;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== moderatorId) return res.status(403).json({ message: "Apenas o criador pode nomear co-moderadores" });
+      if (targetUserId === moderatorId) return res.status(400).json({ message: "Você já é o moderador principal" });
+
+      const [participant] = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, targetUserId)));
+      if (!participant || !(participant as any).isActive) return res.status(404).json({ message: "Participante não encontrado" });
+
+      await db.update(challengeParticipants)
+        .set({ isAdmin: true } as any)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, targetUserId)));
+
+      const targetUser = await storage.getUser(targetUserId);
+      notificationService.notify(targetUserId, {
+        type: "comoderator_added",
+        title: "Você é co-moderador!",
+        body: `Você foi nomeado co-moderador do desafio "${challenge.title}"`,
+        actionUrl: `/challenge/${challengeId}`,
+        challengeId,
+      }).catch(() => {});
+
+      res.json({ success: true, message: `${targetUser?.name || "Participante"} agora é co-moderador` });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao nomear co-moderador" });
+    }
+  });
+
+  app.delete("/api/challenges/:id/comoderator/:userId", requireAuth, async (req, res) => {
+    try {
+      const moderatorId = (req.session as any).userId;
+      const { id: challengeId, userId: targetUserId } = req.params;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      if (challenge.createdBy !== moderatorId) return res.status(403).json({ message: "Apenas o criador pode remover co-moderadores" });
+
+      await db.update(challengeParticipants)
+        .set({ isAdmin: false } as any)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, targetUserId)));
+
+      res.json({ success: true, message: "Co-moderador removido" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao remover co-moderador" });
     }
   });
 

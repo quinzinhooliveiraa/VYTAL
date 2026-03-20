@@ -34,30 +34,39 @@ export class WalletService {
     const parts = await db.select().from(challengeParticipants).where(
       and(eq(challengeParticipants.userId, userId), eq(challengeParticipants.isActive, true))
     );
-    let realLocked = 0;
+
+    // displayLocked: total committed to active/pending challenges (for UI display)
+    // pendingLocked: only entries not yet COMPLETED (to avoid double-counting with realBalance)
+    let displayLocked = 0;
+    let pendingLocked = 0;
+
     for (const p of parts) {
       const [ch] = await db.select().from(challenges).where(eq(challenges.id, p.challengeId));
       if (ch && (ch.status === "active" || ch.status === "pending") && Number(ch.entryFee || 0) > 0) {
+        displayLocked += Number(ch.entryFee);
+
         const idempotencyKey = `challenge_entry_${userId}_${ch.id}`;
         const [entryTx] = await db.select().from(transactions)
           .where(eq(transactions.idempotencyKey, idempotencyKey));
         if (!entryTx || entryTx.status === "pending") {
-          realLocked += Number(ch.entryFee);
+          pendingLocked += Number(ch.entryFee);
         }
       }
     }
 
     const correctedBalance = Math.max(realBalance, 0);
-    if (correctedBalance !== Number(wallet.balance) || realLocked !== Number(wallet.lockedBalance)) {
+    const availableBalance = Math.max(correctedBalance - pendingLocked, 0);
+
+    if (correctedBalance !== Number(wallet.balance) || displayLocked !== Number(wallet.lockedBalance)) {
       await db.update(wallets)
-        .set({ balance: String(correctedBalance), lockedBalance: String(realLocked), updatedAt: new Date() })
+        .set({ balance: String(correctedBalance), lockedBalance: String(displayLocked), updatedAt: new Date() })
         .where(eq(wallets.userId, userId));
     }
 
     return {
       balance: correctedBalance,
-      lockedBalance: realLocked,
-      availableBalance: correctedBalance - realLocked,
+      lockedBalance: displayLocked,
+      availableBalance,
     };
   }
 

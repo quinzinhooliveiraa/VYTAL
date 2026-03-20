@@ -2588,14 +2588,20 @@ export async function registerRoutes(
       const [activeChallenges] = await database.select({ count: sql<number>`COUNT(*)` }).from(challengesTable).where(eq(challengesTable.isActive, true));
 
       const [challengeEntries] = await database.select({
-        total: sql<string>`COALESCE(SUM(amount), 0)`,
-        count: sql<number>`COUNT(*)`,
+        total: sql<string>`COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0)`,
+        count: sql<number>`COUNT(CASE WHEN status = 'completed' THEN 1 END)`,
+        pendingTotal: sql<string>`COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0)`,
+        pendingCount: sql<number>`COUNT(CASE WHEN status = 'pending' THEN 1 END)`,
       }).from(transactions).where(txWhere("challenge_entry"));
 
       const [challengeWins] = await database.select({
         total: sql<string>`COALESCE(SUM(amount), 0)`,
         count: sql<number>`COUNT(*)`,
-      }).from(transactions).where(txWhere("challenge_win"));
+      }).from(transactions).where(txWhere("challenge_win", eq(transactions.status, "completed")));
+
+      const [refundsResult] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+      }).from(transactions).where(txWhere("refund", eq(transactions.status, "completed")));
 
       const ABACATEPAY_FEE = 0.80;
 
@@ -2605,25 +2611,33 @@ export async function registerRoutes(
       const withdrawalsCount = Number(withdrawAll.count);
       const platformFeesTotal = Number(feeResult.total);
 
+      const completedEntriesTotal = Number(challengeEntries.total);
+      const pendingEntriesTotal = Number(challengeEntries.pendingTotal);
+      const winsTotal = Number(challengeWins.total);
+      const refundsTotal = Number(refundsResult.total);
+
+      // Real balance across all users (calculated from transactions, not wallet table)
+      const realUserBalances = depositsTotal - withdrawalsTotal - completedEntriesTotal + winsTotal + refundsTotal;
+      // Money locked in active challenges (PENDING entries not yet deducted)
+      const lockedInChallenges = pendingEntriesTotal;
+      // Actually available = real balance minus pending (locked) commitments
+      const actuallyAvailable = Math.max(realUserBalances - lockedInChallenges, 0);
+
       const gatewayReceived = depositsTotal - (depositsCount * ABACATEPAY_FEE);
       const gatewaySent = withdrawalsTotal - (withdrawalsCount * ABACATEPAY_FEE);
       const gatewayBalance = gatewayReceived - gatewaySent;
-
-      const allUserBalances = Number(walletResult.totalBalance);
-      const allUserLocked = Number(walletResult.totalLocked);
-      const allUserAvailable = allUserBalances - allUserLocked;
 
       const [usersWithBalance] = await database.select({
         count: sql<number>`COUNT(*)`,
       }).from(wallets).where(sql`(${wallets.balance}::numeric - ${wallets.lockedBalance}::numeric) >= 30`);
       const withdrawableUsersCount = Number(usersWithBalance.count);
 
-      const worstCaseGatewayCost = allUserAvailable > 0
-        ? allUserAvailable - (withdrawableUsersCount * ABACATEPAY_FEE)
+      const worstCaseGatewayCost = actuallyAvailable > 0
+        ? actuallyAvailable - (withdrawableUsersCount * ABACATEPAY_FEE)
         : 0;
 
-      const challengeLockedGatewayCost = allUserLocked > 0
-        ? allUserLocked * 0.90
+      const challengeLockedGatewayCost = lockedInChallenges > 0
+        ? lockedInChallenges * 0.90
         : 0;
 
       const totalObligations = worstCaseGatewayCost + challengeLockedGatewayCost;
@@ -2639,9 +2653,14 @@ export async function registerRoutes(
         depositsCompleted: { total: depositsTotal, count: depositsCount },
         depositsAll: { total: Number(depositAll.total), count: Number(depositAll.count) },
         withdrawals: { total: withdrawalsTotal, count: withdrawalsCount },
-        usersBalance: { total: allUserBalances, locked: allUserLocked, available: allUserAvailable },
-        challengeEntries: { total: Number(challengeEntries.total), count: Number(challengeEntries.count) },
-        challengeWins: { total: Number(challengeWins.total), count: Number(challengeWins.count) },
+        usersBalance: { total: realUserBalances, locked: lockedInChallenges, available: actuallyAvailable },
+        challengeEntries: {
+          total: completedEntriesTotal,
+          count: Number(challengeEntries.count),
+          pendingTotal: pendingEntriesTotal,
+          pendingCount: Number(challengeEntries.pendingCount),
+        },
+        challengeWins: { total: winsTotal, count: Number(challengeWins.count) },
         totalUsers: Number(userCountResult.count),
         totalChallenges: Number(challengeCount.count),
         activeChallenges: Number(activeChallenges.count),
@@ -2649,7 +2668,7 @@ export async function registerRoutes(
         gateway: {
           estimatedBalance: gatewayBalance,
           obligations: {
-            userAvailableBalances: allUserAvailable,
+            userAvailableBalances: actuallyAvailable,
             worstCaseWithdrawCost: worstCaseGatewayCost,
             challengeLockedFunds: challengeLockedGatewayCost,
             total: totalObligations,

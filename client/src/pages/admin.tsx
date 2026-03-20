@@ -527,7 +527,7 @@ export default function Admin() {
             <div className="grid grid-cols-2 gap-3">
               <MiniCard icon={ArrowDownLeft} label="Depósitos" value={formatBRL(stats?.depositsCompleted?.total || 0)} sub={`${stats?.depositsCompleted?.count || 0} confirmados`} color="green" testId="text-deposits" />
               <MiniCard icon={ArrowUpRight} label="Saques" value={formatBRL(stats?.withdrawals?.total || 0)} sub={`${stats?.withdrawals?.count || 0} solicitados`} color="orange" testId="text-withdrawals" />
-              <MiniCard icon={Wallet} label="Saldo em contas" value={formatBRL(stats?.usersBalance?.total || 0)} sub={`${formatBRL(stats?.usersBalance?.locked || 0)} travado / ${formatBRL(stats?.usersBalance?.available || 0)} disponível`} color="blue" testId="text-users-balance" />
+              <MiniCard icon={Wallet} label="Saldo em contas" value={formatBRL(stats?.usersBalance?.available || 0)} sub={`${formatBRL(stats?.usersBalance?.locked || 0)} em desafios · total ${formatBRL(stats?.usersBalance?.total || 0)}`} color="blue" testId="text-users-balance" />
               <MiniCard icon={Trophy} label="Desafios" value={`${stats?.activeChallenges || 0} ativos`} sub={`${stats?.totalChallenges || 0} total`} color="violet" testId="text-challenges" />
             </div>
 
@@ -537,7 +537,10 @@ export default function Admin() {
                 <p className="text-sm font-bold flex items-center gap-2"><Activity size={14} className="text-primary" /> Movimentação geral</p>
               </div>
               <div className="divide-y divide-border">
-                <MovRow label="Entradas em desafios" value={formatBRL(stats?.challengeEntries?.total || 0)} count={stats?.challengeEntries?.count} />
+                <MovRow label="Entradas em desafios (concluídas)" value={formatBRL(stats?.challengeEntries?.total || 0)} count={stats?.challengeEntries?.count} />
+                {(stats?.challengeEntries?.pendingTotal || 0) > 0 && (
+                  <MovRow label="Entradas pendentes (em desafios ativos)" value={formatBRL(stats?.challengeEntries?.pendingTotal || 0)} count={stats?.challengeEntries?.pendingCount} />
+                )}
                 <MovRow label="Prêmios distribuídos" value={formatBRL(stats?.challengeWins?.total || 0)} count={stats?.challengeWins?.count} />
                 <MovRow label="Total depositado" value={formatBRL(stats?.depositsCompleted?.total || 0)} count={stats?.depositsCompleted?.count} />
                 <MovRow label="Total sacado" value={formatBRL(stats?.withdrawals?.total || 0)} count={stats?.withdrawals?.count} />

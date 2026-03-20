@@ -2,7 +2,7 @@ import { walletService } from "./wallet-service";
 import { transactionService } from "./transaction-service";
 import { TRANSACTION_TYPES, TRANSACTION_STATUS, PLATFORM_FEE_PERCENT } from "@shared/schema";
 import { db } from "../db";
-import { challengeParticipants, challenges } from "@shared/schema";
+import { challengeParticipants, challenges, transactions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 export class ChallengeFinanceService {
@@ -11,18 +11,14 @@ export class ChallengeFinanceService {
 
     const existing = await transactionService.getByIdempotencyKey(idempotencyKey);
     if (existing) {
-      if (existing.status === TRANSACTION_STATUS.COMPLETED) {
-        return existing;
-      }
+      return existing;
     }
-
-    await walletService.lockBalance(userId, entryFee);
 
     const tx = await transactionService.create({
       userId,
       type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
       amount: entryFee,
-      status: TRANSACTION_STATUS.COMPLETED,
+      status: TRANSACTION_STATUS.PENDING,
       idempotencyKey,
       description: `Entrada: ${challengeTitle}`,
       challengeId,
@@ -32,7 +28,11 @@ export class ChallengeFinanceService {
   }
 
   async refundEntryFee(userId: string, challengeId: string, entryFee: number, challengeTitle: string) {
-    await walletService.unlockBalance(userId, entryFee);
+    const idempotencyKey = `challenge_entry_${userId}_${challengeId}`;
+    const existing = await transactionService.getByIdempotencyKey(idempotencyKey);
+    if (existing && existing.status === TRANSACTION_STATUS.PENDING) {
+      await transactionService.updateStatus(existing.id, TRANSACTION_STATUS.FAILED);
+    }
 
     await transactionService.create({
       userId,
@@ -59,19 +59,35 @@ export class ChallengeFinanceService {
     const platformFee = totalPool * (PLATFORM_FEE_PERCENT / 100);
     const prizePool = totalPool - platformFee;
 
+    await db.update(challenges)
+      .set({ isActive: false, status: "completed" })
+      .where(eq(challenges.id, challengeId));
+
     for (const participant of participants) {
-      await walletService.deductLockedBalance(participant.userId, entryFee);
+      const idempotencyKey = `challenge_entry_${participant.userId}_${challengeId}`;
+      const entryTx = await transactionService.getByIdempotencyKey(idempotencyKey);
+      if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {
+        await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.COMPLETED);
+      } else if (!entryTx) {
+        await transactionService.create({
+          userId: participant.userId,
+          type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
+          amount: entryFee,
+          status: TRANSACTION_STATUS.COMPLETED,
+          idempotencyKey,
+          description: `Entrada: ${challenge.title}`,
+          challengeId,
+        });
+      }
     }
 
     const isRankingWithSplit = challenge.type === "ranking" && (challenge as any).splitPrize === true;
     const splitPercentages = (challenge as any).splitPercentages as Record<string, number> | null;
 
     if (isRankingWithSplit && splitPercentages && winnerGroups && winnerGroups.length > 0) {
-      // Ranking with tie support: each group is a set of participants tied at the same position
       let positionIndex = 0;
       for (const group of winnerGroups) {
         if (!group || group.length === 0) { positionIndex++; continue; }
-        // Combine percentages for all positions consumed by this tied group
         let combinedPct = 0;
         for (let k = 0; k < group.length; k++) {
           combinedPct += splitPercentages[String(positionIndex + k + 1)] ?? 0;
@@ -140,10 +156,6 @@ export class ChallengeFinanceService {
         metadata: { feePercent: PLATFORM_FEE_PERCENT, totalPool },
       });
     }
-
-    await db.update(challenges)
-      .set({ isActive: false, status: "completed" })
-      .where(eq(challenges.id, challengeId));
 
     return { totalPool, platformFee, prizePool, winnersCount: winnerUserIds.length };
   }

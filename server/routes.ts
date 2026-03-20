@@ -1271,17 +1271,22 @@ export async function registerRoutes(
       await storage.leaveChallenge(challengeId, userId);
 
       if (entryFee > 0) {
-        await walletService.deductLockedBalance(userId, entryFee);
-
-        await transactionService.create({
-          userId,
-          type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
-          amount: entryFee,
-          status: TRANSACTION_STATUS.COMPLETED,
-          description: `Desistência: ${challenge.title} (valor perdido)`,
-          challengeId,
-          metadata: { action: "quit", forfeit: true },
-        });
+        const idempotencyKey = `challenge_entry_${userId}_${challengeId}`;
+        const entryTx = await transactionService.getByIdempotencyKey(idempotencyKey);
+        if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {
+          await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.COMPLETED, { action: "quit", forfeit: true });
+        } else if (!entryTx) {
+          await transactionService.create({
+            userId,
+            type: TRANSACTION_TYPES.CHALLENGE_ENTRY,
+            amount: entryFee,
+            status: TRANSACTION_STATUS.COMPLETED,
+            idempotencyKey,
+            description: `Desistência: ${challenge.title} (valor perdido)`,
+            challengeId,
+            metadata: { action: "quit", forfeit: true },
+          });
+        }
       }
 
       res.json({
@@ -1836,15 +1841,11 @@ export async function registerRoutes(
         .set({ isActive: false })
         .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, participantUserId)));
 
-      // Refund locked balance if the challenge is still active
-      if (challenge.status === "active") {
-        const wallet = await storage.getWallet(participantUserId);
-        if (wallet) {
-          const entryFee = Number(challenge.entryFee);
-          await storage.updateWallet(participantUserId, {
-            lockedBalance: (Number(wallet.lockedBalance) - entryFee).toFixed(2),
-            balance: (Number(wallet.balance) + entryFee).toFixed(2),
-          });
+      if (challenge.status === "active" && Number(challenge.entryFee) > 0) {
+        const idempotencyKey = `challenge_entry_${participantUserId}_${challengeId}`;
+        const entryTx = await transactionService.getByIdempotencyKey(idempotencyKey);
+        if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {
+          await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.FAILED);
         }
       }
       res.json({ success: true, message: "Participante eliminado do desafio" });

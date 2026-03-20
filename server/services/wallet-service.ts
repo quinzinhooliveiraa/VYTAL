@@ -31,12 +31,19 @@ export class WalletService {
 
     const realBalance = Number(result.deposits) - Number(result.withdrawals) - Number(result.challengeEntries) + Number(result.challengeWins) + Number(result.refunds);
 
-    const parts = await db.select().from(challengeParticipants).where(eq(challengeParticipants.userId, userId));
+    const parts = await db.select().from(challengeParticipants).where(
+      and(eq(challengeParticipants.userId, userId), eq(challengeParticipants.isActive, true))
+    );
     let realLocked = 0;
     for (const p of parts) {
       const [ch] = await db.select().from(challenges).where(eq(challenges.id, p.challengeId));
-      if (ch && (ch.status === "active" || ch.status === "pending")) {
-        realLocked += Number(ch.entryFee || 0);
+      if (ch && (ch.status === "active" || ch.status === "pending") && Number(ch.entryFee || 0) > 0) {
+        const idempotencyKey = `challenge_entry_${userId}_${ch.id}`;
+        const [entryTx] = await db.select().from(transactions)
+          .where(eq(transactions.idempotencyKey, idempotencyKey));
+        if (!entryTx || entryTx.status === "pending") {
+          realLocked += Number(ch.entryFee);
+        }
       }
     }
 

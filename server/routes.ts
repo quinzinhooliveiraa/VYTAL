@@ -2629,37 +2629,73 @@ export async function registerRoutes(
 
       const ABACATEPAY_FEE = 0.80;
 
+      // ── Display/trend stats (date-filtered) ──────────────────────────────────
       const depositsTotal = Number(depositCompleted.total);
       const depositsCount = Number(depositCompleted.count);
       const withdrawalsTotal = Number(withdrawAll.total);
       const withdrawalsCount = Number(withdrawAll.count);
       const platformFeesTotal = Number(feeResult.total);
-
       const completedEntriesTotal = Number(challengeEntries.total);
       const pendingEntriesTotal = Number(challengeEntries.pendingTotal);
       const winsTotal = Number(challengeWins.total);
       const refundsTotal = Number(refundsResult.total);
 
-      // Real balance across all users (calculated from transactions, not wallet table)
-      const realUserBalances = depositsTotal - withdrawalsTotal - completedEntriesTotal + winsTotal + refundsTotal;
-      // Money locked in active challenges (PENDING entries not yet deducted)
-      const lockedInChallenges = pendingEntriesTotal;
-      // Actually available = real balance minus pending (locked) commitments
+      // ── Gateway section ALWAYS uses all-time data (date filter would corrupt balance math) ──
+      const [atDeposit] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(and(eq(transactions.type, "deposit"), eq(transactions.status, "completed")));
+
+      const [atWithdraw] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactions).where(and(eq(transactions.type, "withdraw_request"), sql`${transactions.status} != 'failed'`));
+
+      const [atEntries] = await database.select({
+        completedTotal: sql<string>`COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0)`,
+        pendingTotal:   sql<string>`COALESCE(SUM(CASE WHEN status = 'pending'   THEN amount ELSE 0 END), 0)`,
+      }).from(transactions).where(eq(transactions.type, "challenge_entry"));
+
+      const [atWins] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+      }).from(transactions).where(and(eq(transactions.type, "challenge_win"), eq(transactions.status, "completed")));
+
+      const [atRefunds] = await database.select({
+        total: sql<string>`COALESCE(SUM(amount), 0)`,
+      }).from(transactions).where(and(eq(transactions.type, "refund"), eq(transactions.status, "completed")));
+
+      const atDepositsTotal   = Number(atDeposit.total);
+      const atDepositsCount   = Number(atDeposit.count);
+      const atWithdrawTotal   = Number(atWithdraw.total);
+      const atWithdrawCount   = Number(atWithdraw.count);
+      const atCompletedEntries = Number(atEntries.completedTotal);
+      const atPendingEntries   = Number(atEntries.pendingTotal);
+      const atWinsTotal        = Number(atWins.total);
+      const atRefundsTotal     = Number(atRefunds.total);
+
+      // All users' real balance = deposits - withdrawals - completed entries + wins + refunds
+      const realUserBalances = atDepositsTotal - atWithdrawTotal - atCompletedEntries + atWinsTotal + atRefundsTotal;
+      // Locked in active challenges (PENDING entries, not yet subtracted from realBalance)
+      const lockedInChallenges = atPendingEntries;
+      // Available to users right now
       const actuallyAvailable = Math.max(realUserBalances - lockedInChallenges, 0);
 
-      const gatewayReceived = depositsTotal - (depositsCount * ABACATEPAY_FEE);
-      const gatewaySent = withdrawalsTotal - (withdrawalsCount * ABACATEPAY_FEE);
-      const gatewayBalance = gatewayReceived - gatewaySent;
+      // Gateway balance: received (net of deposit fees) minus sent (plus withdrawal fees charged to us)
+      const gatewayReceived = atDepositsTotal - (atDepositsCount * ABACATEPAY_FEE);
+      const gatewaySent     = atWithdrawTotal + (atWithdrawCount  * ABACATEPAY_FEE); // fee is charged ON TOP when paying out
+      const gatewayBalance  = gatewayReceived - gatewaySent;
 
       const [usersWithBalance] = await database.select({
         count: sql<number>`COUNT(*)`,
       }).from(wallets).where(sql`(${wallets.balance}::numeric - ${wallets.lockedBalance}::numeric) >= 30`);
       const withdrawableUsersCount = Number(usersWithBalance.count);
 
+      // Worst case: every eligible user withdraws → gateway pays amount + fee per withdrawal
       const worstCaseGatewayCost = actuallyAvailable > 0
-        ? actuallyAvailable - (withdrawableUsersCount * ABACATEPAY_FEE)
+        ? actuallyAvailable + (withdrawableUsersCount * ABACATEPAY_FEE)
         : 0;
 
+      // 90% of locked challenge funds will become prize payouts (10% is our future fee)
       const challengeLockedGatewayCost = lockedInChallenges > 0
         ? lockedInChallenges * 0.90
         : 0;

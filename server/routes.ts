@@ -1600,6 +1600,30 @@ export async function registerRoutes(
         .set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: today } as any)
         .where(eq(challengeParticipants.id, participant.id));
 
+      // Registrar no feed como tipo "rest_day"
+      await db.insert(checkIns).values({
+        id: randomUUID(),
+        challengeId: req.params.id,
+        userId,
+        status: "rest_day",
+        photoUrl: "",
+        approved: true,
+      } as any);
+
+      // Notificar participantes
+      const restUser = await storage.getUser(userId);
+      notificationService.notifyChallengeParticipants(
+        req.params.id,
+        userId,
+        {
+          type: "checkin_activity",
+          title: `${restUser?.name || "Alguém"} usou um dia de descanso`,
+          body: `${restUser?.name || "Alguém"} registrou um dia de descanso no desafio "${challenge.title}"`,
+          icon: "coffee",
+          actionUrl: `/challenge/${req.params.id}`,
+        }
+      ).catch(() => {});
+
       res.json({ 
         message: "Dia de descanso registrado!", 
         restDaysUsed: restDaysUsed + 1, 

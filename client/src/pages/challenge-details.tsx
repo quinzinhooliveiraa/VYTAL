@@ -700,19 +700,24 @@ export default function ChallengeDetails() {
               </div>
             )}
 
-            {isParticipant && checkInHistory.filter((c: any) => c.status === "completed").length > 0 && (
+            {isParticipant && checkInHistory.filter((c: any) => c.status === "completed" || c.status === "rest_day").length > 0 && (
               <div className="space-y-3">
                 <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
                   <Camera size={14} /> Histórico de Check-ins
                 </h4>
                 <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
-                  {checkInHistory.filter((c: any) => c.status === "completed").slice(0, 30).map((c: any) => {
+                  {checkInHistory.filter((c: any) => c.status === "completed" || c.status === "rest_day").slice(0, 30).map((c: any) => {
                     const pUser = participants.find((p: any) => p.userId === c.userId)?.user;
                     const isMe = c.userId === user?.id;
                     const showCal = cVType === "tempo" || cVType === "distancia" || cVType === "combinacao";
+                    const isRestDay = c.status === "rest_day";
                     return (
-                      <div key={c.id} className={`flex items-center gap-3 p-3 ${isMe ? "bg-primary/5" : ""}`} data-testid={`checkin-history-${c.id}`}>
-                        {c.photoUrl ? (
+                      <div key={c.id} className={`flex items-center gap-3 p-3 ${isMe ? (isRestDay ? "bg-blue-500/5" : "bg-primary/5") : ""}`} data-testid={`checkin-history-${c.id}`}>
+                        {isRestDay ? (
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                            <Coffee size={16} className="text-blue-500" />
+                          </div>
+                        ) : c.photoUrl ? (
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0">
                             <img src={c.photoUrl} alt="" className="w-full h-full object-cover" />
                           </div>
@@ -731,12 +736,22 @@ export default function ChallengeDetails() {
                             </span>
                           </p>
                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            {c.durationMins && <span>{c.durationMins} min</span>}
-                            {c.distanceKm && Number(c.distanceKm) > 0 && <span>• {Number(c.distanceKm).toFixed(2)} km</span>}
-                            {showCal && c.caloriesBurned && <span>• {c.caloriesBurned} kcal</span>}
+                            {isRestDay ? (
+                              <span className="text-blue-500">Dia de descanso</span>
+                            ) : (
+                              <>
+                                {c.durationMins && <span>{c.durationMins} min</span>}
+                                {c.distanceKm && Number(c.distanceKm) > 0 && <span>• {Number(c.distanceKm).toFixed(2)} km</span>}
+                                {showCal && c.caloriesBurned && <span>• {c.caloriesBurned} kcal</span>}
+                              </>
+                            )}
                           </div>
                         </div>
-                        <CheckCircle2 size={16} className="text-primary shrink-0" />
+                        {isRestDay ? (
+                          <Coffee size={16} className="text-blue-500 shrink-0" />
+                        ) : (
+                          <CheckCircle2 size={16} className="text-primary shrink-0" />
+                        )}
                       </div>
                     );
                   })}

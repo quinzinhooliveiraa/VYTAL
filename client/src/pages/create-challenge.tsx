@@ -370,9 +370,9 @@ export default function CreateChallenge() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs">Data de Início</Label>
+                  <Label className="text-xs">Data e Hora de Início</Label>
                   <Input 
-                    type="date"
+                    type="datetime-local"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     className="h-12 rounded-xl px-4" 

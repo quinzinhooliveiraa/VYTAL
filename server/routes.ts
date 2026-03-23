@@ -1097,6 +1097,14 @@ export async function registerRoutes(
       const existing = await storage.getParticipant(challengeId, userId);
       if (existing) return res.status(400).json({ message: "Você já está neste desafio" });
 
+      const entryFeeReq = Number(challenge.entryFee);
+      if (entryFeeReq > 0) {
+        const availableBalanceReq = await walletService.getAvailableBalance(userId);
+        if (availableBalanceReq < entryFeeReq) {
+          return res.status(400).json({ message: `Saldo insuficiente. Você tem R$ ${availableBalanceReq.toFixed(2)} disponível, mas precisa de R$ ${entryFeeReq.toFixed(2)} para entrar neste desafio.` });
+        }
+      }
+
       const [existingRequest] = await db.select().from(challengeJoinRequests)
         .where(and(eq(challengeJoinRequests.challengeId, challengeId), eq(challengeJoinRequests.userId, userId)));
       if (existingRequest) {
@@ -1246,7 +1254,7 @@ export async function registerRoutes(
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
       if (challenge.createdBy !== userId) return res.status(403).json({ message: "Apenas o criador pode editar" });
 
-      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate", "maxParticipants", "skipWeekends", "restDays", "restDaysAllowed"];
+      const allowed: (keyof typeof challenge)[] = ["title", "description", "rules", "isPrivate", "maxParticipants", "skipWeekends", "restDays", "restDaysAllowed", "startDate"];
       const updates: any = {};
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];

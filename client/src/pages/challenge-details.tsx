@@ -36,6 +36,7 @@ export default function ChallengeDetails() {
   const [editSkipWeekends, setEditSkipWeekends] = useState(false);
   const [editRestDays, setEditRestDays] = useState<string[]>([]);
   const [editRestDaysAllowed, setEditRestDaysAllowed] = useState(0);
+  const [editStartDate, setEditStartDate] = useState("");
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedNewMod, setSelectedNewMod] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -299,6 +300,12 @@ export default function ChallengeDetails() {
     },
   });
 
+  const isoToDatetimeLocal = (iso: string | Date | null | undefined) => {
+    if (!iso) return "";
+    const d = new Date(iso as string);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+
   const startEdit = () => {
     if (!challenge) return;
     setEditTitle(challenge.title || "");
@@ -309,6 +316,7 @@ export default function ChallengeDetails() {
     setEditSkipWeekends((challenge as any).skipWeekends || false);
     setEditRestDays((challenge as any).restDays || []);
     setEditRestDaysAllowed((challenge as any).restDaysAllowed || 0);
+    setEditStartDate(isoToDatetimeLocal(challenge.startDate));
     setEditMode(true);
   };
 
@@ -322,6 +330,7 @@ export default function ChallengeDetails() {
       skipWeekends: editSkipWeekends,
       restDays: editRestDays.length > 0 ? editRestDays : undefined,
       restDaysAllowed: editRestDaysAllowed,
+      startDate: editStartDate ? new Date(editStartDate).toISOString() : undefined,
     });
   };
 
@@ -1120,6 +1129,12 @@ export default function ChallengeDetails() {
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-muted-foreground uppercase">Título</label>
                       <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="rounded-xl" data-testid="input-edit-title" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
+                        <Clock size={12} /> Data e Hora de Início
+                      </label>
+                      <Input type="datetime-local" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className="rounded-xl" data-testid="input-edit-start-date" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-muted-foreground uppercase">Descrição</label>

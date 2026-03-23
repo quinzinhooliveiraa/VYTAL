@@ -990,7 +990,7 @@ export async function registerRoutes(
         // Check if there's an actual check-in record or just a rest day
         const [actualCheckIn] = await db.select().from(checkIns)
           .where(and(
-            eq(checkIns.challengeId, challengeId),
+            eq(checkIns.challengeId, req.params.id),
             eq(checkIns.userId, userId),
             sql`DATE(${checkIns.createdAt}) = ${today}::date`
           )).limit(1);

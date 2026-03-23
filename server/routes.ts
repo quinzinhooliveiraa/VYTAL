@@ -1533,21 +1533,19 @@ export async function registerRoutes(
 
           const restDaysUsed = (p as any).restDaysUsed || 0;
           if (restDaysAllowed > 0 && restDaysUsed < restDaysAllowed) {
-            await storage.updateChallengeParticipant(p.id, {
-              restDaysUsed: restDaysUsed + 1,
-              lastCheckInDate: today,
-            } as any);
+            await db.update(challengeParticipants)
+              .set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: today } as any)
+              .where(eq(challengeParticipants.id, p.id));
             continue;
           }
 
           const currentMissed = ((p as any).missedDays || 0) + 1;
-          await storage.updateChallengeParticipant(p.id, {
-            missedDays: currentMissed,
-            lastCheckInDate: today,
-          } as any);
+          const eliminado = currentMissed > maxMissed;
+          await db.update(challengeParticipants)
+            .set({ missedDays: currentMissed, lastCheckInDate: today, ...(eliminado ? { isActive: false } : {}) } as any)
+            .where(eq(challengeParticipants.id, p.id));
 
-          if (currentMissed > maxMissed) {
-            await storage.updateChallengeParticipant(p.id, { isActive: false } as any);
+          if (eliminado) {
             totalEliminated++;
           }
         }
@@ -1580,10 +1578,15 @@ export async function registerRoutes(
       }
 
       const today = new Date().toISOString().slice(0, 10);
-      await storage.updateChallengeParticipant(participant.id, {
-        restDaysUsed: restDaysUsed + 1,
-        lastCheckInDate: today,
-      } as any);
+
+      const alreadyUsedToday = (participant as any).lastCheckInDate === today;
+      if (alreadyUsedToday) {
+        return res.status(400).json({ message: "Você já registrou algo hoje (check-in ou descanso)" });
+      }
+
+      await db.update(challengeParticipants)
+        .set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: today } as any)
+        .where(eq(challengeParticipants.id, participant.id));
 
       res.json({ 
         message: "Dia de descanso registrado!", 

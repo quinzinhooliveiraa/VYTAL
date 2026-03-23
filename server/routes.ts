@@ -983,10 +983,22 @@ export async function registerRoutes(
     // Compute if the current user checked in today (for daily-type challenges)
     const today = new Date().toISOString().slice(0, 10);
     let checkedInToday = false;
+    let usedRestDayToday = false;
     if (userId && isParticipant) {
       const myParticipant = participants.find(p => p.userId === userId);
       if (myParticipant && (myParticipant as any).lastCheckInDate === today) {
-        checkedInToday = true;
+        // Check if there's an actual check-in record or just a rest day
+        const [actualCheckIn] = await db.select().from(checkIns)
+          .where(and(
+            eq(checkIns.challengeId, challengeId),
+            eq(checkIns.userId, userId),
+            sql`DATE(${checkIns.createdAt}) = ${today}::date`
+          )).limit(1);
+        if (actualCheckIn) {
+          checkedInToday = true;
+        } else {
+          usedRestDayToday = true;
+        }
       }
     }
 
@@ -1002,7 +1014,7 @@ export async function registerRoutes(
           return p;
         });
     
-    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted, isCreator, isCoModerator, checkedInToday });
+    res.json({ ...challenge, participants: visibleParticipants, isParticipant, joinRequestStatus, hasStarted, isCreator, isCoModerator, checkedInToday, usedRestDayToday });
   });
 
   app.post("/api/challenges", requireAuth, async (req, res) => {

@@ -560,12 +560,16 @@ export default function ChallengeDetails() {
                       <div className="w-full h-14 rounded-2xl font-bold bg-green-500/15 border-2 border-green-500/30 flex items-center justify-center gap-2 text-green-500 mt-2">
                         <CheckCircle2 size={20} /> Check-in de Hoje Feito!
                       </div>
+                    ) : (challenge as any).usedRestDayToday ? (
+                      <div className="w-full h-14 rounded-2xl font-bold bg-blue-500/15 border-2 border-blue-500/30 flex items-center justify-center gap-2 text-blue-500 mt-2">
+                        <Coffee size={20} /> Dia de Descanso Registrado Hoje
+                      </div>
                     ) : (
                     <Button className="w-full h-14 rounded-2xl font-bold bg-foreground text-background dark:bg-white dark:text-black mt-2 shadow-xl" onClick={() => setLocation(`/check-in/${id}`)} data-testid="button-checkin">
                       <Camera className="mr-2" size={20} /> {cType === "checkin" || cType === "survival" ? "Fazer Check-in Hoje" : "Registrar Treino"}
                     </Button>
                     )}
-                    {((challenge as any).restDaysAllowed || 0) > 0 && (() => {
+                    {((challenge as any).restDaysAllowed || 0) > 0 && !(challenge as any).checkedInToday && !(challenge as any).usedRestDayToday && (() => {
                       const myP = participants?.find((p: any) => p.userId === user?.id);
                       const used = (myP as any)?.restDaysUsed || 0;
                       const allowed = (challenge as any).restDaysAllowed || 0;

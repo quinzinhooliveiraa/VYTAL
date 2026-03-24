@@ -18,3 +18,9 @@ id = "fSO6bZf-EjNnrZ1CsK820"
 uri = "file://VYTAL_Relatorio_Tecnico_INPI.md"
 type = "text"
 title = "VYTAL — Relatório Técnico Descritivo (INPI)"
+
+[[outputs]]
+id = "AC_T2E2CkLDP3qF49o7XJ"
+uri = "file://VYTAL_LandingPage_Especificacao.md"
+type = "text"
+title = "VYTAL — Especificação Completa da Landing Page"

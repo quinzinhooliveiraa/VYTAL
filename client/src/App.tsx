@@ -35,16 +35,31 @@ import ChallengeChat from "@/pages/challenge-chat";
 function Router() {
   const [location] = useLocation();
   
+  const cachedUser = (() => {
+    try { return JSON.parse(localStorage.getItem("vytal-cached-user") || "null"); } catch { return null; }
+  })();
+
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
-      if (res.status === 401) return null;
-      if (!res.ok) return null;
-      return res.json();
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (res.status === 401) {
+          localStorage.removeItem("vytal-cached-user");
+          return null;
+        }
+        if (!res.ok) return null;
+        const data = await res.json();
+        try { localStorage.setItem("vytal-cached-user", JSON.stringify(data)); } catch {}
+        return data;
+      } catch {
+        // Network failure (offline) — return cached user so session persists
+        return cachedUser ?? null;
+      }
     },
     retry: false,
     staleTime: 5 * 60 * 1000,
+    initialData: !navigator.onLine ? cachedUser : undefined,
   });
 
   if (isLoading) {

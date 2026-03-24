@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vytal-v2';
+const CACHE_NAME = 'vytal-v3';
 const STATIC_ASSETS = [
   '/',
   '/favicon.png',
@@ -32,8 +32,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
+  // Never intercept API or upload requests — always go to network
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) return;
 
+  // Navigation (HTML pages): network-first, fallback to cached shell
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -46,11 +48,37 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/').then((r) => r || fetch(event.request)))
+        .catch(() => caches.match('/').then((r) => r || caches.match('/')))
     );
     return;
   }
 
+  // Static assets (JS, CSS, images, fonts): cache-first so app loads offline
+  // after first online visit — new deployments get new hashed filenames,
+  // so stale-while-revalidate is safe here.
+  const isStaticAsset =
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.match(/\.(js|css|woff2?|ttf|otf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/);
+
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Everything else: network-first with cache fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {

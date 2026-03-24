@@ -980,26 +980,23 @@ export async function registerRoutes(
 
     const hasStarted = challenge.startDate ? new Date(challenge.startDate) <= new Date() : false;
 
-    // Compute if the current user checked in today (for daily-type challenges)
+    // Compute if the current user checked in today (for daily-type challenges).
+    // We query the check-ins table directly — never rely on lastCheckInDate alone
+    // because the missed-days auto-processing sets it even for absent users.
     const today = new Date().toISOString().slice(0, 10);
     let checkedInToday = false;
     let usedRestDayToday = false;
     if (userId && isParticipant) {
-      const myParticipant = participants.find(p => p.userId === userId);
-      if (myParticipant && (myParticipant as any).lastCheckInDate === today) {
-        // Check if there's an actual check-in record or just a rest day
-        const [actualCheckIn] = await db.select().from(checkIns)
-          .where(and(
-            eq(checkIns.challengeId, req.params.id),
-            eq(checkIns.userId, userId),
-            sql`DATE(${checkIns.createdAt}) = ${today}::date`
-          )).limit(1);
-        if (actualCheckIn) {
-          checkedInToday = true;
-        } else {
-          usedRestDayToday = true;
-        }
-      }
+      const todayCheckIns = await db.select().from(checkIns)
+        .where(and(
+          eq(checkIns.challengeId, req.params.id),
+          eq(checkIns.userId, userId),
+          sql`DATE(${checkIns.createdAt}) = ${today}::date`
+        ));
+      const completedToday = todayCheckIns.find((ci: any) => ci.status === "completed");
+      const restDayToday = todayCheckIns.find((ci: any) => ci.status === "rest_day");
+      if (completedToday) checkedInToday = true;
+      if (restDayToday) usedRestDayToday = true;
     }
 
     const myParticipantRecord = userId ? participants.find((p: any) => p.userId === userId) : null;
@@ -1700,11 +1697,21 @@ export async function registerRoutes(
         .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.userId, userId), eq(checkIns.status, "active")));
       if (existing.length > 0) return res.status(400).json({ message: "Você já tem um check-in ativo", checkIn: existing[0] });
 
-      // For daily presence types (checkin/survival), block multiple check-ins on same day
+      // For daily presence types (checkin/survival), block multiple completed check-ins on same day.
+      // We check the actual check-ins table instead of lastCheckInDate because the missed-days
+      // auto-processing also sets lastCheckInDate when marking absent users, which would
+      // incorrectly block them from checking in later that day.
       const challengeType = challenge.type || "checkin";
       if (challengeType === "checkin" || challengeType === "survival") {
         const today = new Date().toISOString().slice(0, 10);
-        if ((participant as any).lastCheckInDate === today) {
+        const todayCompletedCheckIns = await db.select().from(checkIns)
+          .where(and(
+            eq(checkIns.challengeId, challengeId),
+            eq(checkIns.userId, userId),
+            eq(checkIns.status, "completed"),
+            sql`DATE(${checkIns.createdAt}) = ${today}::date`
+          )).limit(1);
+        if (todayCompletedCheckIns.length > 0) {
           return res.status(400).json({ message: "Você já fez check-in hoje! Volte amanhã." });
         }
       }

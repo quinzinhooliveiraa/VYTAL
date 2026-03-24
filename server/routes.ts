@@ -1272,6 +1272,11 @@ export async function registerRoutes(
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
 
+      // Drizzle expects a Date object for timestamp columns, not a string
+      if (updates.startDate && typeof updates.startDate === "string") {
+        updates.startDate = new Date(updates.startDate);
+      }
+
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ message: "Nenhum campo para atualizar" });
       }

@@ -2,10 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ChevronLeft, Camera, MapPin, Timer, Flame, Ruler, RotateCcw, CheckCircle, AlertTriangle, Navigation, Loader2, LogOut, SwitchCamera, Heart, Bluetooth, BluetoothOff } from "lucide-react";
+import { ChevronLeft, Camera, MapPin, Timer, Flame, Ruler, RotateCcw, CheckCircle, AlertTriangle, Navigation, Loader2, LogOut, SwitchCamera, Heart, Bluetooth, BluetoothOff, WifiOff, CloudUpload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useHeartRate } from "@/hooks/use-heart-rate";
+import {
+  blobToBase64, base64ToBlob,
+  savePendingStart, getPendingStart, clearPendingStart,
+  savePendingCheckout, getPendingCheckout, clearPendingCheckout,
+  type PendingStart, type PendingCheckout,
+} from "@/lib/offline-queue";
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -157,6 +163,9 @@ export default function CheckIn() {
   const [manualDistanceKm, setManualDistanceKm] = useState("");
   const [distanceKm, setDistanceKm] = useState(0);
   const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlinePending, setOfflinePending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -184,6 +193,97 @@ export default function CheckIn() {
       setPhase("in-progress");
     }
   }, [activeCheckIn]);
+
+  // Track online/offline
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  // Auto-sync when connection restored
+  useEffect(() => {
+    if (!isOnline || syncing) return;
+    const pendingStart = getPendingStart();
+    const pendingCheckout = getPendingCheckout();
+    if (!pendingStart && !pendingCheckout) return;
+
+    const sync = async () => {
+      setSyncing(true);
+      try {
+        let serverCheckInId: string | null = null;
+
+        if (pendingStart && pendingStart.challengeId === id) {
+          const [frontBlob, backBlob] = await Promise.all([
+            base64ToBlob(pendingStart.frontB64),
+            base64ToBlob(pendingStart.backB64),
+          ]);
+          const [photoUrl, backPhotoUrl] = await Promise.all([
+            uploadPhoto(frontBlob),
+            uploadPhoto(backBlob),
+          ]);
+          const res = await apiRequest("POST", "/api/check-ins/start", {
+            challengeId: pendingStart.challengeId,
+            photoUrl,
+            backPhotoUrl,
+            latitude: pendingStart.latitude,
+            longitude: pendingStart.longitude,
+            isIndoor: pendingStart.isIndoor,
+          });
+          const data = await res.json();
+          if (res.ok) {
+            serverCheckInId = data.id;
+            clearPendingStart();
+          } else {
+            throw new Error(data.message || "Erro ao sincronizar check-in");
+          }
+        }
+
+        const co = pendingCheckout && pendingCheckout.challengeId === id ? pendingCheckout : null;
+        if (co) {
+          const realId = serverCheckInId || co.serverCheckInId;
+          const uploads: Promise<string>[] = [
+            base64ToBlob(co.endFrontB64).then(uploadPhoto),
+            base64ToBlob(co.endBackB64).then(uploadPhoto),
+          ];
+          if (co.indoorProofB64) uploads.push(base64ToBlob(co.indoorProofB64).then(uploadPhoto));
+          const [endPhotoUrl, endBackPhotoUrl, indoorProofPhotoUrl] = await Promise.all(uploads);
+          await apiRequest("POST", `/api/check-ins/${realId}/checkout`, {
+            endPhotoUrl,
+            endBackPhotoUrl,
+            indoorProofPhotoUrl: indoorProofPhotoUrl || null,
+            endLatitude: co.endLatitude,
+            endLongitude: co.endLongitude,
+            distanceKm: co.distanceKm,
+            caloriesBurned: co.caloriesBurned,
+            avgPace: co.avgPace,
+            reps: co.reps,
+            avgBpm: co.avgBpm,
+            maxBpm: co.maxBpm,
+          });
+          clearPendingCheckout();
+          setOfflinePending(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/check-ins/active"] });
+          toast({ title: "Dados sincronizados!", description: "Seu check-in foi enviado com sucesso." });
+        } else if (serverCheckInId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/check-ins/active"] });
+          toast({ title: "Check-in sincronizado!", description: "Faça o check-out quando terminar." });
+        }
+      } catch (err: any) {
+        toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
+      } finally {
+        setSyncing(false);
+      }
+    };
+
+    sync();
+  }, [isOnline, id]);
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -420,6 +520,40 @@ export default function CheckIn() {
 
   const handleSubmitCheckIn = async (backBlob: Blob) => {
     setPhase("submitting");
+
+    // Offline: save locally and enter in-progress with local timer
+    if (!navigator.onLine) {
+      try {
+        const [frontB64, backB64] = await Promise.all([
+          blobToBase64(startFrontBlob!),
+          blobToBase64(backBlob),
+        ]);
+        const offlineId = `offline_${Date.now()}`;
+        savePendingStart({
+          localId: offlineId,
+          challengeId: id!,
+          frontB64,
+          backB64,
+          latitude: coords?.lat?.toString() || null,
+          longitude: coords?.lng?.toString() || null,
+          locationName,
+          isIndoor: indoorMode,
+          savedAt: new Date().toISOString(),
+        });
+        setCurrentCheckInId(offlineId);
+        setCheckInStartTime(new Date());
+        setPhase("in-progress");
+        toast({
+          title: "Sem conexão — salvo localmente",
+          description: "O check-in será enviado automaticamente quando você reconectar.",
+        });
+      } catch (err: any) {
+        toast({ title: "Erro", description: err.message, variant: "destructive" });
+        setPhase("ready");
+      }
+      return;
+    }
+
     try {
       const [photoUrl, backPhotoUrl] = await Promise.all([
         uploadPhoto(startFrontBlob!),
@@ -474,6 +608,50 @@ export default function CheckIn() {
       return;
     }
 
+    const dMins = Math.max(1, Math.round(elapsedSeconds / 60));
+    const finalDist = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) : distanceKm;
+    const cal = estimateCalories(dMins, finalDist, sport);
+    const pace = finalDist > 0.01 ? formatPace(dMins, finalDist) : null;
+
+    // Offline: save checkout data locally
+    if (!navigator.onLine) {
+      try {
+        const [endFrontB64, endBackB64] = await Promise.all([
+          blobToBase64(endFrontBlob),
+          blobToBase64(endBackBlob),
+        ]);
+        let indoorProofB64: string | undefined;
+        if (indoorProofBlob) indoorProofB64 = await blobToBase64(indoorProofBlob);
+        savePendingCheckout({
+          serverCheckInId: currentCheckInId,
+          challengeId: id!,
+          endFrontB64,
+          endBackB64,
+          indoorProofB64,
+          endLatitude: endCoords?.lat?.toString() || null,
+          endLongitude: endCoords?.lng?.toString() || null,
+          distanceKm: finalDist > 0 ? finalDist.toFixed(3) : null,
+          caloriesBurned: showCalories ? cal : null,
+          avgPace: pace,
+          reps: repsCount ? parseInt(repsCount) : null,
+          avgBpm: hr.getAvgBpm() ?? null,
+          maxBpm: hr.maxBpm ?? null,
+          elapsedSeconds,
+          savedAt: new Date().toISOString(),
+        });
+        setOfflinePending(true);
+        setPhase("done");
+        toast({
+          title: "Sem conexão — salvo localmente",
+          description: "O check-out será enviado quando você reconectar.",
+        });
+      } catch (err: any) {
+        toast({ title: "Erro", description: err.message, variant: "destructive" });
+        setPhase("review");
+      }
+      return;
+    }
+
     setPhase("submitting");
     try {
       const uploads: Promise<string>[] = [
@@ -485,11 +663,6 @@ export default function CheckIn() {
       const endPhotoUrl = uploadResults[0];
       const endBackPhotoUrl = uploadResults[1];
       const indoorProofPhotoUrl = uploadResults[2] || null;
-
-      const dMins = Math.max(1, Math.round(elapsedSeconds / 60));
-      const finalDist = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) : distanceKm;
-      const cal = estimateCalories(dMins, finalDist, sport);
-      const pace = finalDist > 0.01 ? formatPace(dMins, finalDist) : null;
 
       await apiRequest("POST", `/api/check-ins/${currentCheckInId}/checkout`, {
         endPhotoUrl,
@@ -537,7 +710,19 @@ export default function CheckIn() {
           <ChevronLeft size={22} />
         </button>
         <div className="flex items-center gap-2">
-          {phase === "in-progress" && (
+          {!isOnline && (
+            <div className="px-3 py-1.5 rounded-full bg-orange-500/90 backdrop-blur-xl flex items-center gap-1.5 text-xs font-bold">
+              <WifiOff size={12} />
+              OFFLINE
+            </div>
+          )}
+          {syncing && (
+            <div className="px-3 py-1.5 rounded-full bg-blue-500/90 backdrop-blur-xl flex items-center gap-1.5 text-xs font-bold">
+              <Loader2 size={12} className="animate-spin" />
+              SINCRONIZANDO
+            </div>
+          )}
+          {phase === "in-progress" && isOnline && !syncing && (
             <div className="px-3 py-1.5 rounded-full bg-green-500/90 backdrop-blur-xl flex items-center gap-1.5 text-xs font-bold">
               <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
               ATIVO
@@ -774,6 +959,15 @@ export default function CheckIn() {
 
       {phase === "in-progress" && (
         <div className="flex-1 flex flex-col">
+          {(!isOnline || offlinePending) && (
+            <div className="mx-4 mt-16 px-4 py-3 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center gap-3">
+              <WifiOff size={16} className="text-orange-400 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-orange-300">Sem conexão</p>
+                <p className="text-[10px] text-orange-400/70">Seus dados estão salvos. Serão enviados ao reconectar.</p>
+              </div>
+            </div>
+          )}
           <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
             <div className="flex items-center gap-3">
               {startFrontPreview && (
@@ -1120,13 +1314,43 @@ export default function CheckIn() {
         </div>
       )}
 
-      {phase === "done" && (
+      {phase === "done" && !offlinePending && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
             <CheckCircle size={40} className="text-primary" />
           </div>
           <h2 className="text-2xl font-bold">Check-out Concluído!</h2>
           <p className="text-sm text-white/50">Redirecionando...</p>
+        </div>
+      )}
+
+      {phase === "done" && offlinePending && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="w-20 h-20 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+            {syncing ? (
+              <Loader2 size={40} className="text-orange-400 animate-spin" />
+            ) : (
+              <CloudUpload size={40} className="text-orange-400" />
+            )}
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold">
+              {syncing ? "Enviando dados..." : "Salvo — aguardando conexão"}
+            </h2>
+            <p className="text-sm text-white/50 max-w-xs mx-auto">
+              {syncing
+                ? "Estamos enviando suas fotos e dados para o servidor."
+                : "Suas fotos e dados estão seguros no dispositivo. Assim que você reconectar, tudo será enviado automaticamente."}
+            </p>
+          </div>
+          {!syncing && (
+            <button
+              className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-sm font-bold"
+              onClick={() => setLocation(`/challenge/${id}`)}
+            >
+              Voltar ao Desafio
+            </button>
+          )}
         </div>
       )}
     </div>

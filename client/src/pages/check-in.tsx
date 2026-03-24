@@ -10,6 +10,7 @@ import {
   blobToBase64, base64ToBlob,
   savePendingStart, getPendingStart, clearPendingStart,
   savePendingCheckout, getPendingCheckout, clearPendingCheckout,
+  hasPendingOfflineData,
   type PendingStart, type PendingCheckout,
 } from "@/lib/offline-queue";
 
@@ -164,8 +165,10 @@ export default function CheckIn() {
   const [distanceKm, setDistanceKm] = useState(0);
   const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [offlinePending, setOfflinePending] = useState(false);
+  // Initialize from localStorage so pending state survives navigation away/back
+  const [offlinePending, setOfflinePending] = useState(() => hasPendingOfflineData());
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -215,6 +218,7 @@ export default function CheckIn() {
 
     const sync = async () => {
       setSyncing(true);
+      setSyncError(null);
       try {
         let serverCheckInId: string | null = null;
 
@@ -239,6 +243,18 @@ export default function CheckIn() {
           if (res.ok) {
             serverCheckInId = data.id;
             clearPendingStart();
+          } else if (data.checkIn) {
+            // Already exists on server — recover the real ID
+            serverCheckInId = data.checkIn.id;
+            clearPendingStart();
+          } else if (data.message?.includes("já fez check-in hoje") || data.message?.includes("já tem um check-in")) {
+            // Server already registered this — discard the pending start
+            clearPendingStart();
+            // Try to get the real active check-in ID for the checkout step
+            const activeRes = await fetch("/api/check-ins/active", { credentials: "include" });
+            const activeList = await activeRes.json();
+            const activeForChallenge = (activeList as any[]).find((c: any) => c.challengeId === id);
+            if (activeForChallenge) serverCheckInId = activeForChallenge.id;
           } else {
             throw new Error(data.message || "Erro ao sincronizar check-in");
           }
@@ -246,14 +262,33 @@ export default function CheckIn() {
 
         const co = pendingCheckout && pendingCheckout.challengeId === id ? pendingCheckout : null;
         if (co) {
-          const realId = serverCheckInId || co.serverCheckInId;
+          // Resolve the real check-in ID: use the one from this sync, or look up active on server
+          // (the stored serverCheckInId may be an offline placeholder like "offline_xxx")
+          let realId = serverCheckInId || co.serverCheckInId;
+          if (!realId || realId.startsWith("offline_")) {
+            const activeRes = await fetch("/api/check-ins/active", { credentials: "include" });
+            const activeList = await activeRes.json();
+            const activeForChallenge = (activeList as any[]).find((c: any) => c.challengeId === co.challengeId);
+            if (activeForChallenge) {
+              realId = activeForChallenge.id;
+            } else {
+              // Check-in never reached the server and we have no active one — abandon orphaned checkout
+              clearPendingCheckout();
+              clearPendingStart();
+              setOfflinePending(false);
+              toast({ title: "Dados offline descartados", description: "O check-in anterior não chegou ao servidor. Você pode fazer um novo check-in." });
+              queryClient.invalidateQueries({ queryKey: ["/api/check-ins/active"] });
+              return;
+            }
+          }
+
           const uploads: Promise<string>[] = [
             base64ToBlob(co.endFrontB64).then(uploadPhoto),
             base64ToBlob(co.endBackB64).then(uploadPhoto),
           ];
           if (co.indoorProofB64) uploads.push(base64ToBlob(co.indoorProofB64).then(uploadPhoto));
           const [endPhotoUrl, endBackPhotoUrl, indoorProofPhotoUrl] = await Promise.all(uploads);
-          await apiRequest("POST", `/api/check-ins/${realId}/checkout`, {
+          const checkoutRes = await apiRequest("POST", `/api/check-ins/${realId}/checkout`, {
             endPhotoUrl,
             endBackPhotoUrl,
             indoorProofPhotoUrl: indoorProofPhotoUrl || null,
@@ -266,6 +301,20 @@ export default function CheckIn() {
             avgBpm: co.avgBpm,
             maxBpm: co.maxBpm,
           });
+          if (!checkoutRes.ok) {
+            const errData = await checkoutRes.json();
+            // Already checked out — consider it done and clean up
+            if (errData.message?.includes("já finalizado")) {
+              clearPendingCheckout();
+              clearPendingStart();
+              setOfflinePending(false);
+              toast({ title: "Check-out já registrado!", description: "Seu check-in já foi finalizado anteriormente." });
+              queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/check-ins/active"] });
+              return;
+            }
+            throw new Error(errData.message || "Erro no check-out");
+          }
           clearPendingCheckout();
           setOfflinePending(false);
           queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
@@ -276,6 +325,7 @@ export default function CheckIn() {
           toast({ title: "Check-in sincronizado!", description: "Faça o check-out quando terminar." });
         }
       } catch (err: any) {
+        setSyncError(err.message || "Erro desconhecido");
         toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
       } finally {
         setSyncing(false);
@@ -851,7 +901,65 @@ export default function CheckIn() {
         </div>
       )}
 
-      {phase === "ready" && doneToday && (
+      {/* Syncing spinner overlay when phase=ready but sync is running */}
+      {phase === "ready" && offlinePending && syncing && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="w-20 h-20 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+            <Loader2 size={40} className="text-blue-400 animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold">Enviando dados...</h2>
+            <p className="text-sm text-white/50">Estamos sincronizando seu check-in com o servidor.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner when there are pending offline data (surviving navigation) */}
+      {phase === "ready" && offlinePending && !syncing && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="w-20 h-20 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+            <CloudUpload size={40} className="text-orange-400" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold">Dados pendentes</h2>
+            <p className="text-sm text-white/50 max-w-xs mx-auto">
+              {isOnline
+                ? "Conectado — tentando enviar seu check-in salvo offline..."
+                : "Sem conexão. Seus dados estão guardados e serão enviados assim que você reconectar."}
+            </p>
+          </div>
+          {isOnline && syncError && (
+            <div className="w-full max-w-xs space-y-3">
+              <div className="px-4 py-3 rounded-2xl bg-red-500/15 border border-red-500/30 text-xs text-red-300 text-left">
+                <p className="font-bold mb-1">Erro ao sincronizar:</p>
+                <p>{syncError}</p>
+              </div>
+              <button
+                className="w-full px-6 py-3 rounded-2xl bg-red-500/20 border border-red-500/30 text-sm font-bold text-red-300"
+                onClick={() => {
+                  clearPendingStart();
+                  clearPendingCheckout();
+                  setOfflinePending(false);
+                  setSyncError(null);
+                  toast({ title: "Dados offline apagados", description: "Você pode fazer um novo check-in agora." });
+                }}
+              >
+                Descartar dados e fazer novo check-in
+              </button>
+            </div>
+          )}
+          {!isOnline && (
+            <button
+              className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-sm font-bold"
+              onClick={() => setLocation(`/challenge/${id}`)}
+            >
+              Voltar ao Desafio
+            </button>
+          )}
+        </div>
+      )}
+
+      {phase === "ready" && !offlinePending && doneToday && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6 text-center">
           <div className="w-24 h-24 rounded-3xl bg-green-500/20 border border-green-500/30 flex items-center justify-center">
             <CheckCircle size={48} className="text-green-400" />
@@ -870,7 +978,7 @@ export default function CheckIn() {
         </div>
       )}
 
-      {phase === "ready" && !doneToday && (
+      {phase === "ready" && !offlinePending && !doneToday && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
           <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center relative">
             <Camera size={40} className="text-primary" />
@@ -1344,12 +1452,35 @@ export default function CheckIn() {
             </p>
           </div>
           {!syncing && (
-            <button
-              className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-sm font-bold"
-              onClick={() => setLocation(`/challenge/${id}`)}
-            >
-              Voltar ao Desafio
-            </button>
+            <div className="w-full max-w-xs space-y-3">
+              {syncError && (
+                <div className="px-4 py-3 rounded-2xl bg-red-500/15 border border-red-500/30 text-xs text-red-300 text-left">
+                  <p className="font-bold mb-1">Erro ao sincronizar:</p>
+                  <p>{syncError}</p>
+                </div>
+              )}
+              <button
+                className="w-full px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-sm font-bold"
+                onClick={() => setLocation(`/challenge/${id}`)}
+              >
+                Voltar ao Desafio
+              </button>
+              {syncError && (
+                <button
+                  className="w-full px-6 py-3 rounded-2xl bg-red-500/20 border border-red-500/30 text-sm font-bold text-red-300"
+                  onClick={() => {
+                    clearPendingStart();
+                    clearPendingCheckout();
+                    setOfflinePending(false);
+                    setSyncError(null);
+                    toast({ title: "Dados offline apagados", description: "Você pode fazer um novo check-in agora." });
+                    setLocation(`/challenge/${id}`);
+                  }}
+                >
+                  Descartar dados e recomeçar
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}

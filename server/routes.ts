@@ -13,7 +13,7 @@ import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
 import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns, challengeParticipants, challengeMessages } from "@shared/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, ne } from "drizzle-orm";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -1519,15 +1519,21 @@ export async function registerRoutes(
 
       const allChallenges = await storage.getChallenges();
       const activeChallenges = allChallenges.filter((c: any) => c.status === "active" && c.isActive);
-      const today = new Date().toISOString().slice(0, 10);
+
+      // Process YESTERDAY — the day that is now complete.
+      // We never process TODAY because the day isn't over yet and users may still check in.
+      const yesterdayDate = new Date();
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const processDate = yesterdayDate.toISOString().slice(0, 10);
+
       let totalEliminated = 0;
 
       for (const challenge of activeChallenges) {
         const cType = challenge.type;
         if (cType !== "checkin" && cType !== "survival") continue;
 
-        const todayDate = new Date(today);
-        const dayOfWeek = todayDate.getDay().toString();
+        const targetDate = new Date(processDate);
+        const dayOfWeek = targetDate.getUTCDay().toString();
 
         const challengeRestDays: string[] = (challenge as any).restDays || [];
         if (challengeRestDays.length > 0 && challengeRestDays.includes(dayOfWeek)) continue;
@@ -1543,12 +1549,29 @@ export async function registerRoutes(
         for (const p of activeParticipants) {
           if (p.isAdmin) continue;
           const lastCheckin = (p as any).lastCheckInDate;
-          if (lastCheckin === today) continue;
+          // Skip if already processed for this date or if the user checked in on/after processDate
+          if (lastCheckin && lastCheckin >= processDate) continue;
+
+          // Check if user actually completed a check-in on processDate in the DB
+          const actualCheckIn = await db.select().from(checkIns)
+            .where(and(
+              eq(checkIns.challengeId, challenge.id),
+              eq(checkIns.userId, p.userId),
+              eq(checkIns.status, "completed"),
+              sql`DATE(${checkIns.createdAt}) = ${processDate}::date`
+            )).limit(1);
+          if (actualCheckIn.length > 0) {
+            // They did check in — just update lastCheckInDate marker and skip
+            await db.update(challengeParticipants)
+              .set({ lastCheckInDate: processDate } as any)
+              .where(eq(challengeParticipants.id, p.id));
+            continue;
+          }
 
           const restDaysUsed = (p as any).restDaysUsed || 0;
           if (restDaysAllowed > 0 && restDaysUsed < restDaysAllowed) {
             await db.update(challengeParticipants)
-              .set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: today } as any)
+              .set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: processDate } as any)
               .where(eq(challengeParticipants.id, p.id));
             continue;
           }
@@ -1556,7 +1579,7 @@ export async function registerRoutes(
           const currentMissed = ((p as any).missedDays || 0) + 1;
           const eliminado = currentMissed > maxMissed;
           await db.update(challengeParticipants)
-            .set({ missedDays: currentMissed, lastCheckInDate: today, ...(eliminado ? { isActive: false } : {}) } as any)
+            .set({ missedDays: currentMissed, lastCheckInDate: processDate, ...(eliminado ? { isActive: false } : {}) } as any)
             .where(eq(challengeParticipants.id, p.id));
 
           if (eliminado) {
@@ -1565,7 +1588,7 @@ export async function registerRoutes(
         }
       }
 
-      res.json({ processed: activeChallenges.length, eliminated: totalEliminated, date: today });
+      res.json({ processed: activeChallenges.length, eliminated: totalEliminated, date: processDate });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao processar missed days" });
     }
@@ -1825,6 +1848,35 @@ export async function registerRoutes(
         } else if (challengeType === "ranking" && vType === "repeticoes") {
           const r = reps ? parseInt(reps) : 0;
           updates.score = (participant.score || 0) + r;
+        }
+
+        // Auto-correct missed day if auto-processing wrongly counted a miss today.
+        // This happens when: (1) the user was offline and couldn't check in, (2) the
+        // auto-processing ran and incremented missedDays + set lastCheckInDate=today,
+        // (3) the user then reconnected and completed checkout successfully.
+        // If lastCheckInDate was already today BEFORE this checkout and missedDays > 0,
+        // and this is the first completed check-in today → undo the erroneous miss.
+        const alreadyMarkedToday = (participant as any).lastCheckInDate === today;
+        const hasMissedDays = ((participant as any).missedDays || 0) > 0;
+        if (alreadyMarkedToday && hasMissedDays) {
+          const otherCompletedToday = await db.select().from(checkIns)
+            .where(and(
+              eq(checkIns.challengeId, checkIn.challengeId),
+              eq(checkIns.userId, userId),
+              eq(checkIns.status, "completed"),
+              ne(checkIns.id, checkInId),
+              sql`DATE(${checkIns.createdAt}) = ${today}::date`
+            )).limit(1);
+          if (otherCompletedToday.length === 0) {
+            // First real check-in today — the auto-processing miss was incorrect → undo it
+            const newMissed = Math.max(0, ((participant as any).missedDays || 0) - 1);
+            updates.missedDays = newMissed;
+            // If user was eliminated solely because of this erroneous miss, reactivate them
+            const maxMissedAllowed = (challenge?.type === "checkin") ? 0 : ((challenge as any)?.maxMissedDays ?? 3);
+            if (!(participant as any).isActive && newMissed <= maxMissedAllowed) {
+              updates.isActive = true;
+            }
+          }
         }
 
         await db.update(challengeParticipants).set(updates)

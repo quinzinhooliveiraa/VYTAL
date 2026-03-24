@@ -3,8 +3,8 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { db } from "./db";
-import { challenges, challengeParticipants } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { challenges, challengeParticipants, checkIns } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 const app = express();
 const httpServer = createServer(app);
@@ -68,15 +68,21 @@ async function processMissedDaysAuto() {
   try {
     const allChallenges = await db.select().from(challenges);
     const activeChallenges = allChallenges.filter((c: any) => c.status === "active" && c.isActive);
-    const today = new Date().toISOString().slice(0, 10);
+
+    // Always process YESTERDAY (the day that is now fully over).
+    // We never mark today as missed while the day is still ongoing.
+    const yesterdayDate = new Date();
+    yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+    const processDate = yesterdayDate.toISOString().slice(0, 10);
+
     let totalEliminated = 0;
 
     for (const challenge of activeChallenges) {
       const cType = challenge.type;
       if (cType !== "checkin" && cType !== "survival") continue;
 
-      const todayDate = new Date(today);
-      const dayOfWeek = todayDate.getDay().toString();
+      const targetDate = new Date(processDate);
+      const dayOfWeek = targetDate.getUTCDay().toString();
       const challengeRestDays: string[] = (challenge as any).restDays || [];
       if (challengeRestDays.length > 0 && challengeRestDays.includes(dayOfWeek)) continue;
       if ((challenge as any).skipWeekends && (dayOfWeek === "0" || dayOfWeek === "6")) continue;
@@ -89,17 +95,34 @@ async function processMissedDaysAuto() {
 
       for (const p of participants) {
         if ((p as any).isAdmin) continue;
-        if ((p as any).lastCheckInDate === today) continue;
+        // Skip if already processed for this date or if the user checked in on/after processDate
+        const lastCheckin = (p as any).lastCheckInDate;
+        if (lastCheckin && lastCheckin >= processDate) continue;
+
+        // Verify against actual check-in records (not just lastCheckInDate)
+        const actualCheckIn = await db.select().from(checkIns)
+          .where(and(
+            eq(checkIns.challengeId, challenge.id),
+            eq(checkIns.userId, p.userId),
+            eq(checkIns.status, "completed"),
+            sql`DATE(${checkIns.createdAt}) = ${processDate}::date`
+          )).limit(1);
+        if (actualCheckIn.length > 0) {
+          // They did check in — mark processed and skip
+          await db.update(challengeParticipants).set({ lastCheckInDate: processDate } as any)
+            .where(eq(challengeParticipants.id, p.id));
+          continue;
+        }
 
         const restDaysUsed = (p as any).restDaysUsed || 0;
         if (restDaysAllowed > 0 && restDaysUsed < restDaysAllowed) {
-          await db.update(challengeParticipants).set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: today } as any)
+          await db.update(challengeParticipants).set({ restDaysUsed: restDaysUsed + 1, lastCheckInDate: processDate } as any)
             .where(eq(challengeParticipants.id, p.id));
           continue;
         }
 
         const currentMissed = ((p as any).missedDays || 0) + 1;
-        await db.update(challengeParticipants).set({ missedDays: currentMissed, lastCheckInDate: today } as any)
+        await db.update(challengeParticipants).set({ missedDays: currentMissed, lastCheckInDate: processDate } as any)
           .where(eq(challengeParticipants.id, p.id));
 
         if (currentMissed > maxMissed) {

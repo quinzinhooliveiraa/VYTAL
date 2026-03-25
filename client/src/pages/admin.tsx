@@ -159,6 +159,7 @@ export default function Admin() {
       return res.ok ? res.json() : [];
     },
     enabled: tab === "users",
+    refetchInterval: 15000,
   });
 
   const { data: adminChallenges = [] } = useQuery({
@@ -448,78 +449,78 @@ export default function Admin() {
 
             {/* Gateway - Painel financeiro completo */}
             {stats?.gateway && (
-              <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Landmark size={16} className="text-blue-400" />
-                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gateway AbacatePay</span>
+              <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <Shield size={16} className="text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Saque seguro disponível</span>
                 </div>
 
-                <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-muted-foreground">Saldo estimado no gateway</span>
-                  <span className="text-2xl font-bold text-blue-400">{formatBRL(stats.gateway.estimatedBalance)}</span>
+                {/* Número principal: quanto posso sacar com segurança */}
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl font-bold text-emerald-400" data-testid="text-admin-withdrawable">
+                    {formatBRL(stats.gateway.adminWithdrawable)}
+                  </span>
+                  <Button
+                    size="sm"
+                    className="h-9 px-4 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl"
+                    onClick={() => navigate("/wallet")}
+                    data-testid="button-admin-go-wallet"
+                    disabled={stats.gateway.adminWithdrawable <= 0}
+                  >
+                    <Wallet size={13} className="mr-1.5" /> Sacar
+                  </Button>
                 </div>
 
-                <div className="border-t border-blue-500/20 pt-3 space-y-2">
-                  <p className="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldAlert size={12} />
-                    Obrigações (pior cenário)
-                  </p>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Saldos disponíveis dos usuários</span>
-                    <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.userAvailableBalances)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Custo gateway se todos sacarem ({stats.gateway.withdrawableUsersCount} aptos)</span>
-                    <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.worstCaseWithdrawCost)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Desafios ativos (90% volta ao vencedor)</span>
-                    <span className="text-orange-400 font-medium">{formatBRL(stats.gateway.obligations.challengeLockedFunds)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs pt-1 border-t border-blue-500/10">
-                    <span className="font-semibold text-orange-400">Total de obrigações</span>
-                    <span className="font-bold text-orange-400">- {formatBRL(stats.gateway.obligations.total)}</span>
-                  </div>
+                {/* Margem de segurança */}
+                <div className={`flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg ${
+                  stats.gateway.safetyMargin > 20 ? 'bg-emerald-500/10 text-emerald-400' :
+                  stats.gateway.safetyMargin > 5  ? 'bg-yellow-500/10 text-yellow-400' :
+                  'bg-red-500/10 text-red-400'
+                }`}>
+                  <Shield size={13} />
+                  Margem de segurança: {stats.gateway.safetyMargin}%
+                  {stats.gateway.safetyMargin > 20 ? ' — Saudável' :
+                   stats.gateway.safetyMargin > 5  ? ' — Atenção' :
+                   ' — Crítico'}
                 </div>
 
-                <div className="border-t border-blue-500/20 pt-3 space-y-2">
+                {/* Detalhes: como chegamos nesse valor */}
+                <div className="border-t border-emerald-500/20 pt-3 space-y-2">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Detalhes do cálculo</p>
+
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Seguro para sacar</span>
-                    <span className="text-emerald-400 font-bold">{formatBRL(stats.gateway.safeToWithdraw)}</span>
+                    <span className="text-muted-foreground flex items-center gap-1"><Landmark size={10} /> Saldo no gateway</span>
+                    <span className="text-blue-400 font-medium">{formatBRL(stats.gateway.estimatedBalance)}</span>
                   </div>
+
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Taxa do seu saque</span>
-                    <span className="text-destructive font-medium">- {formatBRL(stats.gateway.adminWithdrawFee)}</span>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <ShieldAlert size={10} /> Obrigações c/ usuários ({stats.gateway.withdrawableUsersCount} aptos)
+                    </span>
+                    <span className="text-orange-400 font-medium">- {formatBRL(stats.gateway.obligations.worstCaseWithdrawCost)}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-emerald-500/20">
-                    <span className="font-bold text-emerald-400 text-sm">Você pode sacar</span>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-emerald-400 text-xl">{formatBRL(stats.gateway.adminWithdrawable)}</span>
-                      <Button
-                        size="sm"
-                        className="h-8 px-3 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl"
-                        onClick={() => navigate("/wallet")}
-                        data-testid="button-admin-go-wallet"
-                        disabled={stats.gateway.adminWithdrawable <= 0}
-                      >
-                        <Wallet size={12} className="mr-1" /> Sacar
-                      </Button>
+
+                  {stats.gateway.obligations.challengeLockedFunds > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <ShieldAlert size={10} /> Desafios ativos (90% premiação)
+                      </span>
+                      <span className="text-orange-400 font-medium">- {formatBRL(stats.gateway.obligations.challengeLockedFunds)}</span>
                     </div>
-                  </div>
-                </div>
+                  )}
 
-                <div className="pt-2">
-                  <div className={`flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg ${
-                    stats.gateway.safetyMargin > 20 ? 'bg-emerald-500/10 text-emerald-400' :
-                    stats.gateway.safetyMargin > 5 ? 'bg-yellow-500/10 text-yellow-400' :
-                    'bg-red-500/10 text-red-400'
-                  }`}>
-                    <Shield size={14} />
-                    Margem de segurança: {stats.gateway.safetyMargin}%
-                    {stats.gateway.safetyMargin > 20 ? ' — Saudável' :
-                     stats.gateway.safetyMargin > 5 ? ' — Atenção' :
-                     ' — Crítico'}
+                  <div className="flex justify-between text-xs pt-1 border-t border-emerald-500/10">
+                    <span className="text-muted-foreground">Sobra segura</span>
+                    <span className="text-emerald-400 font-semibold">{formatBRL(stats.gateway.safeToWithdraw)}</span>
                   </div>
+
+                  {stats.gateway.adminWithdrawFee > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Taxa do seu saque (AbacatePay)</span>
+                      <span className="text-destructive font-medium">- {formatBRL(stats.gateway.adminWithdrawFee)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useHeartRate } from "@/hooks/use-heart-rate";
 import {
-  blobToBase64, base64ToBlob,
+  blobToBase64,
   savePendingStart, getPendingStart, clearPendingStart,
   savePendingCheckout, getPendingCheckout, clearPendingCheckout,
   hasPendingOfflineData,
@@ -103,16 +103,36 @@ function formatDuration(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-async function uploadPhoto(blob: Blob): Promise<string> {
-  const res = await fetch("/api/upload/checkin-photo", {
-    method: "POST",
-    headers: { "Content-Type": "application/octet-stream" },
-    body: blob,
-    credentials: "include",
+// Convert a Blob to a compressed base64 data URL stored directly in the DB.
+// This avoids the filesystem (which is ephemeral and lost on restart/redeploy).
+async function blobToDataUrl(blob: Blob, maxDim = 1080, quality = 0.72): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("No canvas context"));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(b => {
+        if (!b) return reject(new Error("Blob conversion failed"));
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(b);
+      }, "image/jpeg", quality);
+    };
+    img.onerror = reject;
+    img.src = url;
   });
-  if (!res.ok) throw new Error("Upload falhou");
-  return (await res.json()).url;
 }
+
+// Alias used throughout the file
+const uploadPhoto = (blob: Blob) => blobToDataUrl(blob);
 
 export default function CheckIn() {
   const [, setLocation] = useLocation();
@@ -223,14 +243,10 @@ export default function CheckIn() {
         let serverCheckInId: string | null = null;
 
         if (pendingStart && pendingStart.challengeId === id) {
-          const [frontBlob, backBlob] = await Promise.all([
-            base64ToBlob(pendingStart.frontB64),
-            base64ToBlob(pendingStart.backB64),
-          ]);
-          const [photoUrl, backPhotoUrl] = await Promise.all([
-            uploadPhoto(frontBlob),
-            uploadPhoto(backBlob),
-          ]);
+          // The offline queue already stores photos as base64 data URLs — use them directly.
+          // No need to convert to blob and re-upload; they go straight into the DB.
+          const photoUrl = pendingStart.frontB64;
+          const backPhotoUrl = pendingStart.backB64;
           const res = await apiRequest("POST", "/api/check-ins/start", {
             challengeId: pendingStart.challengeId,
             photoUrl,
@@ -282,12 +298,10 @@ export default function CheckIn() {
             }
           }
 
-          const uploads: Promise<string>[] = [
-            base64ToBlob(co.endFrontB64).then(uploadPhoto),
-            base64ToBlob(co.endBackB64).then(uploadPhoto),
-          ];
-          if (co.indoorProofB64) uploads.push(base64ToBlob(co.indoorProofB64).then(uploadPhoto));
-          const [endPhotoUrl, endBackPhotoUrl, indoorProofPhotoUrl] = await Promise.all(uploads);
+          // Offline queue stores photos as base64 data URLs — use them directly.
+          const endPhotoUrl = co.endFrontB64;
+          const endBackPhotoUrl = co.endBackB64;
+          const indoorProofPhotoUrl = co.indoorProofB64 || null;
           const checkoutRes = await apiRequest("POST", `/api/check-ins/${realId}/checkout`, {
             endPhotoUrl,
             endBackPhotoUrl,
@@ -449,13 +463,16 @@ export default function CheckIn() {
       if (!videoRef.current || !canvasRef.current) return reject("No camera");
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Cap resolution at 1080px to keep stored photos small (they go into the DB as base64)
+      const MAX_DIM = 1080;
+      const scale = Math.min(1, MAX_DIM / Math.max(video.videoWidth || 1, video.videoHeight || 1));
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject("No context");
       if (cameraFacing === "user") { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-      ctx.drawImage(video, 0, 0);
-      canvas.toBlob(b => b ? resolve(b) : reject("Failed"), "image/jpeg", 0.85);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(b => b ? resolve(b) : reject("Failed"), "image/jpeg", 0.72);
     });
   }, [cameraFacing]);
 

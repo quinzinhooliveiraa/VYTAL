@@ -43,6 +43,7 @@ export default function ChallengeDetails() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
   const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [tieWith2nd, setTieWith2nd] = useState(false);
   const [tieWith3rd, setTieWith3rd] = useState(false);
   const [depositDrawerOpen, setDepositDrawerOpen] = useState(false);
@@ -718,7 +719,11 @@ export default function ChallengeDetails() {
                             <Coffee size={16} className="text-blue-500" />
                           </div>
                         ) : c.photoUrl ? (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0">
+                          <div
+                            className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 cursor-pointer active:opacity-80"
+                            onClick={() => setLightboxPhoto(c.photoUrl)}
+                            data-testid={`checkin-photo-thumb-${c.id}`}
+                          >
                             <img src={c.photoUrl} alt="" className="w-full h-full object-cover" />
                           </div>
                         ) : (
@@ -994,13 +999,25 @@ export default function ChallengeDetails() {
                             {c.photoUrl && (
                               <div className="flex-1">
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto início</p>
-                                <img src={c.photoUrl} alt="Check-in" className="w-full h-20 object-cover rounded-lg border border-border" />
+                                <img
+                                  src={c.photoUrl}
+                                  alt="Check-in"
+                                  className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80"
+                                  onClick={() => setLightboxPhoto(c.photoUrl)}
+                                  data-testid={`checkin-photo-start-${c.id}`}
+                                />
                               </div>
                             )}
                             {c.endPhotoUrl && (
                               <div className="flex-1">
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto fim</p>
-                                <img src={c.endPhotoUrl} alt="Check-out" className="w-full h-20 object-cover rounded-lg border border-border" />
+                                <img
+                                  src={c.endPhotoUrl}
+                                  alt="Check-out"
+                                  className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80"
+                                  onClick={() => setLightboxPhoto(c.endPhotoUrl)}
+                                  data-testid={`checkin-photo-end-${c.id}`}
+                                />
                               </div>
                             )}
                           </div>
@@ -1755,6 +1772,23 @@ export default function ChallengeDetails() {
         title="Depositar na Carteira"
         description={entryFee > 0 ? `Taxa de entrada: ${formatBRL(entryFee)}. Saldo adicionado ao seu perfil.` : "Mínimo R$ 30,00. Saldo adicionado ao seu perfil."}
       />
+
+      {/* Photo lightbox */}
+      <Dialog open={!!lightboxPhoto} onOpenChange={(open) => { if (!open) setLightboxPhoto(null); }}>
+        <DialogContent className="max-w-screen-sm p-2 bg-black border-none" data-testid="photo-lightbox">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto do Check-in</DialogTitle>
+            <DialogDescription>Visualização da foto</DialogDescription>
+          </DialogHeader>
+          {lightboxPhoto && (
+            <img
+              src={lightboxPhoto}
+              alt="Foto do check-in"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

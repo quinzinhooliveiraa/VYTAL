@@ -4,9 +4,11 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { db } from "./db";
 import { challenges, challengeParticipants, checkIns, transactions, TRANSACTION_TYPES, TRANSACTION_STATUS } from "@shared/schema";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray, gte, isNotNull } from "drizzle-orm";
 import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
+import { transactionService } from "./services/transaction-service";
+import { walletService } from "./services/wallet-service";
 
 const app = express();
 const httpServer = createServer(app);
@@ -149,7 +151,8 @@ async function reconcileWithdrawals() {
   if (!paymentService.isConfigured()) return;
 
   try {
-    // Find all withdrawal transactions that are still open on the platform
+    // --- Part 1: PROCESSING/PENDING withdrawals that have an externalId ---
+    // These are saques that were sent to the gateway but never received a webhook.
     const openWithdrawals = await db
       .select()
       .from(transactions)
@@ -160,42 +163,86 @@ async function reconcileWithdrawals() {
             TRANSACTION_STATUS.PROCESSING,
             TRANSACTION_STATUS.PENDING,
           ]),
+          isNotNull(transactions.externalId),
         ),
       );
 
-    // Only reconcile those that have an externalId (already sent to gateway)
-    const toCheck = openWithdrawals.filter((tx) => !!tx.externalId);
+    // --- Part 2: FAILED withdrawals from the last 7 days with an externalId ---
+    // Covers the case where the gateway paid but the platform incorrectly shows
+    // "failed" (e.g. network timeout during webhook delivery, false failure webhook,
+    // or any bug that marked it failed before confirming gateway status).
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentFailed = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPES.WITHDRAW_REQUEST),
+          eq(transactions.status, TRANSACTION_STATUS.FAILED),
+          isNotNull(transactions.externalId),
+          gte(transactions.createdAt, sevenDaysAgo),
+        ),
+      );
+
+    const toCheck = [...openWithdrawals, ...recentFailed];
     if (toCheck.length === 0) return;
 
-    log(`[Reconcile] Checking ${toCheck.length} open withdrawal(s)...`);
+    log(`[Reconcile] Checking ${openWithdrawals.length} open + ${recentFailed.length} recently-failed withdrawal(s)...`);
 
     let completed = 0;
     let failed = 0;
     let stillPending = 0;
+    let autoFixed = 0; // FAILED on platform but PAID on gateway → auto-corrected
 
     for (const tx of toCheck) {
       try {
         const gatewayStatus = await paymentService.getWithdrawStatus(tx.externalId!);
         const upper = gatewayStatus.toUpperCase();
-
-        if (upper === "PAID" || upper === "COMPLETED" || upper === "SUCCESS") {
-          await webhookService.processWithdrawCompleted(tx.externalId!, {
-            reconciledAt: new Date().toISOString(),
-            gatewayStatus,
-          });
-          completed++;
-        } else if (
+        const isPaid = upper === "PAID" || upper === "COMPLETED" || upper === "SUCCESS";
+        const isFailed =
           upper === "FAILED" ||
           upper === "REJECTED" ||
           upper === "CANCELLED" ||
           upper === "CANCELED" ||
-          upper === "ERROR"
-        ) {
-          await webhookService.processWithdrawFailed(tx.externalId!, {
-            reconciledAt: new Date().toISOString(),
-            gatewayStatus,
-          });
-          failed++;
+          upper === "ERROR";
+
+        if (isPaid) {
+          if (tx.status === TRANSACTION_STATUS.FAILED) {
+            // Platform shows FAILED but gateway confirms the money was sent.
+            // Restore the correct state: mark COMPLETED and deduct balance
+            // (processWithdrawFailed restored the balance when it was marked failed;
+            // we need to take it back since the user actually received the money).
+            await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED, {
+              ...(tx.metadata as any || {}),
+              autoReconciledAt: new Date().toISOString(),
+              gatewayStatus,
+              previousStatus: tx.status,
+              reconciledBy: "auto",
+            });
+            try {
+              await walletService.deductBalance(tx.userId, Number(tx.amount));
+            } catch (e: any) {
+              // Non-critical — balance formula self-corrects on next getBalance()
+              log(`[Reconcile] deductBalance skipped for auto-fix of ${tx.id}: ${e.message}`);
+            }
+            log(`[Reconcile] AUTO-FIXED withdrawal ${tx.id} (was FAILED, gateway says ${gatewayStatus}) — balance deducted`);
+            autoFixed++;
+          } else {
+            await webhookService.processWithdrawCompleted(tx.externalId!, {
+              reconciledAt: new Date().toISOString(),
+              gatewayStatus,
+            });
+            completed++;
+          }
+        } else if (isFailed) {
+          if (tx.status !== TRANSACTION_STATUS.FAILED) {
+            await webhookService.processWithdrawFailed(tx.externalId!, {
+              reconciledAt: new Date().toISOString(),
+              gatewayStatus,
+            });
+            failed++;
+          }
+          // If already FAILED on platform AND gateway: nothing to do
         } else {
           stillPending++;
         }
@@ -204,9 +251,9 @@ async function reconcileWithdrawals() {
       }
     }
 
-    if (completed > 0 || failed > 0) {
+    if (completed > 0 || failed > 0 || autoFixed > 0) {
       log(
-        `[Reconcile] Withdrawals reconciled — completed: ${completed}, failed: ${failed}, still pending: ${stillPending}`,
+        `[Reconcile] Done — completed: ${completed}, failed: ${failed}, auto-fixed (paid but was FAILED): ${autoFixed}, still pending: ${stillPending}`,
       );
     }
   } catch (err: any) {

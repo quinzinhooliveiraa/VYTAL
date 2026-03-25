@@ -64,6 +64,11 @@ export class TransactionService {
     return updated;
   }
 
+  async getById(id: string) {
+    const [tx] = await db.select().from(transactions).where(eq(transactions.id, id));
+    return tx;
+  }
+
   async getByExternalId(externalId: string) {
     const [tx] = await db.select().from(transactions)
       .where(eq(transactions.externalId, externalId));

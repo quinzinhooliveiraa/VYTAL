@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, DollarSign, TrendingUp, Users, ArrowDownLeft, ArrowUpRight,
   Percent, Shield, ShieldOff, Trash2, Ban, AlertTriangle, Activity,
@@ -1187,25 +1188,101 @@ function MovRow({ label, value, count }: { label: string; value: string; count?:
 
 function TxRow({ tx, currentUserId, showUser }: { tx: any; currentUserId?: string; showUser?: boolean }) {
   const isMine = tx.userId === currentUserId;
+  const { toast } = useToast();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const canForceComplete =
+    tx.type === "withdraw_request" &&
+    (tx.status === "failed" || tx.status === "pending");
+
+  const forceComplete = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/admin/transactions/${tx.id}/force-complete`);
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.message || "Erro ao forçar conclusão");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Saque concluído", description: data.message });
+      setConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/transactions"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      setConfirmOpen(false);
+    },
+  });
+
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 ${isMine ? 'bg-primary/5' : ''}`} data-testid={`admin-tx-${tx.id}`}>
-      <span className={`text-sm w-5 text-center shrink-0 ${typeColors[tx.type] || 'text-muted-foreground'}`}>
-        {typeIcons[tx.type] || "·"}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold truncate">{typeLabels[tx.type] || tx.type}</span>
-          {isMine && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">EU</span>}
+    <>
+      <div className={`flex items-center gap-3 px-4 py-3 ${isMine ? 'bg-primary/5' : ''}`} data-testid={`admin-tx-${tx.id}`}>
+        <span className={`text-sm w-5 text-center shrink-0 ${typeColors[tx.type] || 'text-muted-foreground'}`}>
+          {typeIcons[tx.type] || "·"}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold truncate">{typeLabels[tx.type] || tx.type}</span>
+            {isMine && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">EU</span>}
+          </div>
+          <p className="text-[10px] text-muted-foreground truncate">
+            {showUser ? (tx.userName || tx.description || "") : ""} {formatDate(tx.createdAt)}
+          </p>
         </div>
-        <p className="text-[10px] text-muted-foreground truncate">
-          {showUser ? (tx.userName || tx.description || "") : ""} {formatDate(tx.createdAt)}
-        </p>
+        <div className="text-right shrink-0 flex flex-col items-end gap-1">
+          <p className="text-xs font-bold">{formatBRL(Number(tx.amount))}</p>
+          <p className={`text-[9px] font-bold ${statusColors[tx.status] || ""}`}>{statusLabels[tx.status] || tx.status}</p>
+          {canForceComplete && (
+            <button
+              onClick={() => setConfirmOpen(true)}
+              className="text-[9px] font-bold text-orange-500 underline underline-offset-2"
+              data-testid={`btn-force-complete-${tx.id}`}
+            >
+              Forçar conclusão
+            </button>
+          )}
+        </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-xs font-bold">{formatBRL(Number(tx.amount))}</p>
-        <p className={`text-[9px] font-bold ${statusColors[tx.status] || ""}`}>{statusLabels[tx.status] || tx.status}</p>
-      </div>
-    </div>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-force-complete">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-orange-500" />
+              Forçar conclusão do saque
+            </DialogTitle>
+            <DialogDescription className="text-left space-y-2 pt-1">
+              <span className="block">
+                Use isso <strong>apenas</strong> quando o dinheiro já chegou no banco do usuário mas a plataforma marcou como falha.
+              </span>
+              <span className="block text-xs bg-orange-500/10 text-orange-600 rounded-lg p-2">
+                Usuário: <strong>{tx.userName || tx.userId}</strong><br />
+                Valor: <strong>{formatBRL(Number(tx.amount))}</strong><br />
+                Status atual: <strong>{statusLabels[tx.status] || tx.status}</strong>
+              </span>
+              <span className="block text-[11px] text-muted-foreground">
+                Isso marcará a transação como <strong>Concluído</strong> e descontará o saldo do usuário automaticamente.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={forceComplete.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={() => forceComplete.mutate()}
+              disabled={forceComplete.isPending}
+              data-testid="btn-confirm-force-complete"
+            >
+              {forceComplete.isPending ? <Loader2 size={14} className="animate-spin" /> : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -3032,6 +3032,45 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: force-complete a withdrawal that shows FAILED on platform but money reached the bank.
+  // Marking COMPLETED makes the formula automatically deduct it from the user's balance.
+  app.post("/api/admin/transactions/:id/force-complete", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const txId = req.params.id;
+      const adminId = (req.session as any).userId;
+
+      const tx = await transactionService.getById(txId);
+      if (!tx) return res.status(404).json({ message: "Transação não encontrada" });
+      if (tx.type !== TRANSACTION_TYPES.WITHDRAW_REQUEST) {
+        return res.status(400).json({ message: "Apenas saques podem ser forçados para concluído" });
+      }
+      if (tx.status === TRANSACTION_STATUS.COMPLETED) {
+        return res.status(400).json({ message: "Saque já está concluído" });
+      }
+
+      await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED, {
+        ...(tx.metadata as any || {}),
+        forceCompletedByAdmin: adminId,
+        forceCompletedAt: new Date().toISOString(),
+        previousStatus: tx.status,
+      });
+
+      // Sync the wallet cache: deduct the withdrawal amount so the cached balance
+      // is immediately correct (the formula would auto-correct on next getBalance() call anyway).
+      try {
+        await walletService.deductBalance(tx.userId, Number(tx.amount));
+      } catch (e: any) {
+        // Non-critical — balance formula is authoritative and will self-correct
+        console.warn("[Admin force-complete] deductBalance skipped:", e.message);
+      }
+
+      console.log(`[Admin] Force-completed withdrawal ${txId} (previously ${tx.status}) by admin ${adminId}`);
+      res.json({ message: "Saque marcado como concluído. Saldo do usuário foi ajustado." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");

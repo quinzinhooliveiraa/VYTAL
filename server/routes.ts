@@ -1108,7 +1108,7 @@ export async function registerRoutes(
 
       const entryFeeReq = Number(challenge.entryFee);
       if (entryFeeReq > 0) {
-        const availableBalanceReq = await walletService.getAvailableBalance(userId);
+        const { availableBalance: availableBalanceReq } = await walletService.getBalance(userId);
         if (availableBalanceReq < entryFeeReq) {
           return res.status(400).json({ message: `Saldo insuficiente. Você tem R$ ${availableBalanceReq.toFixed(2)} disponível, mas precisa de R$ ${entryFeeReq.toFixed(2)} para entrar neste desafio.` });
         }

@@ -14,6 +14,13 @@ export class ChallengeFinanceService {
       return existing;
     }
 
+    // Re-check available balance right before creating the entry so that even
+    // if two concurrent requests passed the outer check, only one succeeds.
+    const { availableBalance } = await walletService.getBalance(userId);
+    if (availableBalance < entryFee) {
+      throw new Error(`Saldo insuficiente para entrar no desafio. Disponível: R$ ${availableBalance.toFixed(2)}, necessário: R$ ${entryFee.toFixed(2)}`);
+    }
+
     const tx = await transactionService.create({
       userId,
       type: TRANSACTION_TYPES.CHALLENGE_ENTRY,

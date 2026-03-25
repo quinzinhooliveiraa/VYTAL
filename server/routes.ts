@@ -3138,7 +3138,20 @@ export async function registerRoutes(
         pwaInstalled: usersTable.pwaInstalled,
         lastActiveAt: usersTable.lastActiveAt,
         createdAt: usersTable.createdAt,
-        balance: sql<string>`COALESCE(w.balance, 0)`.as("balance"),
+        // Compute real balance from transactions (same formula as walletService.getBalance)
+        // so the admin always sees the live value, not the stale cache in wallets.balance.
+        balance: sql<string>`
+          GREATEST(COALESCE((
+            SELECT SUM(CASE
+              WHEN t.type = 'deposit'          AND t.status = 'completed'                     THEN  t.amount
+              WHEN t.type = 'withdraw_request' AND t.status IN ('completed','processing')     THEN -t.amount
+              WHEN t.type = 'challenge_entry'  AND t.status = 'completed'                     THEN -t.amount
+              WHEN t.type IN ('challenge_win','refund') AND t.status = 'completed'            THEN  t.amount
+              ELSE 0
+            END)
+            FROM transactions t WHERE t.user_id = ${usersTable.id}
+          ), 0), 0)
+        `.as("balance"),
         lockedBalance: sql<string>`COALESCE(w.locked_balance, 0)`.as("locked_balance"),
       }).from(usersTable)
         .leftJoin(sql`wallets w`, sql`w.user_id = ${usersTable.id}`)

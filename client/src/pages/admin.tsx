@@ -134,7 +134,7 @@ export default function Admin() {
       if (!res.ok) throw new Error("Acesso negado");
       return res.json();
     },
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 
   const { data: txs = [], refetch: refetchTxs } = useQuery({
@@ -144,7 +144,7 @@ export default function Admin() {
       return res.ok ? res.json() : [];
     },
     enabled: tab === "overview" || tab === "transactions",
-    refetchInterval: 15000,
+    refetchInterval: 8000,
   });
 
   const handleRefresh = useCallback(() => {

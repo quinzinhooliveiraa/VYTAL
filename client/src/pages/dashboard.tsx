@@ -22,6 +22,7 @@ export default function Dashboard() {
       if (!res.ok) return { balance: 0 };
       return res.json();
     },
+    refetchInterval: 10000,
   });
 
   const { data: myChallenges = [] } = useQuery({

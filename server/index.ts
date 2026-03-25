@@ -308,9 +308,11 @@ async function reconcileWithdrawals() {
   setInterval(processMissedDaysAuto, 24 * 60 * 60 * 1000);
 
   // Withdrawal reconciliation: check PROCESSING/PENDING withdrawals against the
-  // gateway every 5 minutes. Catches cases where the webhook was missed (server
+  // gateway every 60 seconds. Catches cases where the webhook was missed (server
   // was down or gateway didn't deliver it). Self-heals without admin intervention.
-  const RECONCILE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-  setTimeout(reconcileWithdrawals, 30_000); // first run 30s after startup
+  // Also checks recent FAILED withdrawals (7 days) in case the gateway paid but
+  // platform showed failure due to a network/timing error.
+  const RECONCILE_INTERVAL_MS = 60 * 1000; // 60 seconds
+  setTimeout(reconcileWithdrawals, 15_000); // first run 15s after startup
   setInterval(reconcileWithdrawals, RECONCILE_INTERVAL_MS);
 })();

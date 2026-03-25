@@ -63,6 +63,7 @@ export default function Wallet() {
       const res = await fetch("/api/wallet/balance", { credentials: "include" });
       return res.ok ? res.json() : { balance: 0, lockedBalance: 0, availableBalance: 0 };
     },
+    refetchInterval: 10000,
   });
 
   const { data: txs = [] } = useQuery({
@@ -71,6 +72,7 @@ export default function Wallet() {
       const res = await fetch("/api/wallet/transactions", { credentials: "include" });
       return res.ok ? res.json() : [];
     },
+    refetchInterval: 10000,
   });
 
   const saveCpfMutation = useMutation({

@@ -94,11 +94,15 @@ export class TransactionService {
   }
 
   async getPendingWithdrawals(userId: string) {
+    const { inArray } = await import("drizzle-orm");
     return db.select().from(transactions)
       .where(and(
         eq(transactions.userId, userId),
         eq(transactions.type, "withdraw_request"),
-        eq(transactions.status, TRANSACTION_STATUS.PENDING)
+        inArray(transactions.status, [
+          TRANSACTION_STATUS.PENDING,
+          TRANSACTION_STATUS.PROCESSING,
+        ])
       ));
   }
 }

@@ -691,10 +691,10 @@ export default function Admin() {
                             {formatBRL(Math.max(Number(u.balance || 0) - Number(u.pendingLocked || 0), 0))}
                           </p>
                         </div>
-                        {Number(u.lockedBalance || 0) > 0 && (
+                        {Number(u.pendingLocked || 0) > 0 && (
                           <div>
                             <p className="text-[9px] text-muted-foreground uppercase">Em desafio</p>
-                            <p className="text-xs font-bold text-yellow-500">{formatBRL(Number(u.lockedBalance || 0))}</p>
+                            <p className="text-xs font-bold text-yellow-500">{formatBRL(Number(u.pendingLocked || 0))}</p>
                           </div>
                         )}
                         <div>

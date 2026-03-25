@@ -3,8 +3,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { db } from "./db";
-import { challenges, challengeParticipants, checkIns } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { challenges, challengeParticipants, checkIns, transactions, TRANSACTION_TYPES, TRANSACTION_STATUS } from "@shared/schema";
+import { eq, and, sql, inArray } from "drizzle-orm";
+import { paymentService } from "./services/payment-service";
+import { webhookService } from "./services/webhook-service";
 
 const app = express();
 const httpServer = createServer(app);
@@ -139,6 +141,79 @@ async function processMissedDaysAuto() {
   }
 }
 
+// Reconciliation job: polls AbacatePay for every PROCESSING/PENDING withdrawal
+// and updates the platform status accordingly.
+// Runs every 5 minutes so that even if webhooks are missed (network error, server
+// was restarted when webhook arrived, etc.) the status self-corrects automatically.
+async function reconcileWithdrawals() {
+  if (!paymentService.isConfigured()) return;
+
+  try {
+    // Find all withdrawal transactions that are still open on the platform
+    const openWithdrawals = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPES.WITHDRAW_REQUEST),
+          inArray(transactions.status, [
+            TRANSACTION_STATUS.PROCESSING,
+            TRANSACTION_STATUS.PENDING,
+          ]),
+        ),
+      );
+
+    // Only reconcile those that have an externalId (already sent to gateway)
+    const toCheck = openWithdrawals.filter((tx) => !!tx.externalId);
+    if (toCheck.length === 0) return;
+
+    log(`[Reconcile] Checking ${toCheck.length} open withdrawal(s)...`);
+
+    let completed = 0;
+    let failed = 0;
+    let stillPending = 0;
+
+    for (const tx of toCheck) {
+      try {
+        const gatewayStatus = await paymentService.getWithdrawStatus(tx.externalId!);
+        const upper = gatewayStatus.toUpperCase();
+
+        if (upper === "PAID" || upper === "COMPLETED" || upper === "SUCCESS") {
+          await webhookService.processWithdrawCompleted(tx.externalId!, {
+            reconciledAt: new Date().toISOString(),
+            gatewayStatus,
+          });
+          completed++;
+        } else if (
+          upper === "FAILED" ||
+          upper === "REJECTED" ||
+          upper === "CANCELLED" ||
+          upper === "CANCELED" ||
+          upper === "ERROR"
+        ) {
+          await webhookService.processWithdrawFailed(tx.externalId!, {
+            reconciledAt: new Date().toISOString(),
+            gatewayStatus,
+          });
+          failed++;
+        } else {
+          stillPending++;
+        }
+      } catch (txErr: any) {
+        log(`[Reconcile] Error checking withdrawal ${tx.id}: ${txErr.message}`);
+      }
+    }
+
+    if (completed > 0 || failed > 0) {
+      log(
+        `[Reconcile] Withdrawals reconciled — completed: ${completed}, failed: ${failed}, still pending: ${stillPending}`,
+      );
+    }
+  } catch (err: any) {
+    log(`[Reconcile] Error: ${err.message}`);
+  }
+}
+
 (async () => {
   await registerRoutes(httpServer, app);
 
@@ -184,4 +259,11 @@ async function processMissedDaysAuto() {
   // Auto-process missed days every 24 hours (and once 5 seconds after startup)
   setTimeout(processMissedDaysAuto, 5000);
   setInterval(processMissedDaysAuto, 24 * 60 * 60 * 1000);
+
+  // Withdrawal reconciliation: check PROCESSING/PENDING withdrawals against the
+  // gateway every 5 minutes. Catches cases where the webhook was missed (server
+  // was down or gateway didn't deliver it). Self-heals without admin intervention.
+  const RECONCILE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  setTimeout(reconcileWithdrawals, 30_000); // first run 30s after startup
+  setInterval(reconcileWithdrawals, RECONCILE_INTERVAL_MS);
 })();

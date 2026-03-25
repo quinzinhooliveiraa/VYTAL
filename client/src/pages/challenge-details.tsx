@@ -718,7 +718,7 @@ export default function ChallengeDetails() {
                           <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
                             <Coffee size={16} className="text-blue-500" />
                           </div>
-                        ) : c.photoUrl ? (
+                        ) : c.photoUrl?.startsWith("data:") ? (
                           <div
                             className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 cursor-pointer active:opacity-80"
                             onClick={() => setLightboxPhoto(c.photoUrl)}
@@ -994,9 +994,9 @@ export default function ChallengeDetails() {
                             <p className="text-[11px] font-medium truncate">{c.endLocationName || "Sem local"}</p>
                           </div>
                         </div>
-                        {(c.photoUrl || c.endPhotoUrl) && (
+                        {(c.photoUrl?.startsWith("data:") || c.endPhotoUrl?.startsWith("data:")) && (
                           <div className="flex gap-2">
-                            {c.photoUrl && (
+                            {c.photoUrl?.startsWith("data:") && (
                               <div className="flex-1">
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto início</p>
                                 <img
@@ -1008,7 +1008,7 @@ export default function ChallengeDetails() {
                                 />
                               </div>
                             )}
-                            {c.endPhotoUrl && (
+                            {c.endPhotoUrl?.startsWith("data:") && (
                               <div className="flex-1">
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto fim</p>
                                 <img

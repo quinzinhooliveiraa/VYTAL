@@ -686,13 +686,17 @@ export default function Admin() {
                       </div>
                       <div className="flex gap-4 mt-2">
                         <div>
-                          <p className="text-[9px] text-muted-foreground uppercase">Saldo</p>
-                          <p className="text-xs font-bold text-green-500">{formatBRL(Number(u.balance || 0))}</p>
+                          <p className="text-[9px] text-muted-foreground uppercase">Disponível</p>
+                          <p className="text-xs font-bold text-green-500">
+                            {formatBRL(Math.max(Number(u.balance || 0) - Number(u.pendingLocked || 0), 0))}
+                          </p>
                         </div>
-                        <div>
-                          <p className="text-[9px] text-muted-foreground uppercase">Travado</p>
-                          <p className="text-xs font-bold text-yellow-500">{formatBRL(Number(u.lockedBalance || 0))}</p>
-                        </div>
+                        {Number(u.lockedBalance || 0) > 0 && (
+                          <div>
+                            <p className="text-[9px] text-muted-foreground uppercase">Em desafio</p>
+                            <p className="text-xs font-bold text-yellow-500">{formatBRL(Number(u.lockedBalance || 0))}</p>
+                          </div>
+                        )}
                         <div>
                           <p className="text-[9px] text-muted-foreground uppercase">Desde</p>
                           <p className="text-xs font-bold">{formatDate(u.createdAt)}</p>

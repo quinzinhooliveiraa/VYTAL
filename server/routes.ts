@@ -3143,15 +3143,27 @@ export async function registerRoutes(
         balance: sql<string>`
           GREATEST(COALESCE((
             SELECT SUM(CASE
-              WHEN t.type = 'deposit'          AND t.status = 'completed'                     THEN  t.amount
-              WHEN t.type = 'withdraw_request' AND t.status IN ('completed','processing')     THEN -t.amount
-              WHEN t.type = 'challenge_entry'  AND t.status = 'completed'                     THEN -t.amount
-              WHEN t.type IN ('challenge_win','refund') AND t.status = 'completed'            THEN  t.amount
+              WHEN t.type = 'deposit'          AND t.status = 'completed'                  THEN  t.amount
+              WHEN t.type = 'withdraw_request' AND t.status IN ('completed','processing')  THEN -t.amount
+              WHEN t.type = 'challenge_entry'  AND t.status = 'completed'                  THEN -t.amount
+              WHEN t.type IN ('challenge_win','refund') AND t.status = 'completed'         THEN  t.amount
               ELSE 0
             END)
             FROM transactions t WHERE t.user_id = ${usersTable.id}
           ), 0), 0)
         `.as("balance"),
+        // Pending challenge entries not yet formally deducted from balance
+        // (status = 'pending' means it hasn't flipped to 'completed' yet).
+        // availableBalance = balance - pendingLocked — this is what the user can actually spend/withdraw.
+        pendingLocked: sql<string>`
+          COALESCE((
+            SELECT SUM(t.amount)
+            FROM transactions t
+            WHERE t.user_id = ${usersTable.id}
+              AND t.type = 'challenge_entry'
+              AND t.status = 'pending'
+          ), 0)
+        `.as("pending_locked"),
         lockedBalance: sql<string>`COALESCE(w.locked_balance, 0)`.as("locked_balance"),
       }).from(usersTable)
         .leftJoin(sql`wallets w`, sql`w.user_id = ${usersTable.id}`)

@@ -80,20 +80,11 @@ export class PaymentService {
   }
 
   async createPixWithdraw(amountInCents: number, pixKey: string, pixKeyType: string, description: string): Promise<PixWithdrawResult> {
-    const pixTypeMap: Record<string, string> = {
-      cpf: "CPF",
-      cnpj: "CNPJ",
-      email: "EMAIL",
-      phone: "PHONE",
-      random: "RANDOM_KEY",
-      evp: "RANDOM_KEY",
-    };
-    const pixType = pixTypeMap[pixKeyType?.toLowerCase()] || "CPF";
-
+    // AbacatePay withdraw/create API accepts: { amount (cents), pixKey, notes }
+    // The API auto-detects the PIX key type — no 'method' or nested 'pix' object needed.
     const data = await this.request("POST", "/withdraw/create", {
       amount: amountInCents,
-      pix: { type: pixType, key: pixKey },
-      method: "PIX",
+      pixKey,
       notes: description,
     });
 

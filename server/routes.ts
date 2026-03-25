@@ -2646,31 +2646,22 @@ export async function registerRoutes(
       });
 
       if (paymentService.isConfigured()) {
+        // Step 1: call the payment gateway (only this step can mark the tx as FAILED on error)
+        let withdraw: { id: string; status: string };
         try {
           const GATEWAY_DEPOSIT_FEE = 0.80;
           const gatewayAmount = numAmount - GATEWAY_DEPOSIT_FEE;
           const amountInCents = Math.round(gatewayAmount * 100);
-          const withdraw = await paymentService.createPixWithdraw(
+          withdraw = await paymentService.createPixWithdraw(
             amountInCents,
             pixKey,
             pixKeyType || "CPF",
             "Saque FitStake"
           );
-
-          await walletService.deductBalance(userId, numAmount);
-
-          await transactionService.setExternalId(tx.id, withdraw.id);
-          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.PROCESSING);
-
-          res.status(201).json({
-            transaction: { ...tx, status: TRANSACTION_STATUS.PROCESSING },
-            message: "Saque sendo processado!",
-          });
         } catch (gatewayError: any) {
+          // Gateway rejected the request — safe to mark FAILED (no money was sent)
           const errorMsg = gatewayError.message || "Erro desconhecido";
-          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {
-            error: errorMsg,
-          });
+          await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, { error: errorMsg });
           let userMessage = "Erro ao processar saque. ";
           if (errorMsg.toLowerCase().includes("key") || errorMsg.toLowerCase().includes("chave") || errorMsg.toLowerCase().includes("pix")) {
             userMessage += "Verifique se a chave Pix está correta e corresponde ao tipo selecionado.";
@@ -2681,11 +2672,35 @@ export async function registerRoutes(
           } else {
             userMessage += `Detalhe: ${errorMsg}`;
           }
-          res.status(400).json({ message: userMessage });
+          return res.status(400).json({ message: userMessage });
         }
+
+        // Step 2: gateway accepted — persist the gateway ID and set status to PROCESSING
+        // IMPORTANT: this must happen BEFORE deductBalance so that even if the server
+        // restarts between these two steps, getBalance() will correctly compute the
+        // lower balance from transactions (PROCESSING is counted in the formula).
+        await transactionService.setExternalId(tx.id, withdraw.id);
+        await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.PROCESSING);
+
+        // Step 3: sync the wallet cache (deductBalance). The formula in getBalance()
+        // already accounts for PROCESSING withdrawals, so this is redundant but keeps
+        // wallet.balance in sync without waiting for the next getBalance() call.
+        try {
+          await walletService.deductBalance(userId, numAmount);
+        } catch (deductErr: any) {
+          // Non-critical: wallet cache is stale but the transaction formula is authoritative.
+          // The next getBalance() call will self-correct the cached balance.
+          console.error("[Withdraw] deductBalance failed (tx already PROCESSING):", deductErr.message);
+        }
+
+        res.status(201).json({
+          transaction: { ...tx, status: TRANSACTION_STATUS.PROCESSING },
+          message: "Saque sendo processado!",
+        });
       } else {
-        await walletService.deductBalance(userId, numAmount);
+        // Dev/test mode — no gateway configured
         await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.COMPLETED);
+        await walletService.deductBalance(userId, numAmount);
 
         res.status(201).json({
           transaction: { ...tx, status: TRANSACTION_STATUS.COMPLETED },

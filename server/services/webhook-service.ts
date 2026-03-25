@@ -57,8 +57,17 @@ export class WebhookService {
       return { success: true, message: "Já processado" };
     }
 
-    if (tx.status === TRANSACTION_STATUS.COMPLETED) {
-      await walletService.addBalance(tx.userId, Number(tx.amount));
+    // When status was PROCESSING or COMPLETED, the withdrawal was already counted in
+    // getBalance() formula (and wallet.balance was decremented via deductBalance).
+    // Changing status to FAILED removes it from the formula, which automatically
+    // restores the balance on the next getBalance() call. We also add back via
+    // addBalance() to keep the wallet cache immediately consistent.
+    if (tx.status === TRANSACTION_STATUS.PROCESSING || tx.status === TRANSACTION_STATUS.COMPLETED) {
+      try {
+        await walletService.addBalance(tx.userId, Number(tx.amount));
+      } catch (e: any) {
+        console.error("[Webhook] addBalance on withdraw failed:", e.message);
+      }
     }
 
     await transactionService.updateStatus(tx.id, TRANSACTION_STATUS.FAILED, {

@@ -2934,13 +2934,17 @@ export async function registerRoutes(
 
       const [usersWithBalance] = await database.select({
         count: sql<number>`COUNT(*)`,
+        total: sql<string>`COALESCE(SUM(${wallets.balance}::numeric - ${wallets.lockedBalance}::numeric), 0)`,
       }).from(wallets).where(sql`(${wallets.balance}::numeric - ${wallets.lockedBalance}::numeric) >= 30`);
       const withdrawableUsersCount = Number(usersWithBalance.count);
+      // Sum of balances from users who actually CAN withdraw (available >= R$30)
+      const withdrawableUsersTotal = Number(usersWithBalance.total);
 
-      // Worst case: every eligible user withdraws → gateway pays (amount - 0.80) per withdrawal
-      // because we call createPixWithdraw(amount - 0.80), AbacatePay takes another 0.80 from that
-      const worstCaseGatewayCost = actuallyAvailable > 0
-        ? actuallyAvailable - (withdrawableUsersCount * ABACATEPAY_FEE)
+      // Worst case: every eligible user withdraws their full available balance.
+      // Gateway pays (userAmount - ABACATEPAY_FEE) per withdrawal (we send amount-fee, gateway takes fee again).
+      // If 0 users are eligible, cost is R$0 regardless of what's sitting in wallets.
+      const worstCaseGatewayCost = withdrawableUsersCount > 0
+        ? Math.max(withdrawableUsersTotal - (withdrawableUsersCount * ABACATEPAY_FEE), 0)
         : 0;
 
       // 90% of locked challenge funds will become prize payouts (10% is our future fee)

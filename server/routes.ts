@@ -3032,6 +3032,50 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: check what the payment gateway actually says about a withdrawal's status.
+  // Used to verify before force-completing so the admin can make an informed decision.
+  app.get("/api/admin/transactions/:id/gateway-status", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const tx = await transactionService.getById(req.params.id);
+      if (!tx) return res.status(404).json({ message: "Transação não encontrada" });
+      if (tx.type !== TRANSACTION_TYPES.WITHDRAW_REQUEST) {
+        return res.status(400).json({ message: "Apenas saques têm status no gateway" });
+      }
+      if (!tx.externalId) {
+        return res.json({ gatewayStatus: null, label: "Saque nunca chegou ao gateway (sem ID externo)", isPaid: false, isFailed: false, hasId: false });
+      }
+      if (!paymentService.isConfigured()) {
+        return res.json({ gatewayStatus: null, label: "Gateway não configurado (modo dev)", isPaid: false, isFailed: false, hasId: true });
+      }
+      const gatewayStatus = await paymentService.getWithdrawStatus(tx.externalId);
+      const upper = gatewayStatus.toUpperCase();
+      const isPaid = upper === "PAID" || upper === "COMPLETED" || upper === "SUCCESS";
+      const isFailed = upper === "FAILED" || upper === "REJECTED" || upper === "CANCELLED" || upper === "CANCELED" || upper === "ERROR";
+      const labelMap: Record<string, string> = {
+        PAID: "PAGO — dinheiro enviado ao banco ✓",
+        COMPLETED: "CONCLUÍDO — dinheiro enviado ao banco ✓",
+        SUCCESS: "SUCESSO — dinheiro enviado ao banco ✓",
+        FAILED: "FALHOU — dinheiro NÃO foi enviado",
+        REJECTED: "REJEITADO — dinheiro NÃO foi enviado",
+        CANCELLED: "CANCELADO — dinheiro NÃO foi enviado",
+        CANCELED: "CANCELADO — dinheiro NÃO foi enviado",
+        ERROR: "ERRO — dinheiro NÃO foi enviado",
+        PENDING: "PENDENTE — ainda processando",
+        PROCESSING: "PROCESSANDO — ainda processando",
+      };
+      res.json({
+        gatewayStatus,
+        label: labelMap[upper] || `Status: ${gatewayStatus}`,
+        isPaid,
+        isFailed,
+        hasId: true,
+        externalId: tx.externalId,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: `Erro ao consultar gateway: ${error.message}` });
+    }
+  });
+
   // Admin: force-complete a withdrawal that shows FAILED on platform but money reached the bank.
   // Marking COMPLETED makes the formula automatically deduct it from the user's balance.
   app.post("/api/admin/transactions/:id/force-complete", requireAuth, requireAdmin, async (req, res) => {

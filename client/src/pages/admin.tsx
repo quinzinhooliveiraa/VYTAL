@@ -1190,10 +1190,28 @@ function TxRow({ tx, currentUserId, showUser }: { tx: any; currentUserId?: strin
   const isMine = tx.userId === currentUserId;
   const { toast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [gwCheck, setGwCheck] = useState<null | "loading" | { label: string; isPaid: boolean; isFailed: boolean; hasId: boolean; gatewayStatus: string | null; error?: string }>(null);
 
   const canForceComplete =
     tx.type === "withdraw_request" &&
     (tx.status === "failed" || tx.status === "pending");
+
+  // When the dialog opens, immediately check the gateway status so the admin
+  // can make an informed decision before confirming.
+  useEffect(() => {
+    if (!confirmOpen || !canForceComplete) return;
+    setGwCheck("loading");
+    fetch(`/api/admin/transactions/${tx.id}/gateway-status`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.message && !data.gatewayStatus && !data.hasId) {
+          setGwCheck({ label: data.message, isPaid: false, isFailed: false, hasId: false, gatewayStatus: null, error: data.message });
+        } else {
+          setGwCheck(data);
+        }
+      })
+      .catch(e => setGwCheck({ label: `Erro ao consultar gateway: ${e.message}`, isPaid: false, isFailed: false, hasId: false, gatewayStatus: null, error: e.message }));
+  }, [confirmOpen]);
 
   const forceComplete = useMutation({
     mutationFn: async () => {
@@ -1245,39 +1263,66 @@ function TxRow({ tx, currentUserId, showUser }: { tx: any; currentUserId?: strin
         </div>
       </div>
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <Dialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) setGwCheck(null); }}>
         <DialogContent className="max-w-sm" data-testid="dialog-force-complete">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle size={18} className="text-orange-500" />
               Forçar conclusão do saque
             </DialogTitle>
-            <DialogDescription className="text-left space-y-2 pt-1">
-              <span className="block">
-                Use isso <strong>apenas</strong> quando o dinheiro já chegou no banco do usuário mas a plataforma marcou como falha.
-              </span>
-              <span className="block text-xs bg-orange-500/10 text-orange-600 rounded-lg p-2">
-                Usuário: <strong>{tx.userName || tx.userId}</strong><br />
-                Valor: <strong>{formatBRL(Number(tx.amount))}</strong><br />
-                Status atual: <strong>{statusLabels[tx.status] || tx.status}</strong>
-              </span>
-              <span className="block text-[11px] text-muted-foreground">
-                Isso marcará a transação como <strong>Concluído</strong> e descontará o saldo do usuário automaticamente.
-              </span>
+            <DialogDescription className="text-left space-y-2 pt-1" asChild>
+              <div>
+                <div className="text-xs bg-muted rounded-lg p-2 space-y-0.5">
+                  <p><span className="text-muted-foreground">Usuário:</span> <strong>{tx.userName || tx.userId}</strong></p>
+                  <p><span className="text-muted-foreground">Valor:</span> <strong>{formatBRL(Number(tx.amount))}</strong></p>
+                  <p><span className="text-muted-foreground">Status plataforma:</span> <strong>{statusLabels[tx.status] || tx.status}</strong></p>
+                </div>
+
+                {/* Gateway status — fetched automatically when dialog opens */}
+                <div className="mt-2">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Status real no gateway (AbacatePay)</p>
+                  {gwCheck === null || gwCheck === "loading" ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-2">
+                      <Loader2 size={12} className="animate-spin" />
+                      Consultando gateway...
+                    </div>
+                  ) : gwCheck.isPaid ? (
+                    <div className="text-xs font-bold bg-green-500/10 text-green-600 rounded-lg p-2" data-testid="gw-status-paid">
+                      ✓ {gwCheck.label}
+                    </div>
+                  ) : gwCheck.isFailed ? (
+                    <div className="text-xs font-bold bg-red-500/10 text-red-600 rounded-lg p-2" data-testid="gw-status-failed">
+                      ✗ {gwCheck.label}
+                      <p className="text-[10px] font-normal mt-1 text-red-500/80">O gateway confirma que o dinheiro NÃO foi enviado. Não force-complete.</p>
+                    </div>
+                  ) : (
+                    <div className="text-xs bg-yellow-500/10 text-yellow-700 rounded-lg p-2" data-testid="gw-status-other">
+                      ⚠ {gwCheck.label}
+                      {gwCheck.error && <p className="text-[10px] mt-1 text-yellow-600/80">Você pode forçar por sua própria conta e risco.</p>}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Ao confirmar: transação vira <strong>Concluído</strong> e o saldo do usuário é descontado automaticamente.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={forceComplete.isPending}>
+            <Button variant="outline" size="sm" onClick={() => { setConfirmOpen(false); setGwCheck(null); }} disabled={forceComplete.isPending}>
               Cancelar
             </Button>
             <Button
               size="sm"
-              className="bg-orange-500 hover:bg-orange-600 text-white"
+              className={gwCheck !== "loading" && gwCheck !== null && gwCheck.isFailed
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : "bg-orange-500 hover:bg-orange-600 text-white"}
               onClick={() => forceComplete.mutate()}
-              disabled={forceComplete.isPending}
+              disabled={forceComplete.isPending || gwCheck === "loading" || (gwCheck !== null && gwCheck !== "loading" && gwCheck.isFailed)}
               data-testid="btn-confirm-force-complete"
             >
-              {forceComplete.isPending ? <Loader2 size={14} className="animate-spin" /> : "Confirmar"}
+              {forceComplete.isPending ? <Loader2 size={14} className="animate-spin" /> : "Confirmar mesmo assim"}
             </Button>
           </DialogFooter>
         </DialogContent>

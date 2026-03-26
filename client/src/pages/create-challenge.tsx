@@ -152,7 +152,6 @@ export default function CreateChallenge() {
           restDaysAllowed: parseInt(restDaysAllowed) || 0,
           image: bannerUrl || "",
           startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
-          createdBy: "placeholder",
           splitPrize: scoringSystem === "ranking" ? splitPrize : false,
           splitPercentages: scoringSystem === "ranking" ? splitPercentages : { 1: 100, 2: 0, 3: 0 },
           tiebreaker: tiebreaker.trim() || "",

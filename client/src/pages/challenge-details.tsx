@@ -42,6 +42,17 @@ export default function ChallengeDetails() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
+  const [manualCheckInOpen, setManualCheckInOpen] = useState(false);
+  const [manualTarget, setManualTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [manualDate, setManualDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.toISOString().split("T")[0];
+  });
+  const [manualDist, setManualDist] = useState("");
+  const [manualDuration, setManualDuration] = useState("");
+  const [manualReps, setManualReps] = useState("");
+  const [manualFixMissed, setManualFixMissed] = useState(true);
+  const [manualNotes, setManualNotes] = useState("");
   const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [tieWith2nd, setTieWith2nd] = useState(false);
@@ -116,6 +127,19 @@ export default function ChallengeDetails() {
       queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
       queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/recent`] });
       toast({ title: "Check-in sinalizado", description: "O check-in foi marcado para revisão." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const manualCheckInMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", `/api/challenges/${id}/manual-checkin`, data),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/challenges/${id}/participants`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/recent`] });
+      setManualCheckInOpen(false);
+      setManualDist(""); setManualDuration(""); setManualReps(""); setManualNotes(""); setManualFixMissed(true);
+      toast({ title: "Check-in adicionado!", description: data.message });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -1297,6 +1321,14 @@ export default function ChallengeDetails() {
                             </button>
                           )
                         )}
+                        <button
+                          className="w-7 h-7 rounded-lg border border-green-500/30 flex items-center justify-center text-green-500/60 hover:text-green-500 hover:border-green-500 transition-colors"
+                          onClick={() => { setManualTarget({ userId: p.userId, name: p.user?.name || "Participante" }); setManualCheckInOpen(true); }}
+                          title="Adicionar check-in manual"
+                          data-testid={`btn-manual-checkin-${p.userId}`}
+                        >
+                          <PlusCircle size={13} />
+                        </button>
                         {p.userId !== challenge.createdBy && (
                           <button
                             className="w-7 h-7 rounded-lg border border-red-500/30 flex items-center justify-center text-red-500/60 hover:text-red-500 hover:border-red-500 transition-colors"
@@ -2041,6 +2073,112 @@ export default function ChallengeDetails() {
         title="Depositar na Carteira"
         description={entryFee > 0 ? `Taxa de entrada: ${formatBRL(entryFee)}. Saldo adicionado ao seu perfil.` : "Mínimo R$ 30,00. Saldo adicionado ao seu perfil."}
       />
+
+      {/* Manual check-in dialog */}
+      <Dialog open={manualCheckInOpen} onOpenChange={setManualCheckInOpen}>
+        <DialogContent className="max-w-sm rounded-3xl" data-testid="dialog-manual-checkin">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PlusCircle size={18} className="text-green-500" /> Check-in Manual
+            </DialogTitle>
+            <DialogDescription>
+              Corrige sessões que deram erro ou não foram registradas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            {/* Participant selector */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Participante</p>
+              <select
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm"
+                value={manualTarget?.userId || ""}
+                onChange={e => {
+                  const p = participants.find((p: any) => p.userId === e.target.value);
+                  if (p) setManualTarget({ userId: p.userId, name: p.user?.name || "Participante" });
+                }}
+                data-testid="select-manual-participant"
+              >
+                <option value="">Selecionar...</option>
+                {participants.filter((p: any) => p.isActive !== false).map((p: any) => (
+                  <option key={p.userId} value={p.userId}>{p.user?.name || p.userId}</option>
+                ))}
+              </select>
+            </div>
+            {/* Date */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Data do treino</p>
+              <Input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} className="h-10 rounded-xl" data-testid="input-manual-date" />
+            </div>
+            {/* Progress fields — shown based on challenge type */}
+            {(cVType === "distancia") && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Distância (km)</p>
+                <Input type="number" step="0.1" min="0" placeholder="ex: 10.5" value={manualDist} onChange={e => setManualDist(e.target.value)} className="h-10 rounded-xl" data-testid="input-manual-dist" />
+              </div>
+            )}
+            {(cVType === "tempo") && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Duração (minutos)</p>
+                <Input type="number" min="1" placeholder="ex: 45" value={manualDuration} onChange={e => setManualDuration(e.target.value)} className="h-10 rounded-xl" data-testid="input-manual-duration" />
+              </div>
+            )}
+            {(cVType === "repeticoes") && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Repetições</p>
+                <Input type="number" min="1" placeholder="ex: 100" value={manualReps} onChange={e => setManualReps(e.target.value)} className="h-10 rounded-xl" data-testid="input-manual-reps" />
+              </div>
+            )}
+            {(cVType === "combinacao") && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Km</p>
+                  <Input type="number" step="0.1" min="0" placeholder="0" value={manualDist} onChange={e => setManualDist(e.target.value)} className="h-9 rounded-xl text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Min</p>
+                  <Input type="number" min="0" placeholder="0" value={manualDuration} onChange={e => setManualDuration(e.target.value)} className="h-9 rounded-xl text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Reps</p>
+                  <Input type="number" min="0" placeholder="0" value={manualReps} onChange={e => setManualReps(e.target.value)} className="h-9 rounded-xl text-sm" />
+                </div>
+              </div>
+            )}
+            {/* Fix missed day checkbox */}
+            <label className="flex items-center gap-3 cursor-pointer bg-muted rounded-xl p-3">
+              <input type="checkbox" checked={manualFixMissed} onChange={e => setManualFixMissed(e.target.checked)} className="w-4 h-4 rounded" data-testid="check-fix-missed" />
+              <div>
+                <p className="text-sm font-medium">Corrigir falta</p>
+                <p className="text-[11px] text-muted-foreground">Remove 1 falta do histórico do participante</p>
+              </div>
+            </label>
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Motivo / observação</p>
+              <Input placeholder="Ex: App travou no check-out" value={manualNotes} onChange={e => setManualNotes(e.target.value)} className="h-10 rounded-xl" data-testid="input-manual-notes" />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => setManualCheckInOpen(false)} data-testid="btn-cancel-manual">Cancelar</Button>
+            <Button
+              className="flex-1 rounded-2xl bg-green-600 hover:bg-green-700 text-white"
+              disabled={!manualTarget || manualCheckInMutation.isPending}
+              onClick={() => manualCheckInMutation.mutate({
+                targetUserId: manualTarget!.userId,
+                date: manualDate,
+                distanceKm: manualDist || undefined,
+                durationMins: manualDuration || undefined,
+                reps: manualReps || undefined,
+                fixMissedDay: manualFixMissed,
+                notes: manualNotes || undefined,
+              })}
+              data-testid="btn-confirm-manual"
+            >
+              {manualCheckInMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : "Confirmar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Photo lightbox */}
       <Dialog open={!!lightboxPhoto} onOpenChange={(open) => { if (!open) setLightboxPhoto(null); }}>

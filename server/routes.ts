@@ -2167,6 +2167,114 @@ export async function registerRoutes(
     }
   });
 
+  // ── Manual check-in by moderator (fix failed/missing sessions) ──
+  app.post("/api/challenges/:challengeId/manual-checkin", requireAuth, async (req, res) => {
+    try {
+      const modId = (req.session as any).userId;
+      const { challengeId } = req.params;
+      const { targetUserId, date, distanceKm, durationMins, reps, fixMissedDay, notes } = req.body;
+
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const mod = await storage.getUser(modId);
+      const isMod = challenge.createdBy === modId || mod?.isAdmin;
+      const isCoMod = !isMod && !!(await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, modId)))
+        .limit(1).then(r => (r[0] as any)?.isCoModerator));
+      if (!isMod && !isCoMod) return res.status(403).json({ message: "Sem permissão" });
+
+      const [participant] = await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, targetUserId)));
+      if (!participant) return res.status(404).json({ message: "Participante não encontrado" });
+      if (!participant.isActive) return res.status(400).json({ message: "Participante já eliminado" });
+
+      const checkDate = date || new Date().toISOString().split("T")[0];
+      const dist = distanceKm ? parseFloat(distanceKm) : 0;
+      const duration = durationMins ? parseInt(durationMins) : 0;
+      const repCount = reps ? parseInt(reps) : 0;
+
+      // Create a manual check-in record
+      const flagReason = notes ? `Adicionado manualmente pelo moderador: ${notes}` : "Adicionado manualmente pelo moderador";
+      await db.insert(checkIns).values({
+        challengeId,
+        userId: targetUserId,
+        status: "completed",
+        photoUrl: "",
+        backPhotoUrl: "",
+        endPhotoUrl: "",
+        endBackPhotoUrl: "",
+        distanceKm: dist > 0 ? dist.toFixed(3) : null,
+        durationMins: duration > 0 ? duration : null,
+        reps: repCount > 0 ? repCount : null,
+        isIndoor: false,
+        approved: true,
+        flagged: false,
+        flagReason,
+        checkedOutAt: new Date(`${checkDate}T12:00:00Z`),
+        createdAt: new Date(`${checkDate}T12:00:00Z`),
+      } as any);
+
+      // Update participant totals
+      const newTotalDist = parseFloat(String(participant.totalDistanceKm || "0")) + dist;
+      const newTotalDuration = (participant.totalDurationMins || 0) + duration;
+      const challengeType = challenge.type || "checkin";
+      const vType = challenge.validationType || "foto";
+
+      const updates: Record<string, any> = {
+        totalDistanceKm: newTotalDist.toFixed(3),
+        totalDurationMins: newTotalDuration,
+        lastCheckInDate: checkDate,
+      };
+
+      // Score logic mirrors regular checkout
+      if (challengeType === "corrida" && vType === "distancia") {
+        updates.score = Math.round(newTotalDist * 100);
+      } else if (challengeType === "corrida" && vType === "repeticoes") {
+        updates.score = (participant.score || 0) + repCount;
+      } else if (challengeType === "corrida" && vType === "tempo") {
+        updates.score = newTotalDuration;
+      } else if (challengeType === "ranking" && vType === "distancia") {
+        updates.score = Math.round(newTotalDist * 100);
+      } else if (challengeType === "ranking" && vType === "tempo") {
+        updates.score = newTotalDuration;
+      } else if (challengeType === "ranking" && vType === "repeticoes") {
+        updates.score = (participant.score || 0) + repCount;
+      } else {
+        // checkin / survival / foto — just +1
+        updates.score = (participant.score || 0) + 1;
+      }
+
+      // If mod says this corrects a missed day, decrement missedDays
+      if (fixMissedDay && (participant.missedDays || 0) > 0) {
+        updates.missedDays = Math.max(0, (participant.missedDays || 0) - 1);
+      }
+
+      await db.update(challengeParticipants).set(updates).where(eq(challengeParticipants.id, participant.id));
+
+      // Notify the participant
+      const targetUser = await storage.getUser(targetUserId);
+      if (targetUser) {
+        const distStr = dist > 0 ? ` (${dist.toFixed(1)}km)` : duration > 0 ? ` (${duration}min)` : repCount > 0 ? ` (${repCount} reps)` : "";
+        await storage.createNotification({
+          userId: targetUserId,
+          type: "manual_checkin",
+          title: "Check-in adicionado pelo moderador",
+          message: `O moderador adicionou um check-in para você em ${checkDate}${distStr}. ${notes || ""}`.trim(),
+          challengeId,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: `Check-in manual adicionado para ${targetUser?.name || targetUserId}`,
+        updatedScore: updates.score,
+        updatedTotalDist: newTotalDist.toFixed(1),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Invalidate check-in (remove it and deduct score)
   app.post("/api/check-ins/:checkInId/invalidate", requireAuth, async (req, res) => {
     try {

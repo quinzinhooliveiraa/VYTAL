@@ -13,7 +13,7 @@ import { webhookService } from "./services/webhook-service";
 import { challengeFinanceService } from "./services/challenge-finance-service";
 import { db } from "./db";
 import { challenges, communities, transactions, challengeJoinRequests, followRequests, users, messages, checkIns, challengeParticipants, challengeMessages } from "@shared/schema";
-import { eq, and, sql, desc, ne } from "drizzle-orm";
+import { eq, and, sql, desc, ne, inArray } from "drizzle-orm";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

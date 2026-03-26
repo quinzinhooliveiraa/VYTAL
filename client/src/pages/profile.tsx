@@ -25,6 +25,7 @@ export default function Profile() {
 
   const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
   const [bio, setBio] = useState(user?.bio || "");
+  const [weightKg, setWeightKg] = useState(String((user as any)?.weightKg || ""));
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
   const [bannerUrl, setBannerUrl] = useState((user as any)?.banner || "");
 
@@ -175,7 +176,7 @@ export default function Profile() {
   };
 
   const handleSaveProfile = () => {
-    updateProfileMutation.mutate({ name: profileName, bio });
+    updateProfileMutation.mutate({ name: profileName, bio, weightKg: weightKg ? parseInt(weightKg) : null });
     setIsEditing(false);
   };
 
@@ -542,6 +543,23 @@ export default function Profile() {
                   className="w-full bg-background border border-border rounded-xl p-4 focus:border-primary outline-none min-h-[100px] resize-none"
                   data-testid="input-bio"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Peso corporal (kg)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="30"
+                    max="300"
+                    placeholder="ex: 75"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl h-12 px-4 pr-12 focus:border-primary outline-none"
+                    data-testid="input-weight"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">kg</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Usado para calcular calorias com mais precisão durante os treinos.</p>
               </div>
               <Button className="w-full h-14 rounded-xl font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={handleSaveProfile} data-testid="button-save-profile">
                 Salvar Alterações

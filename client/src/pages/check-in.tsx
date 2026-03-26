@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { ChevronLeft, Camera, MapPin, Timer, Flame, Ruler, RotateCcw, CheckCircle, AlertTriangle, Navigation, Loader2, LogOut, SwitchCamera, Heart, Bluetooth, BluetoothOff, WifiOff, CloudUpload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,7 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function estimateCalories(durationMins: number, distanceKm: number, sport: string): number {
-  const weightKg = 70;
+function estimateCalories(durationMins: number, distanceKm: number, sport: string, weightKg = 70): number {
   const s = sport.toLowerCase();
   const hours = durationMins / 60;
   if (hours <= 0) return 0;
@@ -139,6 +139,8 @@ export default function CheckIn() {
   const { id } = useParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userWeightKg = (user as any)?.weightKg || 70;
 
   const { data: challenge } = useQuery({
     queryKey: ["/api/challenges", id],
@@ -194,6 +196,8 @@ export default function CheckIn() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timerRef = useRef<number | null>(null);
   const locationReminderRef = useRef<number | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const lastServerUpdateRef = useRef<number>(0);
 
   const sport = challenge?.sport || "";
   const vType = challenge?.validationType || "foto";
@@ -394,35 +398,50 @@ export default function CheckIn() {
 
   useEffect(() => {
     if (phase === "in-progress" && currentCheckInId && showDistanceUI && !indoorMode) {
-      locationReminderRef.current = window.setInterval(() => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            fetch("/api/check-ins/location-update", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                checkInId: currentCheckInId,
-                latitude: pos.coords.latitude.toString(),
-                longitude: pos.coords.longitude.toString(),
-              }),
-              credentials: "include",
-            }).catch(() => {});
+      if (!("geolocation" in navigator)) return;
 
-            if (coords) {
-              const d = haversineDistance(coords.lat, coords.lng, pos.coords.latitude, pos.coords.longitude);
-              setDistanceKm(prev => {
-                if (d > 0.005 && pos.coords.accuracy < 50) return prev + d;
-                return prev;
-              });
-            }
-            setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          },
-          () => {},
-          { enableHighAccuracy: true }
-        );
-      }, 30000);
+      const handlePosition = (pos: GeolocationPosition) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        // Throttle server updates to max 1 per 15 seconds
+        const now = Date.now();
+        if (now - lastServerUpdateRef.current > 15000) {
+          lastServerUpdateRef.current = now;
+          fetch("/api/check-ins/location-update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ checkInId: currentCheckInId, latitude: latitude.toString(), longitude: longitude.toString() }),
+            credentials: "include",
+          }).catch(() => {});
+        }
+
+        setCoords(prev => {
+          if (!prev) {
+            return { lat: latitude, lng: longitude };
+          }
+          const d = haversineDistance(prev.lat, prev.lng, latitude, longitude);
+          // Only count movement > 5m with accuracy < 30m (stricter than before)
+          if (d > 0.005 && accuracy < 30) {
+            setDistanceKm(km => km + d);
+            setGpsAccuracy(accuracy);
+          }
+          return { lat: latitude, lng: longitude };
+        });
+      };
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        handlePosition,
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+      );
     }
-    return () => { if (locationReminderRef.current) clearInterval(locationReminderRef.current); };
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (locationReminderRef.current) clearInterval(locationReminderRef.current);
+    };
   }, [phase, currentCheckInId, showDistanceUI, indoorMode]);
 
   useEffect(() => {
@@ -430,6 +449,10 @@ export default function CheckIn() {
       stopCamera();
       if (timerRef.current) clearInterval(timerRef.current);
       if (locationReminderRef.current) clearInterval(locationReminderRef.current);
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
     };
   }, []);
 
@@ -677,7 +700,7 @@ export default function CheckIn() {
 
     const dMins = Math.max(1, Math.round(elapsedSeconds / 60));
     const finalDist = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) : distanceKm;
-    const cal = estimateCalories(dMins, finalDist, sport);
+    const cal = estimateCalories(dMins, finalDist, sport, userWeightKg);
     const pace = finalDist > 0.01 ? formatPace(dMins, finalDist) : null;
 
     // Offline: save checkout data locally
@@ -758,7 +781,7 @@ export default function CheckIn() {
 
   const durationMins = Math.max(1, Math.round(elapsedSeconds / 60));
   const effectiveDistance = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) || 0 : distanceKm;
-  const calories = estimateCalories(durationMins, effectiveDistance, sport);
+  const calories = estimateCalories(durationMins, effectiveDistance, sport, userWeightKg);
 
   const isCameraPhase = phase === "camera-front" || phase === "camera-back" || phase === "camera-end-front" || phase === "camera-end-back" || phase === "camera-indoor-proof";
   const isCheckIn = phase === "camera-front" || phase === "camera-back";

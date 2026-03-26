@@ -26,6 +26,7 @@ export const users = pgTable("users", {
   pwaInstalled: boolean("pwa_installed").default(false),
   deviceInfo: text("device_info").default(""),
   isBanned: boolean("is_banned").default(false),
+  weightKg: integer("weight_kg"),
   lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

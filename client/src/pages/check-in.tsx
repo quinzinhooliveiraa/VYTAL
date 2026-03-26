@@ -23,10 +23,29 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function estimateCalories(durationMins: number, distanceKm: number, sport: string, weightKg = 70): number {
+// Keytel et al. (2005) formula — uses real heart rate for more accuracy.
+// When no HR available, falls back to MET-based estimation.
+function estimateCalories(
+  durationMins: number,
+  distanceKm: number,
+  sport: string,
+  weightKg = 70,
+  avgBpm?: number | null,
+  ageYears = 30,
+): number {
+  if (durationMins <= 0) return 0;
+
+  // ── Heart-rate formula (more accurate when HR monitor is connected) ──
+  // Keytel 2005: Cal = T × (-55.0969 + 0.6309×HR + 0.1988×W + 0.2017×Age) / 4.184
+  if (avgBpm && avgBpm > 60) {
+    const cal = durationMins * (-55.0969 + 0.6309 * avgBpm + 0.1988 * weightKg + 0.2017 * ageYears) / 4.184;
+    if (cal > 0) return Math.round(cal);
+    // If formula gives nonsense (very low HR / cold-start), fall through to MET
+  }
+
+  // ── MET-based fallback ──
   const s = sport.toLowerCase();
   const hours = durationMins / 60;
-  if (hours <= 0) return 0;
 
   if (distanceKm > 0.05 && (s === "corrida" || s.includes("corr") || s.includes("run"))) {
     const speedKmh = distanceKm / hours;
@@ -62,15 +81,8 @@ function estimateCalories(durationMins: number, distanceKm: number, sport: strin
   }
 
   const metMap: Record<string, number> = {
-    corrida: 8.3,
-    academia: 5,
-    crossfit: 8,
-    ciclismo: 6.8,
-    natacao: 7.8,
-    funcional: 6.5,
-    yoga: 2.5,
-    hiit: 9,
-    personalizado: 5,
+    corrida: 8.3, academia: 5, crossfit: 8, ciclismo: 6.8,
+    natacao: 7.8, funcional: 6.5, yoga: 2.5, hiit: 9, personalizado: 5,
   };
   let met = metMap[s] || 5;
   if (!metMap[s]) {
@@ -141,6 +153,7 @@ export default function CheckIn() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userWeightKg = (user as any)?.weightKg || 70;
+  const userAgeYears = (user as any)?.ageYears || 30;
 
   const { data: challenge } = useQuery({
     queryKey: ["/api/challenges", id],
@@ -700,7 +713,7 @@ export default function CheckIn() {
 
     const dMins = Math.max(1, Math.round(elapsedSeconds / 60));
     const finalDist = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) : distanceKm;
-    const cal = estimateCalories(dMins, finalDist, sport, userWeightKg);
+    const cal = estimateCalories(dMins, finalDist, sport, userWeightKg, hr.getAvgBpm(), userAgeYears);
     const pace = finalDist > 0.01 ? formatPace(dMins, finalDist) : null;
 
     // Offline: save checkout data locally
@@ -781,7 +794,7 @@ export default function CheckIn() {
 
   const durationMins = Math.max(1, Math.round(elapsedSeconds / 60));
   const effectiveDistance = indoorMode && manualDistanceKm ? parseFloat(manualDistanceKm) || 0 : distanceKm;
-  const calories = estimateCalories(durationMins, effectiveDistance, sport, userWeightKg);
+  const calories = estimateCalories(durationMins, effectiveDistance, sport, userWeightKg, hr.currentBpm, userAgeYears);
 
   const isCameraPhase = phase === "camera-front" || phase === "camera-back" || phase === "camera-end-front" || phase === "camera-end-back" || phase === "camera-indoor-proof";
   const isCheckIn = phase === "camera-front" || phase === "camera-back";
@@ -1161,9 +1174,12 @@ export default function CheckIn() {
               )}
               {showCalories && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center">
-                  <Flame size={18} className="text-orange-400 mx-auto mb-2" />
+                  <div className="flex justify-center items-center gap-1 mb-2">
+                    <Flame size={18} className="text-orange-400" />
+                    {hr.status === "connected" && hr.currentBpm && <Heart size={12} className="text-red-400 animate-pulse" />}
+                  </div>
                   <p className="text-2xl font-bold" data-testid="text-calories">{calories}</p>
-                  <p className="text-[10px] text-white/50 uppercase">kcal</p>
+                  <p className="text-[10px] text-white/50 uppercase">{hr.status === "connected" && hr.currentBpm ? "kcal (FC)" : "kcal"}</p>
                 </div>
               )}
               {showDistanceUI && !indoorMode && (
@@ -1300,10 +1316,13 @@ export default function CheckIn() {
               </div>
               {showCalories && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-3">
-                  <Flame size={20} className="text-orange-400 shrink-0" />
+                  <div className="relative shrink-0">
+                    <Flame size={20} className="text-orange-400" />
+                    {hr.status === "connected" && hr.getAvgBpm() && <Heart size={10} className="text-red-400 absolute -top-1 -right-1 animate-pulse" />}
+                  </div>
                   <div>
                     <p className="text-lg font-bold">{calories} kcal</p>
-                    <p className="text-[10px] text-white/50 uppercase">Calorias</p>
+                    <p className="text-[10px] text-white/50 uppercase">{hr.status === "connected" && hr.getAvgBpm() ? "Calorias (via FC)" : "Calorias"}</p>
                   </div>
                 </div>
               )}

@@ -26,6 +26,7 @@ export default function Profile() {
   const [profileName, setProfileName] = useState(user?.name || "Seu Nome");
   const [bio, setBio] = useState(user?.bio || "");
   const [weightKg, setWeightKg] = useState(String((user as any)?.weightKg || ""));
+  const [ageYears, setAgeYears] = useState(String((user as any)?.ageYears || ""));
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
   const [bannerUrl, setBannerUrl] = useState((user as any)?.banner || "");
 
@@ -176,7 +177,7 @@ export default function Profile() {
   };
 
   const handleSaveProfile = () => {
-    updateProfileMutation.mutate({ name: profileName, bio, weightKg: weightKg ? parseInt(weightKg) : null });
+    updateProfileMutation.mutate({ name: profileName, bio, weightKg: weightKg ? parseInt(weightKg) : null, ageYears: ageYears ? parseInt(ageYears) : null });
     setIsEditing(false);
   };
 
@@ -560,6 +561,23 @@ export default function Profile() {
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">kg</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">Usado para calcular calorias com mais precisão durante os treinos.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Idade</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="10"
+                    max="100"
+                    placeholder="ex: 28"
+                    value={ageYears}
+                    onChange={(e) => setAgeYears(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl h-12 px-4 pr-14 focus:border-primary outline-none"
+                    data-testid="input-age"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">anos</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Combinada com o monitor cardíaco, torna o cálculo de calorias ainda mais preciso.</p>
               </div>
               <Button className="w-full h-14 rounded-xl font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20" onClick={handleSaveProfile} data-testid="button-save-profile">
                 Salvar Alterações

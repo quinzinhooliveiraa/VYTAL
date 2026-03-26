@@ -27,6 +27,7 @@ export const users = pgTable("users", {
   deviceInfo: text("device_info").default(""),
   isBanned: boolean("is_banned").default(false),
   weightKg: integer("weight_kg"),
+  ageYears: integer("age_years"),
   lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

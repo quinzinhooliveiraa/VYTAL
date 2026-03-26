@@ -105,7 +105,7 @@ function formatDuration(seconds: number): string {
 
 // Convert a Blob to a compressed base64 data URL stored directly in the DB.
 // This avoids the filesystem (which is ephemeral and lost on restart/redeploy).
-async function blobToDataUrl(blob: Blob, maxDim = 1080, quality = 0.72): Promise<string> {
+async function blobToDataUrl(blob: Blob, maxDim = 800, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(blob);

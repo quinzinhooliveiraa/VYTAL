@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity, Users, Clock, HelpCircle, Eye, EyeOff, Share2, Copy, Check } from "lucide-react";
+import { Trophy, ArrowUpRight, Flame, Camera, ShieldAlert, PlusCircle, Compass, Wallet, TrendingUp, Zap, Activity, Users, Clock, HelpCircle, Eye, EyeOff, Share2, Copy, Check, CheckCircle2, AlertCircle, Moon } from "lucide-react";
 import { NotificationBell } from "@/components/notification-center";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -184,14 +184,21 @@ export default function Dashboard() {
               const isCreator = challenge.createdBy === user?.id;
               const entryFee = Number(challenge.entryFee || 0);
               const prizePool = count * entryFee;
+              const checkedInToday: boolean = challenge.checkedInToday ?? false;
+              const usedRestDayToday: boolean = challenge.usedRestDayToday ?? false;
+              const needsCheckIn = !waiting && !checkedInToday && !usedRestDayToday &&
+                (challenge.type === "checkin" || challenge.type === "survival");
 
               return (
                 <motion.div
                   key={challenge.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-card border border-border rounded-2xl p-5 relative overflow-hidden group"
+                  className={`bg-card border rounded-2xl p-5 relative overflow-hidden group transition-all ${needsCheckIn ? "border-orange-400/60 shadow-[0_0_0_1px_rgba(251,146,60,0.25)]" : "border-border"}`}
                 >
+                  {needsCheckIn && (
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-orange-400 to-primary rounded-t-2xl" />
+                  )}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -200,11 +207,26 @@ export default function Dashboard() {
                           <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px] font-black">MOD</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground font-medium">
+                      <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground font-medium flex-wrap">
                         <span className="flex items-center gap-1"><Users size={11} /> {count}/{max}</span>
                         <span className="flex items-center gap-1"><Clock size={11} /> {challenge.duration} dias</span>
                         {(notStarted || count < 2) && (
                           <Badge className="bg-yellow-500/15 text-yellow-600 border-none text-[9px] h-4 px-1.5">AGUARDANDO</Badge>
+                        )}
+                        {checkedInToday && (
+                          <span className="flex items-center gap-1 text-green-600 font-bold">
+                            <CheckCircle2 size={11} /> Check-in feito
+                          </span>
+                        )}
+                        {usedRestDayToday && !checkedInToday && (
+                          <span className="flex items-center gap-1 text-blue-500 font-bold">
+                            <Moon size={11} /> Descanso hoje
+                          </span>
+                        )}
+                        {needsCheckIn && (
+                          <span className="flex items-center gap-1 text-orange-500 font-bold animate-pulse">
+                            <AlertCircle size={11} /> Check-in pendente
+                          </span>
                         )}
                       </div>
                     </div>
@@ -222,14 +244,24 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex gap-2.5">
-                    {!waiting && (
+                    {!waiting && !checkedInToday && !usedRestDayToday && (
                       <Button
-                        className="flex-1 rounded-xl bg-primary text-primary-foreground font-bold h-12 shadow-lg shadow-primary/20 btn-primary-glow border-none"
+                        className={`flex-1 rounded-xl font-bold h-12 border-none ${needsCheckIn ? "bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 animate-pulse" : "bg-primary text-primary-foreground shadow-lg shadow-primary/20 btn-primary-glow"}`}
                         onClick={() => setLocation(`/check-in/${challenge.id}`)}
                         data-testid={`button-checkin-${challenge.id}`}
                       >
                         <Camera className="mr-2" size={18} />
-                        CHECK-IN
+                        {needsCheckIn ? "FAZER CHECK-IN" : "CHECK-IN"}
+                      </Button>
+                    )}
+                    {!waiting && (checkedInToday || usedRestDayToday) && (
+                      <Button
+                        className="flex-1 rounded-xl font-bold h-12 border-none bg-green-600/10 text-green-600 border border-green-600/20 hover:bg-green-600/20"
+                        onClick={() => setLocation(`/check-in/${challenge.id}`)}
+                        data-testid={`button-checkin-done-${challenge.id}`}
+                      >
+                        <CheckCircle2 className="mr-2" size={18} />
+                        {usedRestDayToday && !checkedInToday ? "DESCANSO MARCADO" : "CHECK-IN FEITO"}
                       </Button>
                     )}
                     <Link href={`/challenge/${challenge.id}`} className="flex-1">

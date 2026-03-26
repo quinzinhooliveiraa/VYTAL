@@ -9,6 +9,7 @@ import { paymentService } from "./services/payment-service";
 import { webhookService } from "./services/webhook-service";
 import { transactionService } from "./services/transaction-service";
 import { walletService } from "./services/wallet-service";
+import { notificationService } from "./services/notification-service";
 
 const app = express();
 const httpServer = createServer(app);
@@ -23,6 +24,7 @@ app.use("/api/upload", express.raw({ type: "*/*", limit: "50mb" }));
 
 app.use(
   express.json({
+    limit: "10mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
@@ -302,6 +304,68 @@ async function reconcileWithdrawals() {
       log(`serving on port ${port}`);
     },
   );
+
+  // Daily check-in reminder notifications (8 AM Brasília = 11:00 UTC)
+  // Fires once per day for every active challenge participant who hasn't
+  // checked in yet. Uses a minute-level poll so it fires within ~1 minute
+  // of the target time even if the server restarted.
+  let lastReminderDate = "";
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const utcH = now.getUTCHours();
+      const utcM = now.getUTCMinutes();
+      const todayKey = now.toISOString().slice(0, 10);
+      // Fire between 11:00–11:01 UTC (08:00 Brasília) once per day
+      if (utcH !== 11 || utcM !== 0) return;
+      if (lastReminderDate === todayKey) return;
+      lastReminderDate = todayKey;
+
+      const activeChallenges = await db.select().from(challenges)
+        .where(and(eq(challenges.status, "active"), eq(challenges.isActive, true)));
+
+      const checkInTypes = ["checkin", "survival"];
+      let total = 0;
+
+      for (const challenge of activeChallenges) {
+        if (!checkInTypes.includes(challenge.type)) continue;
+
+        const participants = await db.select().from(challengeParticipants)
+          .where(and(
+            eq(challengeParticipants.challengeId, challenge.id),
+            eq(challengeParticipants.isActive, true),
+          ));
+
+        for (const p of participants) {
+          if ((p as any).isAdmin) continue;
+
+          // Check if already checked in today
+          const todayCheckIn = await db.select().from(checkIns)
+            .where(and(
+              eq(checkIns.challengeId, challenge.id),
+              eq(checkIns.userId, p.userId),
+              eq(checkIns.status, "completed"),
+              sql`DATE(${checkIns.createdAt}) = ${todayKey}::date`,
+            )).limit(1);
+
+          if (todayCheckIn.length > 0) continue;
+
+          notificationService.notify(p.userId, {
+            type: "reminder",
+            title: "⏰ Hora do check-in!",
+            body: `Você ainda não fez o check-in de hoje no desafio "${challenge.title}". Não perca o dia!`,
+            actionUrl: `/check-in/${challenge.id}`,
+            challengeId: challenge.id,
+          }).catch(() => {});
+          total++;
+        }
+      }
+
+      if (total > 0) log(`[Reminder] ${total} lembrete(s) de check-in enviado(s)`);
+    } catch (err: any) {
+      log(`[Reminder] Erro: ${err.message}`);
+    }
+  }, 60_000); // check every minute
 
   // Auto-process missed days every 24 hours (and once 5 seconds after startup)
   setTimeout(processMissedDaysAuto, 5000);

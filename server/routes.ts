@@ -952,8 +952,42 @@ export async function registerRoutes(
 
   app.get("/api/challenges/mine", requireAuth, async (req, res) => {
     const userId = (req.session as any).userId;
-    const challenges = await storage.getUserChallenges(userId);
-    res.json(challenges);
+    const userChallenges = await storage.getUserChallenges(userId);
+
+    // Enrich each challenge with today's check-in status so the dashboard
+    // can show a "pending check-in" indicator without a separate round-trip.
+    const today = new Date().toISOString().slice(0, 10);
+    const activeIds = userChallenges
+      .filter((c: any) => c.status === "active" && c.isActive && c.myParticipation?.isActive !== false)
+      .map((c: any) => c.id);
+
+    // Fetch all of today's check-ins for this user across active challenges in one query
+    let todayCheckInMap: Record<string, { checkedIn: boolean; restDay: boolean }> = {};
+    if (activeIds.length > 0) {
+      const todayRows = await db.select({
+        challengeId: checkIns.challengeId,
+        status: checkIns.status,
+      }).from(checkIns).where(and(
+        eq(checkIns.userId, userId),
+        inArray(checkIns.challengeId, activeIds),
+        sql`DATE(${checkIns.createdAt}) = ${today}::date`,
+      ));
+      for (const row of todayRows) {
+        if (!todayCheckInMap[row.challengeId]) {
+          todayCheckInMap[row.challengeId] = { checkedIn: false, restDay: false };
+        }
+        if (row.status === "completed") todayCheckInMap[row.challengeId].checkedIn = true;
+        if (row.status === "rest_day") todayCheckInMap[row.challengeId].restDay = true;
+      }
+    }
+
+    const enriched = userChallenges.map((c: any) => ({
+      ...c,
+      checkedInToday: todayCheckInMap[c.id]?.checkedIn ?? false,
+      usedRestDayToday: todayCheckInMap[c.id]?.restDay ?? false,
+    }));
+
+    res.json(enriched);
   });
 
   app.get("/api/challenges/:id", async (req, res) => {

@@ -47,6 +47,7 @@ export default function ChallengeDetails() {
   const [tieWith2nd, setTieWith2nd] = useState(false);
   const [tieWith3rd, setTieWith3rd] = useState(false);
   const [depositDrawerOpen, setDepositDrawerOpen] = useState(false);
+  const [joinConfirmOpen, setJoinConfirmOpen] = useState(false);
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: [`/api/challenges/${id}`],
@@ -496,15 +497,11 @@ export default function ChallengeDetails() {
                 </p>
                 <Button
                   className="w-full h-14 rounded-2xl font-bold bg-primary text-primary-foreground shadow-xl shadow-primary/20"
-                  onClick={() => requestJoinMutation.mutate()}
+                  onClick={() => setJoinConfirmOpen(true)}
                   disabled={requestJoinMutation.isPending}
                   data-testid="button-request-join"
                 >
-                  {requestJoinMutation.isPending ? (
-                    <Loader2 className="animate-spin mr-2" size={18} />
-                  ) : (
-                    <UserPlus className="mr-2" size={20} />
-                  )}
+                  <UserPlus className="mr-2" size={20} />
                   Pedir para Participar
                 </Button>
                 {entryFee > 0 && (
@@ -1602,6 +1599,104 @@ export default function ChallengeDetails() {
               )}
               Transferir e Sair
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Join Confirmation Dialog */}
+      <Dialog open={joinConfirmOpen} onOpenChange={setJoinConfirmOpen}>
+        <DialogContent className="rounded-3xl max-w-[380px] w-[calc(100vw-32px)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-2">
+              <UserPlus className="text-primary" size={32} />
+            </div>
+            <DialogTitle className="text-center text-xl">Antes de entrar</DialogTitle>
+            <DialogDescription className="text-center text-sm text-muted-foreground">
+              Leia as regras com atenção. Você está comprometendo dinheiro real.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            {/* Entry fee */}
+            <div className="p-3 bg-primary/5 border border-primary/15 rounded-2xl flex items-center justify-between">
+              <span className="font-medium text-muted-foreground">Taxa de entrada</span>
+              <span className="font-display font-bold text-primary text-lg">{formatBRL(entryFee)}</span>
+            </div>
+
+            {/* Rules grid */}
+            <div className="space-y-2">
+              {(cType === "checkin" || cType === "survival") && (
+                <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-xl">
+                  <Camera size={16} className="text-purple-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-xs">Check-in diário obrigatório</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Foto ao vivo + GPS todos os dias.
+                      {cType === "survival" && challenge.maxMissedDays > 0
+                        ? ` Você pode faltar até ${challenge.maxMissedDays} dia(s) antes de ser eliminado.`
+                        : cType === "checkin"
+                          ? " Qualquer falta te elimina."
+                          : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {challenge.restDaysAllowed > 0 && (
+                <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-xl">
+                  <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-xs">Dias de descanso</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{challenge.restDaysAllowed} dia(s) de descanso permitidos no total.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-xl">
+                <Clock size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-xs">Duração: {challenge.duration} dias</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {challenge.startDate ? `Início: ${new Date(challenge.startDate).toLocaleDateString("pt-BR")}` : "Começa quando aprovado pelo moderador."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-orange-500/5 border border-orange-500/15 rounded-xl">
+                <AlertTriangle size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-xs text-orange-600 dark:text-orange-400">Se você desistir ou for eliminado</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Você perde a taxa de entrada de <strong className="text-foreground">{formatBRL(entryFee)}</strong>. Esse valor vai para o pote dos que persistirem.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-green-500/5 border border-green-500/15 rounded-xl">
+                <Trophy size={16} className="text-green-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-xs text-green-600 dark:text-green-400">Se você vencer</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Recebe sua parte de <strong className="text-foreground">90% do pote total</strong>. Quanto mais pessoas desistirem, mais você ganha.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-2xl font-semibold"
+                onClick={() => setJoinConfirmOpen(false)}
+                data-testid="button-join-cancel"
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-2xl font-bold bg-primary text-primary-foreground"
+                onClick={() => { setJoinConfirmOpen(false); requestJoinMutation.mutate(); }}
+                disabled={requestJoinMutation.isPending}
+                data-testid="button-join-confirm"
+              >
+                {requestJoinMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : "Confirmar entrada"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -29,6 +29,13 @@ import {
   Plus,
   Info,
   Calendar,
+  Wallet,
+  TrendingUp,
+  ArrowDown,
+  ArrowUp,
+  Star,
+  Play,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,84 +159,315 @@ const Step1Terms = ({ onNext }: { onNext: () => void }) => {
   );
 };
 
+// ─── Money Simulation Step ───────────────────────────────────────────────────
+// Interactive step-by-step walkthrough of how money flows in a VYTAL challenge.
+
+const SIMULATION_PLAYERS = [
+  { name: "Você", color: "bg-primary", textColor: "text-primary", avatar: "💪", survived: true },
+  { name: "Ana", color: "bg-blue-500", textColor: "text-blue-500", avatar: "🏃", survived: true },
+  { name: "Carlos", color: "bg-purple-500", textColor: "text-purple-500", avatar: "🚴", survived: false },
+  { name: "Bia", color: "bg-pink-500", textColor: "text-pink-500", avatar: "🧘", survived: false },
+];
+
+const ENTRY_FEE = 50;
+const TOTAL_POT = SIMULATION_PLAYERS.length * ENTRY_FEE; // R$200
+const PLATFORM_FEE = TOTAL_POT * 0.1; // R$20
+const WINNERS_POT = TOTAL_POT - PLATFORM_FEE; // R$180
+const WINNERS_COUNT = SIMULATION_PLAYERS.filter(p => p.survived).length; // 2
+const YOUR_PRIZE = WINNERS_POT / WINNERS_COUNT; // R$90 each
+
+const SIM_STEPS = [
+  {
+    id: "deposit",
+    icon: Wallet,
+    color: "text-green-500",
+    bg: "bg-green-500/10",
+    border: "border-green-500/20",
+    title: "Você deposita via Pix",
+    subtitle: "Seu dinheiro entra na carteira VYTAL",
+    description: null,
+  },
+  {
+    id: "pool",
+    icon: Users,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    title: "4 pessoas entram no desafio",
+    subtitle: "Cada um deposita R$ 50,00",
+    description: "O pote cresce conforme mais pessoas entram!",
+  },
+  {
+    id: "checkin",
+    icon: Camera,
+    color: "text-purple-500",
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/20",
+    title: "Desafio em andamento",
+    subtitle: "Check-in diário obrigatório",
+    description: "Carlos e Bia desistiram. O dinheiro deles fica no pote.",
+  },
+  {
+    id: "prize",
+    icon: Trophy,
+    color: "text-yellow-500",
+    bg: "bg-yellow-500/10",
+    border: "border-yellow-500/20",
+    title: "Você e Ana venceram!",
+    subtitle: "90% do pote dividido entre vocês",
+    description: "Você entrou com R$ 50 e saiu com R$ 90. Lucro de R$ 40!",
+  },
+];
+
 const Step2HowItWorks = ({ onNext }: { onNext: () => void }) => {
-  const steps = [
-    { icon: Zap, color: "text-yellow-500 bg-yellow-500/10", title: "Aposte em você", text: "Deposite via Pix. Seu dinheiro + o dos outros formam o pote de prêmio." },
-    { icon: Camera, color: "text-purple-500 bg-purple-500/10", title: "Check-in ao vivo", text: "Prove que treinou com câmera ao vivo e GPS. Sem foto da galeria." },
-    { icon: Shield, color: "text-orange-500 bg-orange-500/10", title: "Moderação justa", text: "A comunidade valida os check-ins. Quem trapaceia é banido." },
-    { icon: Trophy, color: "text-primary bg-primary/10", title: "Lucre!", text: "Quem persiste divide o dinheiro dos desistentes. Você sai no lucro!" },
-  ];
+  const [simStep, setSimStep] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  const currentSim = SIM_STEPS[simStep];
+  const isLast = simStep === SIM_STEPS.length - 1;
+
+  const advance = () => {
+    if (animating) return;
+    if (isLast) { onNext(); return; }
+    setAnimating(true);
+    setTimeout(() => {
+      setSimStep(s => s + 1);
+      setAnimating(false);
+    }, 200);
+  };
 
   return (
-    <motion.div {...pageTransition} className="flex flex-col h-full justify-between">
-      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4 flex-1 overflow-y-auto pb-4">
-        <motion.div variants={fadeUp} className="text-center space-y-2">
+    <motion.div {...pageTransition} className="flex flex-col h-full justify-between gap-3">
+      {/* Header */}
+      <div className="text-center space-y-1 shrink-0">
+        <h2 className="text-2xl font-display font-bold">Como o dinheiro funciona</h2>
+        <p className="text-sm text-muted-foreground">Simule um desafio real</p>
+      </div>
+
+      {/* Step progress pills */}
+      <div className="flex gap-1.5 justify-center shrink-0">
+        {SIM_STEPS.map((s, i) => (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="w-16 h-16 rounded-[1.5rem] mx-auto overflow-hidden"
-          >
-            <img src="/vytal-logo.png" alt="VYTAL" className="w-full h-full object-cover" />
-          </motion.div>
-          <h2 className="text-2xl font-display font-bold">Como funciona</h2>
-          <p className="text-sm text-muted-foreground px-2">
-            Desafios esportivos com dinheiro real.<br />Quem desiste, paga. Quem persiste, lucra.
-          </p>
-        </motion.div>
+            key={s.id}
+            animate={{ width: i === simStep ? 28 : 8, opacity: i <= simStep ? 1 : 0.3 }}
+            className={`h-1.5 rounded-full ${i <= simStep ? "bg-primary" : "bg-muted"}`}
+          />
+        ))}
+      </div>
 
-        <div className="space-y-2.5">
-          {steps.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + i * 0.12, duration: 0.4, ease: "easeOut" }}
-              className="flex gap-3 p-3.5 bg-card border border-border rounded-2xl items-center"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.3 + i * 0.12, type: "spring", stiffness: 300 }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}
-              >
-                <item.icon size={20} />
-              </motion.div>
-              <div className="min-w-0">
-                <h3 className="font-bold text-sm">{item.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{item.text}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
+      {/* Main simulation card */}
+      <AnimatePresence mode="wait">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-2xl"
+          key={simStep}
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -15, scale: 0.97 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className={`bg-card border ${currentSim.border} rounded-3xl p-5 space-y-4 flex-1 flex flex-col justify-between`}
         >
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-              <Info size={16} className="text-blue-500" />
-            </div>
+          {/* Icon + title */}
+          <div className="flex items-center gap-3">
+            <motion.div
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 250, damping: 18 }}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center ${currentSim.bg} border ${currentSim.border}`}
+            >
+              <currentSim.icon size={24} className={currentSim.color} />
+            </motion.div>
             <div>
-              <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Taxa operacional</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                A VYTAL destina <strong className="text-foreground">10% do pote final</strong> para manutenção e moderação. Os outros <strong className="text-foreground">90% vão para os vencedores</strong>!
-              </p>
+              <p className="font-bold text-base leading-tight">{currentSim.title}</p>
+              <p className="text-xs text-muted-foreground">{currentSim.subtitle}</p>
             </div>
           </div>
-        </motion.div>
-      </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+          {/* Visual content per step */}
+          {simStep === 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/15 rounded-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">💪</span>
+                  <div>
+                    <p className="text-xs font-bold">Você</p>
+                    <p className="text-[10px] text-muted-foreground">Depósito via Pix</p>
+                  </div>
+                </div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, type: "spring" }}
+                  className="text-right"
+                >
+                  <p className="font-display font-bold text-green-600 text-lg">+ R$ 50</p>
+                  <p className="text-[10px] text-muted-foreground">na carteira</p>
+                </motion.div>
+              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="p-3 bg-muted/50 rounded-2xl flex items-center gap-2"
+              >
+                <ArrowDown size={14} className="text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">Ao entrar no desafio, R$ 50 é reservado do seu saldo como taxa de entrada.</p>
+              </motion.div>
+            </div>
+          )}
+
+          {simStep === 1 && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                {SIMULATION_PLAYERS.map((p, i) => (
+                  <motion.div
+                    key={p.name}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.1, type: "spring", stiffness: 250 }}
+                    className="flex items-center gap-2 p-2.5 bg-muted/40 border border-border rounded-xl"
+                  >
+                    <span className="text-xl">{p.avatar}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate">{p.name}</p>
+                      <p className={`text-[10px] font-bold ${p.textColor}`}>R$ {ENTRY_FEE}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, type: "spring" }}
+                className="p-3 bg-primary/5 border border-primary/20 rounded-2xl flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <Trophy size={16} className="text-primary" />
+                  <p className="text-sm font-bold">Pote total</p>
+                </div>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.7 }}
+                  className="font-display font-bold text-primary text-xl"
+                >
+                  R$ {TOTAL_POT}
+                </motion.p>
+              </motion.div>
+            </div>
+          )}
+
+          {simStep === 2 && (
+            <div className="space-y-2">
+              {SIMULATION_PLAYERS.map((p, i) => (
+                <motion.div
+                  key={p.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border ${p.survived ? "bg-green-500/5 border-green-500/15" : "bg-red-500/5 border-red-500/15"}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{p.avatar}</span>
+                    <p className={`text-xs font-bold ${p.survived ? "text-foreground" : "text-muted-foreground line-through"}`}>{p.name}</p>
+                  </div>
+                  {p.survived ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-green-600">
+                      <CheckCircle2 size={12} /> Persistiu
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-500">
+                      <AlertTriangle size={12} /> Desistiu
+                    </span>
+                  )}
+                </motion.div>
+              ))}
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="p-2.5 bg-orange-500/5 border border-orange-500/15 rounded-xl flex items-center gap-2"
+              >
+                <Info size={13} className="text-orange-500 shrink-0" />
+                <p className="text-[11px] text-muted-foreground">Os R$ 100 de Carlos e Bia vão para o pote dos vencedores.</p>
+              </motion.div>
+            </div>
+          )}
+
+          {simStep === 3 && (
+            <div className="space-y-3">
+              {/* Prize breakdown */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Pote total arrecadado</span>
+                  <span className="font-bold text-foreground">R$ {TOTAL_POT}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Taxa VYTAL (10%)</span>
+                  <span className="font-bold text-red-500">− R$ {PLATFORM_FEE}</span>
+                </div>
+                <div className="h-px bg-border my-1" />
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Para os 2 vencedores</span>
+                  <span className="font-bold text-foreground">R$ {WINNERS_POT}</span>
+                </div>
+              </div>
+
+              {/* Your result */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="p-4 bg-gradient-to-br from-primary/10 to-green-500/10 border border-primary/20 rounded-2xl text-center"
+              >
+                <p className="text-xs text-muted-foreground mb-1">Você entrou com</p>
+                <div className="flex items-center justify-center gap-3">
+                  <div className="text-center">
+                    <p className="font-display font-bold text-lg">R$ {ENTRY_FEE}</p>
+                    <p className="text-[10px] text-muted-foreground">entrada</p>
+                  </div>
+                  <ArrowRight size={16} className="text-primary" />
+                  <div className="text-center">
+                    <p className="font-display font-bold text-2xl text-primary">R$ {YOUR_PRIZE}</p>
+                    <p className="text-[10px] text-green-600 font-bold">+R$ {YOUR_PRIZE - ENTRY_FEE} de lucro!</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="text-center text-[11px] text-muted-foreground"
+              >
+                Quanto mais pessoas desistem, <strong className="text-foreground">maior seu lucro</strong>.
+              </motion.div>
+            </div>
+          )}
+
+          {currentSim.description && simStep !== 3 && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-xs text-muted-foreground text-center leading-relaxed"
+            >
+              {currentSim.description}
+            </motion.p>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* CTA */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="shrink-0">
         <Button
-          className="w-full h-14 text-lg font-bold rounded-2xl shrink-0 shadow-lg shadow-primary/20"
-          onClick={onNext}
-          data-testid="button-onboarding-rules"
+          className="w-full h-14 text-base font-bold rounded-2xl shadow-lg shadow-primary/20"
+          onClick={advance}
+          data-testid="button-sim-next"
         >
-          Entendi <ArrowRight className="ml-2" size={18} />
+          {isLast ? (
+            <>Entendi, vamos começar! <ArrowRight className="ml-2" size={18} /></>
+          ) : (
+            <>Próximo <ChevronRight className="ml-1" size={18} /></>
+          )}
         </Button>
       </motion.div>
     </motion.div>

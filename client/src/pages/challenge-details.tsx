@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "wouter";
-import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX, Scale, ArrowDownLeft } from "lucide-react";
+import { ChevronLeft, Share2, Camera, Trophy, Users, Clock, ShieldAlert, CheckCircle2, XCircle, AlertCircle, Info, Send, LogOut, Loader2, MessageCircle, Pencil, Lock, Unlock, Save, UserPlus, Hourglass, MapPin, AlertTriangle, Flag, Zap, Copy, Check, ExternalLink, Coffee, MinusCircle, PlusCircle, UserX, Scale, ArrowDownLeft, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -90,11 +90,32 @@ export default function ChallengeDetails() {
     refetchInterval: 30000,
   });
 
+  const [showRecentCheckIns, setShowRecentCheckIns] = useState(false);
+  const { data: recentCheckIns = [], isLoading: loadingRecent } = useQuery({
+    queryKey: [`/api/check-ins/${id}/recent`],
+    queryFn: async () => {
+      const res = await fetch(`/api/check-ins/${id}/recent`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id && !!(challenge?.isCreator || challenge?.isCoModerator) && showRecentCheckIns,
+  });
+
   const unflagMutation = useMutation({
     mutationFn: (checkInId: string) => apiRequest("POST", `/api/check-ins/${checkInId}/unflag`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/recent`] });
       toast({ title: "Atividade aprovada", description: "O alerta foi removido." });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const flagMutation = useMutation({
+    mutationFn: (checkInId: string) => apiRequest("POST", `/api/check-ins/${checkInId}/flag`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/flagged`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/check-ins/${id}/recent`] });
+      toast({ title: "Check-in sinalizado", description: "O check-in foi marcado para revisão." });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -991,30 +1012,48 @@ export default function ChallengeDetails() {
                             <p className="text-[11px] font-medium truncate">{c.endLocationName || "Sem local"}</p>
                           </div>
                         </div>
-                        {(c.photoUrl?.startsWith("data:") || c.endPhotoUrl?.startsWith("data:")) && (
-                          <div className="flex gap-2">
-                            {c.photoUrl?.startsWith("data:") && (
-                              <div className="flex-1">
-                                <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto início</p>
-                                <img
-                                  src={c.photoUrl}
-                                  alt="Check-in"
-                                  className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80"
-                                  onClick={() => setLightboxPhoto(c.photoUrl)}
-                                  data-testid={`checkin-photo-start-${c.id}`}
-                                />
+                        {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:") || c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                          <div className="space-y-2">
+                            {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:")) && (
+                              <div>
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in (início)
+                                </p>
+                                <div className="flex gap-2">
+                                  {c.photoUrl?.startsWith("data:") && (
+                                    <div className="flex-1">
+                                      <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
+                                      <img src={c.photoUrl} alt="Frente check-in" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.photoUrl)} data-testid={`checkin-photo-start-${c.id}`} />
+                                    </div>
+                                  )}
+                                  {c.backPhotoUrl?.startsWith("data:") && (
+                                    <div className="flex-1">
+                                      <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
+                                      <img src={c.backPhotoUrl} alt="Traseira check-in" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.backPhotoUrl)} data-testid={`checkin-photo-back-${c.id}`} />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
-                            {c.endPhotoUrl?.startsWith("data:") && (
-                              <div className="flex-1">
-                                <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1">Foto fim</p>
-                                <img
-                                  src={c.endPhotoUrl}
-                                  alt="Check-out"
-                                  className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80"
-                                  onClick={() => setLightboxPhoto(c.endPhotoUrl)}
-                                  data-testid={`checkin-photo-end-${c.id}`}
-                                />
+                            {(c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                              <div>
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> Check-out (fim)
+                                </p>
+                                <div className="flex gap-2">
+                                  {c.endPhotoUrl?.startsWith("data:") && (
+                                    <div className="flex-1">
+                                      <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
+                                      <img src={c.endPhotoUrl} alt="Frente check-out" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endPhotoUrl)} data-testid={`checkin-photo-end-${c.id}`} />
+                                    </div>
+                                  )}
+                                  {c.endBackPhotoUrl?.startsWith("data:") && (
+                                    <div className="flex-1">
+                                      <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
+                                      <img src={c.endBackPhotoUrl} alt="Traseira check-out" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endBackPhotoUrl)} data-testid={`checkin-photo-endback-${c.id}`} />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1056,6 +1095,141 @@ export default function ChallengeDetails() {
                   })}
                 </div>
               )}
+
+              {/* ── Recent check-ins review ── */}
+              <div className="space-y-3">
+                <button
+                  className="w-full flex items-center justify-between px-1 py-2"
+                  onClick={() => setShowRecentCheckIns(v => !v)}
+                  data-testid="btn-toggle-recent-checkins"
+                >
+                  <h4 className="font-bold text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Eye size={14} /> Revisar Check-ins Recentes
+                  </h4>
+                  <ChevronDown size={16} className={`text-muted-foreground transition-transform ${showRecentCheckIns ? "rotate-180" : ""}`} />
+                </button>
+                {showRecentCheckIns && (
+                  <div className="space-y-3">
+                    {loadingRecent ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="animate-spin text-muted-foreground" size={24} />
+                      </div>
+                    ) : recentCheckIns.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-6">Nenhum check-in encontrado.</p>
+                    ) : recentCheckIns.map((item: any) => {
+                      const c = item.checkIn;
+                      const u = item.user;
+                      return (
+                        <div key={c.id} className={`rounded-2xl p-4 space-y-3 border ${c.flagged ? "bg-red-500/5 border-red-500/30" : "bg-card border-border"}`} data-testid={`recent-checkin-${c.id}`}>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-9 h-9 border border-border shrink-0">
+                              {u.avatar && <AvatarImage src={u.avatar} />}
+                              <AvatarFallback className="text-xs">{(u.name || "?")[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm truncate">{u.name}</p>
+                              <p className="text-[10px] text-muted-foreground">@{u.username} · {new Date(c.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                            </div>
+                            {c.flagged ? (
+                              <AlertTriangle size={16} className="text-red-500 shrink-0" />
+                            ) : (
+                              <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+                            )}
+                          </div>
+                          {/* Meta: duration, distance, location */}
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <div className="bg-muted rounded-xl p-2 text-center">
+                              <p className="text-[8px] text-muted-foreground uppercase font-bold">Duração</p>
+                              <p className="text-[11px] font-semibold">{c.durationMins != null ? `${c.durationMins}min` : "—"}</p>
+                            </div>
+                            <div className="bg-muted rounded-xl p-2 text-center">
+                              <p className="text-[8px] text-muted-foreground uppercase font-bold">Distância</p>
+                              <p className="text-[11px] font-semibold">{c.distanceKm ? `${parseFloat(c.distanceKm).toFixed(1)}km` : "—"}</p>
+                            </div>
+                            <div className="bg-muted rounded-xl p-2 text-center">
+                              <p className="text-[8px] text-muted-foreground uppercase font-bold">Local</p>
+                              <p className="text-[10px] font-medium truncate">{c.locationName || (c.isIndoor ? "Indoor" : "Sem GPS")}</p>
+                            </div>
+                          </div>
+                          {/* 4 photos */}
+                          {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:") || c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                            <div className="space-y-2">
+                              {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:")) && (
+                                <div>
+                                  <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in (início)
+                                  </p>
+                                  <div className="flex gap-2">
+                                    {c.photoUrl?.startsWith("data:") && (
+                                      <div className="flex-1">
+                                        <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
+                                        <img src={c.photoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.photoUrl)} />
+                                      </div>
+                                    )}
+                                    {c.backPhotoUrl?.startsWith("data:") && (
+                                      <div className="flex-1">
+                                        <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
+                                        <img src={c.backPhotoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.backPhotoUrl)} />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {(c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                                <div>
+                                  <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> Check-out (fim)
+                                  </p>
+                                  <div className="flex gap-2">
+                                    {c.endPhotoUrl?.startsWith("data:") && (
+                                      <div className="flex-1">
+                                        <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
+                                        <img src={c.endPhotoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endPhotoUrl)} />
+                                      </div>
+                                    )}
+                                    {c.endBackPhotoUrl?.startsWith("data:") && (
+                                      <div className="flex-1">
+                                        <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
+                                        <img src={c.endBackPhotoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endBackPhotoUrl)} />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* flagReason if flagged */}
+                          {c.flagged && c.flagReason && (
+                            <div className="bg-red-500/10 rounded-xl p-2">
+                              <p className="text-[10px] text-red-600 dark:text-red-400 font-medium flex items-start gap-1.5">
+                                <AlertTriangle size={12} className="shrink-0 mt-0.5" />{c.flagReason}
+                              </p>
+                            </div>
+                          )}
+                          {/* actions */}
+                          <div className="flex gap-2">
+                            {c.flagged ? (
+                              <Button size="sm" variant="outline" className="flex-1 h-8 text-[11px] rounded-xl text-green-500 border-green-500/30 hover:bg-green-500/10" onClick={() => unflagMutation.mutate(c.id)} disabled={unflagMutation.isPending} data-testid={`btn-unflag-recent-${c.id}`}>
+                                ✓ Aprovar
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="outline" className="flex-1 h-8 text-[11px] rounded-xl text-orange-500 border-orange-500/30 hover:bg-orange-500/10" onClick={() => flagMutation.mutate(c.id)} disabled={flagMutation.isPending} data-testid={`btn-flag-manual-${c.id}`}>
+                                <Flag size={11} className="mr-1" /> Sinalizar
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline" className="flex-1 h-8 text-[11px] rounded-xl text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10" onClick={() => invalidateMutation.mutate(c.id)} disabled={invalidateMutation.isPending} data-testid={`btn-invalidate-recent-${c.id}`}>
+                              ✕ Invalidar
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1 h-8 text-[11px] rounded-xl text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={() => eliminateMutation.mutate(u.id)} disabled={eliminateMutation.isPending} data-testid={`btn-eliminate-recent-${u.id}`}>
+                              ⊘ Eliminar
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {participants.filter((p: any) => p.isActive !== false).length > 0 && (
                 <div className="space-y-3">

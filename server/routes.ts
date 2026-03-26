@@ -1811,23 +1811,61 @@ export async function registerRoutes(
       const endLocName = await reverseGeocode(endLatitude, endLongitude);
 
       let flagged = false;
-      let flagReason = "";
+      const flagReasons: string[] = [];
+
+      // 1) Location drift: check-in and check-out >2km apart
       if (!checkIn.isIndoor && checkIn.latitude && checkIn.longitude && endLatitude && endLongitude) {
         const dist = haversineDistanceServer(
           parseFloat(checkIn.latitude), parseFloat(checkIn.longitude),
           parseFloat(endLatitude), parseFloat(endLongitude)
         );
         if (dist > 2) {
-          flagged = true;
-          flagReason = `Localização diferente: check-in em "${checkIn.locationName || "desconhecido"}" e check-out em "${endLocName || "desconhecido"}" (${dist.toFixed(1)}km de distância)`;
+          flagReasons.push(`Localização diferente: check-in em "${checkIn.locationName || "desconhecido"}" e check-out em "${endLocName || "desconhecido"}" (${dist.toFixed(1)}km de distância)`);
         }
       }
 
+      // 2) Indoor without proof photo
       if (checkIn.isIndoor && distanceKm && !indoorProofPhotoUrl) {
-        flagged = true;
-        flagReason = flagReason ? flagReason + " | " : "";
-        flagReason += "Indoor sem foto de comprovação do equipamento";
+        flagReasons.push("Indoor sem foto de comprovação do equipamento");
       }
+
+      // 3) Duration too short (< 5 minutes is suspiciously brief for any workout)
+      if (durationMins !== undefined && durationMins !== null && durationMins < 5) {
+        flagReasons.push(`Duração muito curta: ${durationMins} minuto(s). Menos de 5 minutos é suspeito.`);
+      }
+
+      // 4) No GPS for outdoor challenge
+      if (!checkIn.isIndoor && !checkIn.latitude && !checkIn.longitude) {
+        flagReasons.push("Check-in sem dados de GPS em desafio ao ar livre.");
+      }
+
+      // 5) Same GPS coordinates as previous check-in (possible static photo fraud)
+      if (checkIn.latitude && checkIn.longitude) {
+        const recentSameSpot = await db.select().from(checkIns)
+          .where(and(
+            eq(checkIns.challengeId, checkIn.challengeId),
+            eq(checkIns.userId, userId),
+            eq(checkIns.status, "completed"),
+          ))
+          .orderBy(desc(checkIns.createdAt))
+          .limit(3);
+        const sameSpotCount = recentSameSpot.filter(prev => {
+          if (!prev.latitude || !prev.longitude) return false;
+          const d = haversineDistanceServer(
+            parseFloat(checkIn.latitude!), parseFloat(checkIn.longitude!),
+            parseFloat(prev.latitude), parseFloat(prev.longitude)
+          );
+          return d < 0.05; // within 50 meters
+        }).length;
+        if (sameSpotCount >= 2) {
+          flagReasons.push(`GPS idêntico nos últimos ${sameSpotCount + 1} check-ins (mesmo local exato — possível fraude de localização).`);
+        }
+      }
+
+      if (flagReasons.length > 0) {
+        flagged = true;
+      }
+      const flagReason = flagReasons.join(" | ");
 
       const [updated] = await db.update(checkIns).set({
         status: "completed",
@@ -2042,10 +2080,12 @@ export async function registerRoutes(
       const challengeId = req.params.challengeId;
       const challenge = await storage.getChallenge(challengeId);
       if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
-      const isAdmin = await storage.getUser(userId).then(u => u?.isAdmin);
-      if (challenge.createdBy !== userId && !isAdmin) {
-        return res.status(403).json({ message: "Sem permissão" });
-      }
+      const user = await storage.getUser(userId);
+      const isMod = challenge.createdBy === userId || user?.isAdmin;
+      const isCoMod = !isMod && !!(await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)))
+        .limit(1).then(r => (r[0] as any)?.isCoModerator));
+      if (!isMod && !isCoMod) return res.status(403).json({ message: "Sem permissão" });
       const flaggedCheckIns = await db.select({
         checkIn: checkIns,
         user: { id: users.id, name: users.name, username: users.username, avatar: users.avatar },
@@ -2054,6 +2094,33 @@ export async function registerRoutes(
         .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.flagged, true)))
         .orderBy(desc(checkIns.createdAt));
       res.json(flaggedCheckIns);
+    } catch (error: any) {
+      res.json([]);
+    }
+  });
+
+  // Recent check-ins (all, not just flagged) — for moderator review
+  app.get("/api/check-ins/:challengeId/recent", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const challengeId = req.params.challengeId;
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const user = await storage.getUser(userId);
+      const isMod = challenge.createdBy === userId || user?.isAdmin;
+      const isCoMod = !isMod && !!(await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.userId, userId)))
+        .limit(1).then(r => (r[0] as any)?.isCoModerator));
+      if (!isMod && !isCoMod) return res.status(403).json({ message: "Sem permissão" });
+      const recent = await db.select({
+        checkIn: checkIns,
+        user: { id: users.id, name: users.name, username: users.username, avatar: users.avatar },
+      }).from(checkIns)
+        .innerJoin(users, eq(checkIns.userId, users.id))
+        .where(and(eq(checkIns.challengeId, challengeId), eq(checkIns.status, "completed")))
+        .orderBy(desc(checkIns.createdAt))
+        .limit(40);
+      res.json(recent);
     } catch (error: any) {
       res.json([]);
     }
@@ -2073,6 +2140,28 @@ export async function registerRoutes(
       if (challenge.createdBy !== userId && !isAdmin) return res.status(403).json({ message: "Sem permissão" });
       await db.update(checkIns).set({ flagged: false, flagReason: "" }).where(eq(checkIns.id, req.params.checkInId));
       res.json({ success: true, message: "Alerta removido — atividade aprovada" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Manual flag by moderator
+  app.post("/api/check-ins/:checkInId/flag", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const [ci] = await db.select().from(checkIns).where(eq(checkIns.id, req.params.checkInId));
+      if (!ci) return res.status(404).json({ message: "Check-in não encontrado" });
+      const challenge = await storage.getChallenge(ci.challengeId);
+      if (!challenge) return res.status(404).json({ message: "Desafio não encontrado" });
+      const user = await storage.getUser(userId);
+      const isMod = challenge.createdBy === userId || user?.isAdmin;
+      const isCoMod = !isMod && !!(await db.select().from(challengeParticipants)
+        .where(and(eq(challengeParticipants.challengeId, ci.challengeId), eq(challengeParticipants.userId, userId)))
+        .limit(1).then(r => (r[0] as any)?.isCoModerator));
+      if (!isMod && !isCoMod) return res.status(403).json({ message: "Sem permissão" });
+      const reason = req.body?.reason || "Sinalizado manualmente pelo moderador";
+      await db.update(checkIns).set({ flagged: true, flagReason: reason }).where(eq(checkIns.id, req.params.checkInId));
+      res.json({ success: true, message: "Check-in sinalizado para revisão" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

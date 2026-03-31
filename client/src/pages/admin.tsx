@@ -102,6 +102,7 @@ export default function Admin() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const [confirmDialog, setConfirmDialog] = useState<{ type: string; userId?: string; userName?: string; challengeId?: string; challengeName?: string; isBanned?: boolean | null } | null>(null);
+  const [magicLinkDialog, setMagicLinkDialog] = useState<string | null>(null);
   const [txFilter, setTxFilter] = useState<string>("all");
   const [userSearch, setUserSearch] = useState("");
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
@@ -728,8 +729,16 @@ export default function Admin() {
                         try {
                           const res = await apiRequest("POST", `/api/admin/users/${u.id}/magic-link`);
                           const data = await res.json();
-                          await navigator.clipboard.writeText(data.link);
-                          toast({ title: "Link copiado!", description: "Válido por 15 minutos. Cole e envie ao usuário." });
+                          let copied = false;
+                          try {
+                            await navigator.clipboard.writeText(data.link);
+                            copied = true;
+                          } catch {}
+                          if (copied) {
+                            toast({ title: "Link copiado!", description: "Válido por 15 minutos. Cole e envie ao usuário." });
+                          } else {
+                            setMagicLinkDialog(data.link);
+                          }
                         } catch { toast({ title: "Erro ao gerar link", variant: "destructive" }); }
                       }}>
                         <Link2 size={14} />
@@ -1162,6 +1171,31 @@ export default function Admin() {
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!magicLinkDialog} onOpenChange={(open) => { if (!open) setMagicLinkDialog(null); }}>
+        <DialogContent className="rounded-3xl max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>Link de acesso</DialogTitle>
+            <DialogDescription>Copie o link abaixo e envie ao usuário. Válido por 15 minutos.</DialogDescription>
+          </DialogHeader>
+          <div className="bg-muted rounded-xl p-3 break-all text-xs font-mono select-all" data-testid="magic-link-text">
+            {magicLinkDialog}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setMagicLinkDialog(null)}>Fechar</Button>
+            <Button className="flex-1 rounded-xl" onClick={async () => {
+              if (!magicLinkDialog) return;
+              try {
+                await navigator.clipboard.writeText(magicLinkDialog);
+                toast({ title: "Link copiado!" });
+                setMagicLinkDialog(null);
+              } catch {
+                toast({ title: "Selecione e copie manualmente", variant: "destructive" });
+              }
+            }}>Copiar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

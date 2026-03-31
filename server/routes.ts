@@ -3531,22 +3531,26 @@ export async function registerRoutes(
     }
   });
 
-  const magicTokens = new Map<string, { userId: string; expiresAt: number }>();
-
   app.post("/api/admin/users/:id/magic-link", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");
       const { users: usersTable } = await import("@shared/schema");
-      const { eq } = await import("drizzle-orm");
+      const { eq, sql: sqlExpr } = await import("drizzle-orm");
       const { randomBytes } = await import("crypto");
 
       const [target] = await database.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, req.params.id));
       if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
 
-      const token = randomBytes(32).toString("hex");
-      magicTokens.set(token, { userId: target.id, expiresAt: Date.now() + 15 * 60 * 1000 });
+      // Limpar tokens expirados do usuário
+      await database.execute(sqlExpr`DELETE FROM magic_tokens WHERE user_id = ${target.id} OR expires_at < ${Date.now()}`);
 
-      const baseUrl = req.protocol + "://" + req.get("host");
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = Date.now() + 15 * 60 * 1000;
+      await database.execute(sqlExpr`INSERT INTO magic_tokens (token, user_id, expires_at) VALUES (${token}, ${target.id}, ${expiresAt})`);
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : req.protocol + "://" + req.get("host");
       res.json({ link: `${baseUrl}/magic-login?token=${token}` });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3558,14 +3562,19 @@ export async function registerRoutes(
       const token = req.query.token as string;
       if (!token) return res.status(400).json({ message: "Token inválido" });
 
-      const entry = magicTokens.get(token);
-      if (!entry || entry.expiresAt < Date.now()) {
-        magicTokens.delete(token);
+      const { db: database } = await import("./db");
+      const { sql: sqlExpr } = await import("drizzle-orm");
+
+      const rows = await database.execute(sqlExpr`SELECT user_id, expires_at FROM magic_tokens WHERE token = ${token}`);
+      const entry = (rows.rows ?? rows)[0] as { user_id: string; expires_at: string } | undefined;
+
+      if (!entry || Number(entry.expires_at) < Date.now()) {
+        await database.execute(sqlExpr`DELETE FROM magic_tokens WHERE token = ${token}`);
         return res.status(401).json({ message: "Link expirado ou inválido" });
       }
 
-      magicTokens.delete(token);
-      (req.session as any).userId = entry.userId;
+      await database.execute(sqlExpr`DELETE FROM magic_tokens WHERE token = ${token}`);
+      (req.session as any).userId = entry.user_id;
       req.session.save(() => res.json({ success: true }));
     } catch (error: any) {
       res.status(500).json({ message: error.message });

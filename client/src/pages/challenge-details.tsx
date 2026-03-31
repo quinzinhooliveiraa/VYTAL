@@ -1094,21 +1094,21 @@ export default function ChallengeDetails() {
                             <p className="text-[11px] font-medium truncate">{c.endLocationName || "Sem local"}</p>
                           </div>
                         </div>
-                        {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:") || c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                        {(c.photoUrl?.length > 4 || c.backPhotoUrl?.length > 4 || c.endPhotoUrl?.length > 4 || c.endBackPhotoUrl?.length > 4) && (
                           <div className="space-y-2">
-                            {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:")) && (
+                            {(c.photoUrl?.length > 4 || c.backPhotoUrl?.length > 4) && (
                               <div>
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in (início)
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in (início) · {c.isIndoor ? <span className="text-violet-400">Indoor</span> : <span className="text-green-400">Outdoor</span>}
                                 </p>
                                 <div className="flex gap-2">
-                                  {c.photoUrl?.startsWith("data:") && (
+                                  {c.photoUrl?.length > 4 && (
                                     <div className="flex-1">
                                       <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
                                       <img src={c.photoUrl} alt="Frente check-in" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.photoUrl)} data-testid={`checkin-photo-start-${c.id}`} />
                                     </div>
                                   )}
-                                  {c.backPhotoUrl?.startsWith("data:") && (
+                                  {c.backPhotoUrl?.length > 4 && (
                                     <div className="flex-1">
                                       <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
                                       <img src={c.backPhotoUrl} alt="Traseira check-in" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.backPhotoUrl)} data-testid={`checkin-photo-back-${c.id}`} />
@@ -1117,19 +1117,19 @@ export default function ChallengeDetails() {
                                 </div>
                               </div>
                             )}
-                            {(c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                            {(c.endPhotoUrl?.length > 4 || c.endBackPhotoUrl?.length > 4) && (
                               <div>
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
                                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> Check-out (fim)
                                 </p>
                                 <div className="flex gap-2">
-                                  {c.endPhotoUrl?.startsWith("data:") && (
+                                  {c.endPhotoUrl?.length > 4 && (
                                     <div className="flex-1">
                                       <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
                                       <img src={c.endPhotoUrl} alt="Frente check-out" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endPhotoUrl)} data-testid={`checkin-photo-end-${c.id}`} />
                                     </div>
                                   )}
-                                  {c.endBackPhotoUrl?.startsWith("data:") && (
+                                  {c.endBackPhotoUrl?.length > 4 && (
                                     <div className="flex-1">
                                       <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
                                       <img src={c.endBackPhotoUrl} alt="Traseira check-out" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endBackPhotoUrl)} data-testid={`checkin-photo-endback-${c.id}`} />
@@ -1233,22 +1233,22 @@ export default function ChallengeDetails() {
                               <p className="text-[10px] font-medium truncate">{c.locationName || (c.isIndoor ? "Indoor" : "Sem GPS")}</p>
                             </div>
                           </div>
-                          {/* 4 photos */}
-                          {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:") || c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                          {/* 4 photos + ambiente */}
+                          {(c.photoUrl?.length > 4 || c.backPhotoUrl?.length > 4 || c.endPhotoUrl?.length > 4 || c.endBackPhotoUrl?.length > 4) && (
                             <div className="space-y-2">
-                              {(c.photoUrl?.startsWith("data:") || c.backPhotoUrl?.startsWith("data:")) && (
+                              {(c.photoUrl?.length > 4 || c.backPhotoUrl?.length > 4) && (
                                 <div>
                                   <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in (início)
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in (início) · {c.isIndoor ? <span className="text-violet-400">Indoor</span> : <span className="text-green-400">Outdoor</span>}
                                   </p>
                                   <div className="flex gap-2">
-                                    {c.photoUrl?.startsWith("data:") && (
+                                    {c.photoUrl?.length > 4 && (
                                       <div className="flex-1">
                                         <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
                                         <img src={c.photoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.photoUrl)} />
                                       </div>
                                     )}
-                                    {c.backPhotoUrl?.startsWith("data:") && (
+                                    {c.backPhotoUrl?.length > 4 && (
                                       <div className="flex-1">
                                         <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
                                         <img src={c.backPhotoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.backPhotoUrl)} />
@@ -1257,19 +1257,19 @@ export default function ChallengeDetails() {
                                   </div>
                                 </div>
                               )}
-                              {(c.endPhotoUrl?.startsWith("data:") || c.endBackPhotoUrl?.startsWith("data:")) && (
+                              {(c.endPhotoUrl?.length > 4 || c.endBackPhotoUrl?.length > 4) && (
                                 <div>
                                   <p className="text-[9px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> Check-out (fim)
                                   </p>
                                   <div className="flex gap-2">
-                                    {c.endPhotoUrl?.startsWith("data:") && (
+                                    {c.endPhotoUrl?.length > 4 && (
                                       <div className="flex-1">
                                         <p className="text-[8px] text-muted-foreground text-center mb-0.5">Frontal</p>
                                         <img src={c.endPhotoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endPhotoUrl)} />
                                       </div>
                                     )}
-                                    {c.endBackPhotoUrl?.startsWith("data:") && (
+                                    {c.endBackPhotoUrl?.length > 4 && (
                                       <div className="flex-1">
                                         <p className="text-[8px] text-muted-foreground text-center mb-0.5">Traseira</p>
                                         <img src={c.endBackPhotoUrl} alt="" className="w-full h-20 object-cover rounded-lg border border-border cursor-pointer active:opacity-80" onClick={() => setLightboxPhoto(c.endBackPhotoUrl)} />

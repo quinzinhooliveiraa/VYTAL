@@ -293,25 +293,35 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (!window.google) return;
-
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleCallback,
-      use_fedcm_for_prompt: false,
-    });
-
-    if (googleBtnRef.current) {
-      googleBtnRef.current.innerHTML = "";
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        width: 400,
-        text: "continue_with",
-        logo_alignment: "center",
+    const initGoogle = () => {
+      if (!window.google) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCallback,
+        use_fedcm_for_prompt: false,
       });
-      setGoogleReady(true);
+      if (googleBtnRef.current) {
+        googleBtnRef.current.innerHTML = "";
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          width: 400,
+          text: "continue_with",
+          logo_alignment: "center",
+        });
+        setGoogleReady(true);
+      }
+    };
+
+    if (window.google) {
+      initGoogle();
+    } else {
+      const script = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
+      if (script) {
+        script.addEventListener("load", initGoogle);
+        return () => script.removeEventListener("load", initGoogle);
+      }
     }
   }, [handleGoogleCallback, isLogin]);
 

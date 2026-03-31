@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   isBanned: boolean("is_banned").default(false),
   weightKg: integer("weight_kg"),
   ageYears: integer("age_years"),
+  abacateCustomerId: text("abacate_customer_id").default(""),
   lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

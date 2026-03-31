@@ -244,6 +244,25 @@ async function notifyUsersMatchingChallenge(challengeId: string, challengeTitle:
   } catch {}
 }
 
+async function syncAbacateCustomer(userId: string, user: { name: string; email: string; phone?: string | null; cpf?: string | null }) {
+  try {
+    const { db: database } = await import("./db");
+    const { users: usersTable } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const [existing] = await database.select({ abacateCustomerId: usersTable.abacateCustomerId }).from(usersTable).where(eq(usersTable.id, userId));
+    if (existing?.abacateCustomerId) return;
+
+    const customer = await paymentService.createOrFindCustomer(user);
+    if (customer?.id) {
+      await database.update(usersTable).set({ abacateCustomerId: customer.id } as any).where(eq(usersTable.id, userId));
+      console.log(`[AbacatePay] Cliente criado para user ${userId}: ${customer.id}`);
+    }
+  } catch (err: any) {
+    console.warn("[AbacatePay] syncAbacateCustomer falhou:", err.message);
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -340,6 +359,10 @@ export async function registerRoutes(
 
       notifyAdminsNewUser(data.name || data.username, data.email, "e-mail");
       (req.session as any).userId = user.id;
+
+      // Tenta criar cliente no Abacate Pay em background (não bloqueia registro)
+      syncAbacateCustomer(user.id, { name: user.name, email: user.email, phone: (user as any).phone, cpf: (user as any).cpf });
+
       const { password, twoFactorSecret, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (error: any) {
@@ -665,6 +688,7 @@ export async function registerRoutes(
 
         notifyAdminsNewUser(fullName, email, "Google");
         (req.session as any).userId = appUser.id;
+        syncAbacateCustomer(appUser.id, { name: appUser.name, email: appUser.email });
         res.json({ user: appUser, isNew: true });
       }
     } catch (error: any) {
@@ -828,6 +852,12 @@ export async function registerRoutes(
     const { name, bio, avatar, banner, goals, publicEarnings, isPrivate, cpf, phone, weightKg, ageYears } = req.body;
     const updated = await storage.updateUser(userId, { name, bio, avatar, banner, goals, publicEarnings, isPrivate, cpf, phone, weightKg: weightKg !== undefined ? weightKg : undefined, ageYears: ageYears !== undefined ? ageYears : undefined } as any);
     if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    // Tenta criar cliente no Abacate Pay quando CPF/telefone são preenchidos
+    if (cpf || phone) {
+      syncAbacateCustomer(userId, { name: updated.name, email: updated.email, phone: (updated as any).phone, cpf: (updated as any).cpf });
+    }
+
     const { password, twoFactorSecret, ...safeUser } = updated;
     res.json(safeUser);
   });
@@ -3556,6 +3586,41 @@ export async function registerRoutes(
       await database.delete(wallets).where(eq(wallets.userId, req.params.id));
       await database.delete(usersTable).where(eq(usersTable.id, req.params.id));
       res.json({ success: true, message: "Usuário removido" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/admin/sync-abacate", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable } = await import("@shared/schema");
+      const { and, eq, ne, or } = await import("drizzle-orm");
+
+      const usersToSync = await database.select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        phone: usersTable.phone,
+        cpf: usersTable.cpf,
+        abacateCustomerId: usersTable.abacateCustomerId,
+      }).from(usersTable);
+
+      let synced = 0;
+      let skipped = 0;
+
+      for (const u of usersToSync) {
+        if ((u as any).abacateCustomerId) { skipped++; continue; }
+        const customer = await paymentService.createOrFindCustomer({ name: u.name, email: u.email, phone: (u as any).phone, cpf: (u as any).cpf });
+        if (customer?.id) {
+          await database.update(usersTable).set({ abacateCustomerId: customer.id } as any).where(eq(usersTable.id, u.id));
+          synced++;
+        } else {
+          skipped++;
+        }
+      }
+
+      res.json({ success: true, synced, skipped, total: usersToSync.length });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

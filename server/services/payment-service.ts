@@ -27,7 +27,38 @@ export interface CustomerData {
   taxId: string;
 }
 
+export interface AbacateCustomerResult {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export class PaymentService {
+  async createOrFindCustomer(user: { name: string; email: string; phone?: string | null; cpf?: string | null }): Promise<AbacateCustomerResult | null> {
+    try {
+      const cellphone = (user.phone || "").replace(/\D/g, "");
+      const taxId = (user.cpf || "").replace(/\D/g, "");
+
+      if (!cellphone || cellphone.length < 10 || !taxId || taxId.length !== 11) {
+        return null;
+      }
+
+      const data = await this.request("POST", "/customer/create", {
+        name: user.name,
+        email: user.email,
+        cellphone,
+        taxId,
+      });
+
+      const customer = data.data || data;
+      return { id: customer.id, name: customer.name, email: customer.email };
+    } catch (error: any) {
+      console.warn("[AbacatePay] Não foi possível criar cliente:", error.message);
+      return null;
+    }
+  }
+
+
   private async request(method: string, path: string, body?: any) {
     const apiKey = getApiKey();
 

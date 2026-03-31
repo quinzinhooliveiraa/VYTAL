@@ -55,14 +55,12 @@ export class ChallengeFinanceService {
     const [challenge] = await db.select().from(challenges).where(eq(challenges.id, challengeId));
     if (!challenge) throw new Error("Desafio não encontrado");
 
-    const participants = await db.select().from(challengeParticipants)
-      .where(and(
-        eq(challengeParticipants.challengeId, challengeId),
-        eq(challengeParticipants.isActive, true)
-      ));
+    // Fetch ALL participants (active + inactive) so the pot reflects every paid entry fee
+    const allParticipants = await db.select().from(challengeParticipants)
+      .where(eq(challengeParticipants.challengeId, challengeId));
 
     const entryFee = Number(challenge.entryFee);
-    const totalPool = entryFee * participants.length;
+    const totalPool = entryFee * allParticipants.length;
     const platformFee = totalPool * (PLATFORM_FEE_PERCENT / 100);
     const prizePool = totalPool - platformFee;
 
@@ -70,7 +68,8 @@ export class ChallengeFinanceService {
       .set({ isActive: false, status: "completed" })
       .where(eq(challenges.id, challengeId));
 
-    for (const participant of participants) {
+    // Settle pending challenge_entry transactions for ALL participants
+    for (const participant of allParticipants) {
       const idempotencyKey = `challenge_entry_${participant.userId}_${challengeId}`;
       const entryTx = await transactionService.getByIdempotencyKey(idempotencyKey);
       if (entryTx && entryTx.status === TRANSACTION_STATUS.PENDING) {

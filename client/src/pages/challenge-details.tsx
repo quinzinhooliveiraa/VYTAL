@@ -411,7 +411,7 @@ export default function ChallengeDetails() {
   const canModerate = isCreator || isCoModerator;
   const isParticipant = challenge.isParticipant;
   const entryFee = Number(challenge.entryFee);
-  const prizePool = activeParticipants.length * entryFee;
+  const prizePool = participants.length * entryFee;
 
   const cType = challenge.type || "checkin";
   const cVType = challenge.validationType || "foto";
@@ -1584,7 +1584,7 @@ export default function ChallengeDetails() {
 
           {(() => {
             const sorted = [...activeParticipants].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
-            const totalPool = activeParticipants.length * entryFee;
+            const totalPool = participants.length * entryFee;
             const platformFee = totalPool * 0.10;
             const netPool = totalPool - platformFee;
             const isRanking = challenge?.type === "ranking" && (challenge as any)?.splitPrize;

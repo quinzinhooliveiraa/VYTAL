@@ -14,6 +14,9 @@ import { notificationService } from "./services/notification-service";
 const app = express();
 const httpServer = createServer(app);
 
+// Replit runs behind a reverse proxy — required for correct IP detection by rate limiters
+app.set("trust proxy", 1);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

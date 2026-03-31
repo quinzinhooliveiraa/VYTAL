@@ -754,50 +754,108 @@ export default function ChallengeDetails() {
                     const isMe = c.userId === user?.id;
                     const showCal = cVType === "tempo" || cVType === "distancia" || cVType === "combinacao";
                     const isRestDay = c.status === "rest_day";
+                    const hasStartPhoto = c.photoUrl && c.photoUrl.length > 4;
+                    const hasStartBackPhoto = c.backPhotoUrl && c.backPhotoUrl.length > 4;
+                    const hasEndPhoto = c.endPhotoUrl && c.endPhotoUrl.length > 4;
+                    const hasEndBackPhoto = c.endBackPhotoUrl && c.endBackPhotoUrl.length > 4;
+                    const hasAnyPhoto = hasStartPhoto || hasStartBackPhoto || hasEndPhoto || hasEndBackPhoto;
                     return (
-                      <div key={c.id} className={`flex items-center gap-3 p-3 ${isMe ? (isRestDay ? "bg-blue-500/5" : "bg-primary/5") : ""}`} data-testid={`checkin-history-${c.id}`}>
-                        {isRestDay ? (
-                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                            <Coffee size={16} className="text-blue-500" />
+                      <div key={c.id} className={`p-3 space-y-2 ${isMe ? (isRestDay ? "bg-blue-500/5" : "bg-primary/5") : ""}`} data-testid={`checkin-history-${c.id}`}>
+                        <div className="flex items-center gap-3">
+                          {isRestDay ? (
+                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                              <Coffee size={16} className="text-blue-500" />
+                            </div>
+                          ) : hasStartPhoto ? (
+                            <div
+                              className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 cursor-pointer active:opacity-80"
+                              onClick={() => setLightboxPhoto(c.photoUrl)}
+                              data-testid={`checkin-photo-thumb-${c.id}`}
+                            >
+                              <img src={c.photoUrl} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <CheckCircle2 size={16} className="text-primary" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold truncate">
+                              {isMe ? "Você" : (pUser?.name || "Participante")}
+                              <span className="text-muted-foreground font-normal ml-1">
+                                {new Date(c.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                                {" "}
+                                {new Date(c.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+                              {isRestDay ? (
+                                <span className="text-blue-500">Dia de descanso</span>
+                              ) : (
+                                <>
+                                  {c.isIndoor ? (
+                                    <span className="text-violet-500 font-semibold">Indoor</span>
+                                  ) : (
+                                    <span className="text-green-600 dark:text-green-400 font-semibold">Outdoor</span>
+                                  )}
+                                  {c.durationMins && <span>• {c.durationMins} min</span>}
+                                  {c.distanceKm && Number(c.distanceKm) > 0 && <span>• {Number(c.distanceKm).toFixed(2)} km</span>}
+                                  {showCal && c.caloriesBurned && <span>• {c.caloriesBurned} kcal</span>}
+                                </>
+                              )}
+                            </div>
                           </div>
-                        ) : c.photoUrl?.startsWith("data:") ? (
-                          <div
-                            className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 cursor-pointer active:opacity-80"
-                            onClick={() => setLightboxPhoto(c.photoUrl)}
-                            data-testid={`checkin-photo-thumb-${c.id}`}
-                          >
-                            <img src={c.photoUrl} alt="" className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <CheckCircle2 size={16} className="text-primary" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold truncate">
-                            {isMe ? "Você" : (pUser?.name || "Participante")}
-                            <span className="text-muted-foreground font-normal ml-1">
-                              {new Date(c.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                              {" "}
-                              {new Date(c.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </p>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            {isRestDay ? (
-                              <span className="text-blue-500">Dia de descanso</span>
-                            ) : (
-                              <>
-                                {c.durationMins && <span>{c.durationMins} min</span>}
-                                {c.distanceKm && Number(c.distanceKm) > 0 && <span>• {Number(c.distanceKm).toFixed(2)} km</span>}
-                                {showCal && c.caloriesBurned && <span>• {c.caloriesBurned} kcal</span>}
-                              </>
+                          {isRestDay ? (
+                            <Coffee size={16} className="text-blue-500 shrink-0" />
+                          ) : (
+                            <CheckCircle2 size={16} className="text-primary shrink-0" />
+                          )}
+                        </div>
+                        {hasAnyPhoto && !isRestDay && (
+                          <div className="space-y-1.5 pl-13">
+                            {(hasStartPhoto || hasStartBackPhoto) && (
+                              <div>
+                                <p className="text-[8px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Check-in
+                                </p>
+                                <div className="flex gap-1.5">
+                                  {hasStartPhoto && (
+                                    <div className="flex-1 cursor-pointer" onClick={() => setLightboxPhoto(c.photoUrl)}>
+                                      <p className="text-[7px] text-muted-foreground text-center mb-0.5">Frontal</p>
+                                      <img src={c.photoUrl} alt="" className="w-full h-16 object-cover rounded-lg border border-border active:opacity-80" data-testid={`checkin-photo-start-${c.id}`} />
+                                    </div>
+                                  )}
+                                  {hasStartBackPhoto && (
+                                    <div className="flex-1 cursor-pointer" onClick={() => setLightboxPhoto(c.backPhotoUrl)}>
+                                      <p className="text-[7px] text-muted-foreground text-center mb-0.5">Traseira</p>
+                                      <img src={c.backPhotoUrl} alt="" className="w-full h-16 object-cover rounded-lg border border-border active:opacity-80" data-testid={`checkin-photo-back-${c.id}`} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {(hasEndPhoto || hasEndBackPhoto) && (
+                              <div>
+                                <p className="text-[8px] text-muted-foreground font-bold uppercase mb-1 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> Check-out
+                                </p>
+                                <div className="flex gap-1.5">
+                                  {hasEndPhoto && (
+                                    <div className="flex-1 cursor-pointer" onClick={() => setLightboxPhoto(c.endPhotoUrl)}>
+                                      <p className="text-[7px] text-muted-foreground text-center mb-0.5">Frontal</p>
+                                      <img src={c.endPhotoUrl} alt="" className="w-full h-16 object-cover rounded-lg border border-border active:opacity-80" data-testid={`checkin-photo-end-${c.id}`} />
+                                    </div>
+                                  )}
+                                  {hasEndBackPhoto && (
+                                    <div className="flex-1 cursor-pointer" onClick={() => setLightboxPhoto(c.endBackPhotoUrl)}>
+                                      <p className="text-[7px] text-muted-foreground text-center mb-0.5">Traseira</p>
+                                      <img src={c.endBackPhotoUrl} alt="" className="w-full h-16 object-cover rounded-lg border border-border active:opacity-80" data-testid={`checkin-photo-endback-${c.id}`} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             )}
                           </div>
-                        </div>
-                        {isRestDay ? (
-                          <Coffee size={16} className="text-blue-500 shrink-0" />
-                        ) : (
-                          <CheckCircle2 size={16} className="text-primary shrink-0" />
                         )}
                       </div>
                     );

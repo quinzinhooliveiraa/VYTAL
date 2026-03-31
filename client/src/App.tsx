@@ -27,6 +27,7 @@ import Communities from "@/pages/communities";
 import CreateCommunity from "@/pages/create-community";
 import ChatHub from "@/pages/chat-hub";
 import Admin from "@/pages/admin";
+import MagicLogin from "@/pages/magic-login";
 import Partner from "@/pages/partner";
 import CommunityDashboard from "@/pages/community-dashboard";
 import PartnerDashboard from "@/pages/partner-dashboard";
@@ -82,11 +83,12 @@ function Router() {
     return <Redirect to="/dashboard" />;
   }
 
-  if (location === "/login" || location === "/onboarding") {
+  if (location === "/login" || location === "/onboarding" || location.startsWith("/magic-login")) {
     return (
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/onboarding" component={Onboarding} />
+        <Route path="/magic-login" component={MagicLogin} />
       </Switch>
     );
   }

@@ -3501,6 +3501,47 @@ export async function registerRoutes(
     }
   });
 
+  const magicTokens = new Map<string, { userId: string; expiresAt: number }>();
+
+  app.post("/api/admin/users/:id/magic-link", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { db: database } = await import("./db");
+      const { users: usersTable } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const { randomBytes } = await import("crypto");
+
+      const [target] = await database.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, req.params.id));
+      if (!target) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      const token = randomBytes(32).toString("hex");
+      magicTokens.set(token, { userId: target.id, expiresAt: Date.now() + 15 * 60 * 1000 });
+
+      const baseUrl = req.protocol + "://" + req.get("host");
+      res.json({ link: `${baseUrl}/magic-login?token=${token}` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/auth/magic-login", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) return res.status(400).json({ message: "Token inválido" });
+
+      const entry = magicTokens.get(token);
+      if (!entry || entry.expiresAt < Date.now()) {
+        magicTokens.delete(token);
+        return res.status(401).json({ message: "Link expirado ou inválido" });
+      }
+
+      magicTokens.delete(token);
+      (req.session as any).userId = entry.userId;
+      req.session.save(() => res.json({ success: true }));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { db: database } = await import("./db");

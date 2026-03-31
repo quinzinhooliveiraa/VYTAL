@@ -724,6 +724,16 @@ export default function Admin() {
                       <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg" onClick={() => setConfirmDialog({ type: "toggle-admin", userId: u.id, userName: u.name })} data-testid={`btn-toggle-admin-${u.id}`}>
                         {u.isAdmin ? <ShieldOff size={14} /> : <Shield size={14} />}
                       </Button>
+                      <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg text-blue-500 border-blue-500/30" data-testid={`btn-magic-link-${u.id}`} onClick={async () => {
+                        try {
+                          const res = await apiRequest("POST", `/api/admin/users/${u.id}/magic-link`);
+                          const data = await res.json();
+                          await navigator.clipboard.writeText(data.link);
+                          toast({ title: "Link copiado!", description: "Válido por 15 minutos. Cole e envie ao usuário." });
+                        } catch { toast({ title: "Erro ao gerar link", variant: "destructive" }); }
+                      }}>
+                        <Link2 size={14} />
+                      </Button>
                       <Button size="icon" variant="outline" className={`h-8 w-8 rounded-lg ${u.isBanned ? "text-green-500 border-green-500/30" : "text-red-500 border-red-500/30"}`} onClick={() => setConfirmDialog({ type: "block", userId: u.id, userName: u.name, isBanned: u.isBanned })} data-testid={`btn-block-${u.id}`}>
                         <Ban size={14} />
                       </Button>

@@ -42,7 +42,7 @@ export default function Dashboard() {
   const locked = Number(walletData?.lockedBalance || 0);
   const avail = Number(walletData?.availableBalance || 0);
   const totalInvested = fmtBRL(locked);
-  const totalEarned = fmtBRL(bal);
+  const totalEarned = fmtBRL(bal + locked);
   const availableBalance = fmtBRL(avail);
 
   const activeChallenges = myChallenges.filter((c: any) =>

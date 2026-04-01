@@ -232,7 +232,7 @@ export default function Wallet() {
           <div className="flex gap-4 mb-4 text-[11px]">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-background/60 dark:text-white/50">Total: {formatBRL(balance)}</span>
+              <span className="text-background/60 dark:text-white/50">Total: {formatBRL(balance + lockedBalance)}</span>
             </div>
             {lockedBalance > 0 && (
               <div className="flex items-center gap-1.5">

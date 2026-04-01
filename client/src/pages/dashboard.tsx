@@ -25,7 +25,7 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
 
-  const { data: myChallenges = [] } = useQuery({
+  const { data: myChallenges = [], isLoading: challengesLoading } = useQuery({
     queryKey: ["/api/challenges/mine"],
     queryFn: async () => {
       const res = await fetch("/api/challenges/mine", { credentials: "include" });
@@ -174,7 +174,17 @@ export default function Dashboard() {
           )}
         </div>
 
-        {activeChallenges.length > 0 ? (
+        {challengesLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-5 animate-pulse space-y-3">
+                <div className="h-5 bg-muted rounded-lg w-2/3" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+                <div className="h-10 bg-muted rounded-xl mt-4" />
+              </div>
+            ))}
+          </div>
+        ) : activeChallenges.length > 0 ? (
           <div className="space-y-3">
             {activeChallenges.map((challenge: any) => {
               const count = challenge.activeParticipantCount || challenge.participantCount || 0;

@@ -55,7 +55,7 @@ export class WalletService {
     }
 
     const correctedBalance = Math.max(realBalance, 0);
-    const availableBalance = Math.max(correctedBalance - displayLocked, 0);
+    const availableBalance = Math.max(correctedBalance - pendingLocked, 0);
 
     if (correctedBalance !== Number(wallet.balance) || displayLocked !== Number(wallet.lockedBalance)) {
       await db.update(wallets)

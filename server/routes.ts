@@ -649,7 +649,7 @@ export async function registerRoutes(
       const payload = ticket.getPayload();
       if (!payload || !payload.email) return res.status(400).json({ message: "Token inválido" });
 
-      const email = payload.email;
+      const email = payload.email.toLowerCase();
       const fullName = payload.name || email.split("@")[0];
       const profileImage = payload.picture || "";
 

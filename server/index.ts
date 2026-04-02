@@ -370,6 +370,93 @@ async function reconcileWithdrawals() {
     }
   }, 60_000); // check every minute
 
+  // Motivational push notifications at peak exercise times (Brasília):
+  // 06:00 = 09:00 UTC, 12:00 = 15:00 UTC, 18:00 = 21:00 UTC
+  const MOTIVATION_SLOTS: Array<{ utcH: number; utcM: number; slot: string }> = [
+    { utcH: 9,  utcM: 0, slot: "manha"  },
+    { utcH: 15, utcM: 0, slot: "almoco" },
+    { utcH: 21, utcM: 0, slot: "tarde"  },
+  ];
+
+  const MOTIVATION_MESSAGES: Record<string, string[][]> = {
+    manha: [
+      ["Bom dia, guerreiro!", "O dia começa cedo pra quem quer vencer. Acorda, treina e manda ver no desafio!"],
+      ["Madrugada virou manhã.", "Enquanto o mundo dorme, você já está na luta. Continua assim!"],
+      ["Café ou treino?", "Que tal os dois? Começa o dia na força e vai garantir mais um dia no desafio!"],
+      ["Novo dia, nova chance.", "Cada manhã é uma oportunidade de ser melhor. Não deixa ela passar!"],
+      ["O sol nasceu.", "E com ele veio sua chance de mais um dia vencido. Bora!"],
+      ["Levanta, sacode a poeira.", "O desafio não para. Você também não pode parar!"],
+      ["Manhã de treino bate!", "Acorda o corpo e a mente. O check-in de hoje te espera!"],
+    ],
+    almoco: [
+      ["Pausa pro treino?", "Quem disse que almoço é só comida? Uma atividade agora e o dia já valeu!"],
+      ["Meio-dia chegou.", "Já pensou no seu treino de hoje? O desafio não espera!"],
+      ["Energia no pico!", "Seu corpo tá pronto. Aproveita esse horário e faz bonito!"],
+      ["Treino na hora do almoço?", "Sim! É uma das melhores estratégias dos campeões. Bora!"],
+      ["A tarde tá chegando.", "Não deixa o dia passar sem marcar presença no desafio. Você consegue!"],
+      ["Nada de enrolação.", "O desafio tá te esperando. Cinco minutos pra planejar o treino de hoje!"],
+      ["Metade do dia feito.", "Falta a parte mais importante: seu treino. Não fica pra depois!"],
+    ],
+    tarde: [
+      ["Fim de expediente, início do treino!", "Hora de fechar o dia com chave de ouro. Bora fazer o check-in!"],
+      ["Tá cansado? Normal.", "Mas sabe quem não desiste? Você. Vai lá e faz acontecer!"],
+      ["A noite é dos fortes.", "Enquanto muitos descansam, você se supera. Fecha o dia no desafio!"],
+      ["Mais um dia perto da vitória.", "Cada treino conta. Cada check-in vale. Não para agora!"],
+      ["Quase lá!", "O dia quase acabou. Ainda dá tempo de treinar e garantir sua vaga amanhã!"],
+      ["Consistência é a chave.", "Não é o treino mais pesado que vence. É o mais constante. Vai lá!"],
+      ["Hoje é dia de treino.", "Todo dia é dia de treino pra quem quer ganhar. Te vejo no check-in!"],
+    ],
+  };
+
+  const sentMotivations = new Set<string>(); // "userId:date:slot"
+
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const utcH = now.getUTCHours();
+      const utcM = now.getUTCMinutes();
+      const todayKey = now.toISOString().slice(0, 10);
+      const dayOfWeek = now.getUTCDay(); // 0=Sunday
+
+      const slot = MOTIVATION_SLOTS.find(s => s.utcH === utcH && s.utcM === utcM);
+      if (!slot) return;
+
+      const messages = MOTIVATION_MESSAGES[slot.slot];
+      const [title, body] = messages[dayOfWeek % messages.length];
+
+      const activeChallenges = await db.select().from(challenges)
+        .where(and(eq(challenges.status, "active"), eq(challenges.isActive, true)));
+
+      const uniqueUsers = new Set<string>();
+      for (const challenge of activeChallenges) {
+        const participants = await db.select().from(challengeParticipants)
+          .where(and(
+            eq(challengeParticipants.challengeId, challenge.id),
+            eq(challengeParticipants.isActive, true),
+          ));
+        for (const p of participants) uniqueUsers.add(p.userId);
+      }
+
+      let total = 0;
+      for (const userId of uniqueUsers) {
+        const key = `${userId}:${todayKey}:${slot.slot}`;
+        if (sentMotivations.has(key)) continue;
+        sentMotivations.add(key);
+        notificationService.notify(userId, {
+          type: "motivation",
+          title,
+          body,
+          actionUrl: "/",
+        }).catch(() => {});
+        total++;
+      }
+
+      if (total > 0) log(`[Motivation] ${slot.slot} — ${total} notificação(ões) enviada(s)`);
+    } catch (err: any) {
+      log(`[Motivation] Erro: ${err.message}`);
+    }
+  }, 60_000);
+
   // Auto-process missed days every 24 hours (and once 5 seconds after startup)
   setTimeout(processMissedDaysAuto, 5000);
   setInterval(processMissedDaysAuto, 24 * 60 * 60 * 1000);

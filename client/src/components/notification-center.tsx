@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, CheckCheck, MessageCircle, Trophy, UserPlus, MapPin, Shield, ChevronRight, Clock, DollarSign } from "lucide-react";
+import { Bell, CheckCheck, MessageCircle, Trophy, UserPlus, MapPin, Shield, ChevronRight, Clock, DollarSign, Zap } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -20,6 +20,8 @@ const TYPE_ICONS: Record<string, any> = {
   new_user: UserPlus,
   deposit_confirmed: DollarSign,
   new_challenge: Trophy,
+  motivation: Zap,
+  reminder: Clock,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -37,6 +39,8 @@ const TYPE_COLORS: Record<string, string> = {
   new_user: "bg-cyan-500/20 text-cyan-400",
   deposit_confirmed: "bg-emerald-500/20 text-emerald-400",
   new_challenge: "bg-violet-500/20 text-violet-400",
+  motivation: "bg-amber-500/20 text-amber-400",
+  reminder: "bg-yellow-500/20 text-yellow-400",
 };
 
 function timeAgo(dateStr: string) {

@@ -27,9 +27,10 @@ export class WalletService {
       challengeEntries: sql<string>`COALESCE(SUM(CASE WHEN type = 'challenge_entry' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
       challengeWins: sql<string>`COALESCE(SUM(CASE WHEN type = 'challenge_win' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
       refunds: sql<string>`COALESCE(SUM(CASE WHEN type = 'refund' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
+      platformFees: sql<string>`COALESCE(SUM(CASE WHEN type = 'platform_fee' AND status = 'completed' THEN amount ELSE 0 END), 0)`,
     }).from(transactions).where(eq(transactions.userId, userId));
 
-    const realBalance = Number(result.deposits) - Number(result.withdrawals) - Number(result.challengeEntries) + Number(result.challengeWins) + Number(result.refunds);
+    const realBalance = Number(result.deposits) - Number(result.withdrawals) - Number(result.challengeEntries) + Number(result.challengeWins) + Number(result.refunds) + Number(result.platformFees);
 
     const parts = await db.select().from(challengeParticipants).where(
       and(eq(challengeParticipants.userId, userId), eq(challengeParticipants.isActive, true))

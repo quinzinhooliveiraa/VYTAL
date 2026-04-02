@@ -45,9 +45,14 @@ export class WalletService {
       if (ch && (ch.status === "active" || ch.status === "pending") && Number(ch.entryFee || 0) > 0) {
         displayLocked += Number(ch.entryFee);
 
-        const idempotencyKey = `challenge_entry_${userId}_${ch.id}`;
         const [entryTx] = await db.select().from(transactions)
-          .where(eq(transactions.idempotencyKey, idempotencyKey));
+          .where(
+            and(
+              eq(transactions.userId, userId),
+              eq(transactions.type, "challenge_entry"),
+              sql`${transactions.idempotencyKey} LIKE ${'%_' + ch.id}`
+            )
+          );
         if (!entryTx || entryTx.status === "pending") {
           pendingLocked += Number(ch.entryFee);
         }

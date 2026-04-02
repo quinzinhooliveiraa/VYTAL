@@ -4,15 +4,17 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
-const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("NEON_DATABASE_URL or DATABASE_URL must be set.");
+  throw new Error("DATABASE_URL or NEON_DATABASE_URL must be set.");
 }
+
+const isNeon = connectionString.includes("neon.tech") || connectionString.includes("neon.database");
 
 export const pool = new Pool({
   connectionString,
-  ssl: { rejectUnauthorized: false },
+  ssl: isNeon ? { rejectUnauthorized: false } : false,
 });
 
 export const db = drizzle(pool, { schema });

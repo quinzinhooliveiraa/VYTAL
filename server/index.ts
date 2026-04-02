@@ -378,33 +378,89 @@ async function reconcileWithdrawals() {
     { utcH: 21, utcM: 0, slot: "tarde"  },
   ];
 
-  const MOTIVATION_MESSAGES: Record<string, string[][]> = {
+  // Title pool (30) × body pool (13) per slot. lcm(30,13)=390 > 365 → no repeat for a full year.
+  // dayOfYear selects title and body independently, creating 390 unique combinations.
+  const MOTIVATION_TITLES: Record<string, string[]> = {
     manha: [
-      ["Bom dia, guerreiro!", "O dia começa cedo pra quem quer vencer. Acorda, treina e manda ver no desafio!"],
-      ["Madrugada virou manhã.", "Enquanto o mundo dorme, você já está na luta. Continua assim!"],
-      ["Café ou treino?", "Que tal os dois? Começa o dia na força e vai garantir mais um dia no desafio!"],
-      ["Novo dia, nova chance.", "Cada manhã é uma oportunidade de ser melhor. Não deixa ela passar!"],
-      ["O sol nasceu.", "E com ele veio sua chance de mais um dia vencido. Bora!"],
-      ["Levanta, sacode a poeira.", "O desafio não para. Você também não pode parar!"],
-      ["Manhã de treino bate!", "Acorda o corpo e a mente. O check-in de hoje te espera!"],
+      "Bom dia, guerreiro!","Nova manhã, nova chance!","Hoje é o dia!","Acorda, campeão!",
+      "Manhã de ouro!","O treino tá te esperando!","Levanta e vai!","Cedo é pra quem chega primeiro!",
+      "Mais um dia pra vencer!","O sol nasceu — e você?","Hoje tem treino!","Começa cedo, termina forte!",
+      "Bom dia pra quem tá de pé!","A manhã é dos guerreiros!","Mais um dia no desafio!",
+      "Hora de acordar o campeão!","O dia não espera!","Dia novo, meta nova!","Quem madruga, treina!",
+      "Novo dia, mesmo foco!","Disciplina começa de manhã!","De novo, de pé, de frente!",
+      "O pote não vai se pagar sozinho!","Mais um amanhecer, mais uma chance!","Vai com tudo hoje!",
+      "Acorda que o desafio já começou!","Manhã fria? Aquece com o treino!","Primeira missão do dia: treinar!",
+      "Olhos abertos, foco ligado!","Cada manhã é uma votação pelo seu sucesso!",
     ],
     almoco: [
-      ["Pausa pro treino?", "Quem disse que almoço é só comida? Uma atividade agora e o dia já valeu!"],
-      ["Meio-dia chegou.", "Já pensou no seu treino de hoje? O desafio não espera!"],
-      ["Energia no pico!", "Seu corpo tá pronto. Aproveita esse horário e faz bonito!"],
-      ["Treino na hora do almoço?", "Sim! É uma das melhores estratégias dos campeões. Bora!"],
-      ["A tarde tá chegando.", "Não deixa o dia passar sem marcar presença no desafio. Você consegue!"],
-      ["Nada de enrolação.", "O desafio tá te esperando. Cinco minutos pra planejar o treino de hoje!"],
-      ["Metade do dia feito.", "Falta a parte mais importante: seu treino. Não fica pra depois!"],
+      "Pausa pro treino?","Meio-dia chegou!","Energia no pico!","Treino na hora do almoço!",
+      "Intervalo produtivo!","Hora de mover o corpo!","O dia ainda não acabou!","Já pensou no treino?",
+      "Almoça e treina!","Aqui é o pico de energia!","Faltou treinar ainda?","Faz uma pausa que vale!",
+      "Aproveita o intervalo!","Qual o plano pro treino?","Não deixa pra depois!","Agora é o momento!",
+      "Treino de almoço conta dobrado!","A tarde começa no treino!","Partiu treino!",
+      "O relógio não para, o treino também não!","Hoje tem treino sim!","Corpo em movimento!",
+      "Já fez o check-in?","Tá esperando o quê?","Hora H chegou!","Cinco minutos de decisão!",
+      "Quem usa o meio do dia ganha o dia!","Bora que o pote tá crescendo!",
+      "Não perde esse horário!","A melhor pausa é a do treino!",
     ],
     tarde: [
-      ["Fim de expediente, início do treino!", "Hora de fechar o dia com chave de ouro. Bora fazer o check-in!"],
-      ["Tá cansado? Normal.", "Mas sabe quem não desiste? Você. Vai lá e faz acontecer!"],
-      ["A noite é dos fortes.", "Enquanto muitos descansam, você se supera. Fecha o dia no desafio!"],
-      ["Mais um dia perto da vitória.", "Cada treino conta. Cada check-in vale. Não para agora!"],
-      ["Quase lá!", "O dia quase acabou. Ainda dá tempo de treinar e garantir sua vaga amanhã!"],
-      ["Consistência é a chave.", "Não é o treino mais pesado que vence. É o mais constante. Vai lá!"],
-      ["Hoje é dia de treino.", "Todo dia é dia de treino pra quem quer ganhar. Te vejo no check-in!"],
+      "Fim de expediente!","A tarde é sua!","Hora dourada!","Vai treinar?","Fecha o dia forte!",
+      "É hora de treinar!","Antes de dormir, treina!","A noite é dos fortes!","Tá cansado? Normal.",
+      "Não perde a tarde!","Hoje tem check-in!","Quase fim do dia!","Última chance de hoje!",
+      "Termina o dia no treino!","O desafio tá na reta final de hoje!","Falta pouco pro check-in!",
+      "Já treinou hoje?","Fecha com chave de ouro!","Noite de campeão!","Cada treino conta!",
+      "Mais um passo pro prêmio!","Vai lá, você consegue!","Hoje é dia de check-in!",
+      "Suor vale ouro aqui!","Não vai deixar o dia passar, né?","O relógio tá correndo!",
+      "Termina o que você começou!","Quem treina de noite sonha com vitória!",
+      "O pote espera os persistentes!","Último treino do dia — o mais importante!",
+    ],
+  };
+
+  const MOTIVATION_BODIES: Record<string, string[]> = {
+    manha: [
+      "O dia começa cedo pra quem quer vencer. Acorda, treina e manda ver no desafio!",
+      "Enquanto o mundo dorme, você já está na luta. Cada manhã conta!",
+      "Uma atividade agora muda o seu dia inteiro. Começa com tudo!",
+      "Cada manhã é uma oportunidade de ser melhor que ontem. Não deixa ela passar!",
+      "O seu eu do futuro agradece o que você faz agora. Vai lá!",
+      "Disciplina é escolher o que você quer mais em vez do que quer agora. Treina!",
+      "O pote tá esperando quem não desiste. Mostra que é você!",
+      "Não precisa ser perfeito, precisa ser consistente. Mais um dia no desafio!",
+      "A sequência que você está construindo vale mais que qualquer desculpa. Continua!",
+      "Cada treino de manhã é um voto de confiança em si mesmo. Vote em você!",
+      "Não perde a manhã — ela não volta. Faz o treino e garante mais um dia!",
+      "Os melhores resultados vêm de quem começa o dia com intenção. Vai com tudo!",
+      "Levanta mais cedo, treina mais forte, dorme mais satisfeito. É assim que funciona!",
+    ],
+    almoco: [
+      "Quem disse que almoço é só comida? Uma atividade agora e o dia já valeu!",
+      "Já pensou no seu treino de hoje? O desafio não espera!",
+      "Seu corpo tá no pico de energia agora. Aproveita esse horário!",
+      "É uma das melhores estratégias dos campeões: treinar no intervalo. Bora!",
+      "Não deixa o dia passar sem marcar presença no desafio. Você consegue!",
+      "O desafio tá te esperando. Cinco minutos pra planejar o treino de hoje!",
+      "Falta a parte mais importante do dia: seu treino. Não fica pra depois!",
+      "Quem usa o meio do dia pra treinar sai na frente. Sai na frente!",
+      "Não precisa de muito tempo — consistência bate intensidade. Vai lá!",
+      "Aproveita que o corpo tá aquecido e o dia ainda tem horas. Treina agora!",
+      "O pote tá crescendo. Mas só quem treina tá na disputa. Garante o seu!",
+      "A pausa mais produtiva que existe é a que você gasta suando. Vai em frente!",
+      "Todo grande resultado começa com uma decisão no meio do dia. Decide agora!",
+    ],
+    tarde: [
+      "Hora de fechar o dia com chave de ouro. Bora fazer o check-in!",
+      "Mas sabe quem não desiste? Você. Vai lá e faz acontecer!",
+      "Enquanto muitos descansam, você se supera. Fecha o dia no desafio!",
+      "Cada treino conta. Cada check-in vale. Não para agora!",
+      "O dia quase acabou. Ainda dá tempo de treinar e garantir sua vaga amanhã!",
+      "Não é o treino mais pesado que vence. É o mais constante. Vai lá!",
+      "Todo dia é dia de treino pra quem quer ganhar. Te vejo no check-in!",
+      "O pote tá sendo disputado agora mesmo. Não deixa o outro ganhar por falta de treino!",
+      "A consistência que você está construindo vale mais que qualquer prêmio. Mas o prêmio ajuda!",
+      "Amanhã você vai acordar feliz por ter treinado hoje. Vai!",
+      "Fecha os olhos e imagina ganhar o desafio. Agora abre e vai treinar!",
+      "Os que chegam no fim são os que não desistiram nos dias difíceis. Hoje é um desses dias!",
+      "Um treino de fim do dia cansa o corpo, descansa a mente e enche o bolso. Bora!",
     ],
   };
 
@@ -416,13 +472,19 @@ async function reconcileWithdrawals() {
       const utcH = now.getUTCHours();
       const utcM = now.getUTCMinutes();
       const todayKey = now.toISOString().slice(0, 10);
-      const dayOfWeek = now.getUTCDay(); // 0=Sunday
+
+      // Day of year (1–365/366) used to pick title and body independently
+      const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+      const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86_400_000) + 1;
 
       const slot = MOTIVATION_SLOTS.find(s => s.utcH === utcH && s.utcM === utcM);
       if (!slot) return;
 
-      const messages = MOTIVATION_MESSAGES[slot.slot];
-      const [title, body] = messages[dayOfWeek % messages.length];
+      const titles = MOTIVATION_TITLES[slot.slot];
+      const bodies = MOTIVATION_BODIES[slot.slot];
+      const title = titles[(dayOfYear - 1) % titles.length];         // cycles every 30 days
+      const body  = bodies[(dayOfYear - 1) % bodies.length];         // cycles every 13 days
+      // lcm(30, 13) = 390 → the same (title, body) pair won't repeat for 390 days
 
       const activeChallenges = await db.select().from(challenges)
         .where(and(eq(challenges.status, "active"), eq(challenges.isActive, true)));

@@ -1695,6 +1695,23 @@ export async function registerRoutes(
 
           if (eliminado) {
             totalEliminated++;
+            notificationService.notify(p.userId, {
+              type: "eliminated",
+              title: "Você foi eliminado",
+              body: `Você perdeu dias demais e foi desqualificado do desafio "${challenge.title}". Seu valor de entrada foi perdido.`,
+              icon: "x-circle",
+              actionUrl: `/challenge/${challenge.id}`,
+              challengeId: challenge.id,
+            }).catch(() => {});
+          } else if (maxMissed > 0 && currentMissed === maxMissed) {
+            notificationService.notify(p.userId, {
+              type: "elimination_warning",
+              title: "Atencao: ultima chance!",
+              body: `Voce ja usou todas as suas faltas no desafio "${challenge.title}". Faltou mais um dia = eliminado!`,
+              icon: "alert-triangle",
+              actionUrl: `/challenge/${challenge.id}`,
+              challengeId: challenge.id,
+            }).catch(() => {});
           }
         }
       }
@@ -2399,6 +2416,16 @@ export async function registerRoutes(
           await transactionService.updateStatus(entryTx.id, TRANSACTION_STATUS.FAILED);
         }
       }
+
+      notificationService.notify(participantUserId, {
+        type: "eliminated",
+        title: "Você foi eliminado",
+        body: `Você foi desqualificado do desafio "${challenge.title}" pelo moderador. Seu valor de entrada foi perdido.`,
+        icon: "x-circle",
+        actionUrl: `/challenge/${challengeId}`,
+        challengeId,
+      }).catch(() => {});
+
       res.json({ success: true, message: "Participante eliminado do desafio" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

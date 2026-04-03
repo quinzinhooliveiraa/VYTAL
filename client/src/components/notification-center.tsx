@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, CheckCheck, MessageCircle, Trophy, UserPlus, MapPin, Shield, ChevronRight, Clock, DollarSign, Zap } from "lucide-react";
+import { Bell, CheckCheck, MessageCircle, Trophy, UserPlus, MapPin, Shield, ChevronRight, Clock, DollarSign, Zap, AlertTriangle, XCircle } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -17,7 +17,8 @@ const TYPE_ICONS: Record<string, any> = {
   challenge_started: Trophy,
   challenge_completed: Trophy,
   challenge_winner: Trophy,
-  eliminated: Trophy,
+  eliminated: XCircle,
+  elimination_warning: AlertTriangle,
   new_user: UserPlus,
   deposit_confirmed: DollarSign,
   new_challenge: Trophy,
@@ -37,7 +38,8 @@ const TYPE_COLORS: Record<string, string> = {
   challenge_started: "bg-green-500/20 text-green-400",
   challenge_completed: "bg-yellow-500/20 text-yellow-400",
   challenge_winner: "bg-yellow-500/20 text-yellow-500",
-  eliminated: "bg-red-500/20 text-red-400",
+  eliminated: "bg-red-500/20 text-red-500",
+  elimination_warning: "bg-orange-500/20 text-orange-400",
   new_user: "bg-cyan-500/20 text-cyan-400",
   deposit_confirmed: "bg-emerald-500/20 text-emerald-400",
   new_challenge: "bg-violet-500/20 text-violet-400",

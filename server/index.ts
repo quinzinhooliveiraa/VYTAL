@@ -131,13 +131,30 @@ async function processMissedDaysAuto() {
         }
 
         const currentMissed = ((p as any).missedDays || 0) + 1;
-        await db.update(challengeParticipants).set({ missedDays: currentMissed, lastCheckInDate: processDate } as any)
+        const eliminado = currentMissed > maxMissed;
+        await db.update(challengeParticipants).set({ missedDays: currentMissed, lastCheckInDate: processDate, ...(eliminado ? { isActive: false } : {}) } as any)
           .where(eq(challengeParticipants.id, p.id));
 
-        if (currentMissed > maxMissed) {
-          await db.update(challengeParticipants).set({ isActive: false } as any)
-            .where(eq(challengeParticipants.id, p.id));
+        if (eliminado) {
           totalEliminated++;
+          notificationService.notify(p.userId, {
+            type: "eliminated",
+            title: "Você foi eliminado",
+            body: `Você perdeu dias demais e foi desqualificado do desafio "${(challenge as any).title}". Seu valor de entrada foi perdido.`,
+            icon: "x-circle",
+            actionUrl: `/challenge/${challenge.id}`,
+            challengeId: challenge.id,
+          }).catch(() => {});
+        } else if (maxMissed > 0 && currentMissed === maxMissed) {
+          // Aviso: última chance antes da eliminação
+          notificationService.notify(p.userId, {
+            type: "elimination_warning",
+            title: "Atencao: ultima chance!",
+            body: `Voce ja usou todas as suas faltas no desafio "${(challenge as any).title}". Faltou mais um dia = eliminado!`,
+            icon: "alert-triangle",
+            actionUrl: `/challenge/${challenge.id}`,
+            challengeId: challenge.id,
+          }).catch(() => {});
         }
       }
     }

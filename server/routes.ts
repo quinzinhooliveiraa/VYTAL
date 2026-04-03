@@ -649,11 +649,16 @@ export async function registerRoutes(
       const payload = ticket.getPayload();
       if (!payload || !payload.email) return res.status(400).json({ message: "Token inválido" });
 
+      const googleId = payload.sub;
       const email = payload.email.toLowerCase();
       const fullName = payload.name || email.split("@")[0];
       const profileImage = payload.picture || "";
 
-      let appUser = await storage.getUserByEmail(email);
+      // Busca primeiro pelo ID único do Google (sub), depois pelo e-mail como fallback
+      let appUser = await storage.getUserByGoogleId(googleId);
+      if (!appUser) {
+        appUser = await storage.getUserByEmail(email);
+      }
 
       if (appUser) {
         const existingProvider = (appUser as any).authProvider || "email";
@@ -662,7 +667,13 @@ export async function registerRoutes(
           return res.status(400).json({ message: `Este e-mail já está cadastrado via ${label}. Faça login usando ${label}.` });
         }
         (req.session as any).userId = appUser.id;
-        await storage.updateUser(appUser.id, { online: true, avatar: appUser.avatar || profileImage });
+        // Sempre salva o googleId e atualiza avatar/email para manter sincronizado
+        await storage.updateUser(appUser.id, {
+          online: true,
+          googleId,
+          email,
+          avatar: appUser.avatar || profileImage,
+        } as any);
         res.json({ user: appUser, isNew: false });
       } else {
         const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 20);
@@ -683,6 +694,7 @@ export async function registerRoutes(
           name: fullName,
           avatar: profileImage,
           isAdmin,
+          googleId,
           authProvider: "google",
         } as any);
 

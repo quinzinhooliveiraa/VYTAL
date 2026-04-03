@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   weightKg: integer("weight_kg"),
   ageYears: integer("age_years"),
   abacateCustomerId: text("abacate_customer_id").default(""),
+  googleId: text("google_id"),
   lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

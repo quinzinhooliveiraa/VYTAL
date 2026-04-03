@@ -667,12 +667,14 @@ export async function registerRoutes(
           return res.status(400).json({ message: `Este e-mail já está cadastrado via ${label}. Faça login usando ${label}.` });
         }
         (req.session as any).userId = appUser.id;
-        // Sempre salva o googleId e atualiza avatar/email para manter sincronizado
+        // Sempre salva o googleId, atualiza avatar/email e sincroniza isAdmin
+        const shouldBeAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
         await storage.updateUser(appUser.id, {
           online: true,
           googleId,
           email,
           avatar: appUser.avatar || profileImage,
+          ...(shouldBeAdmin ? { isAdmin: true } : {}),
         } as any);
         res.json({ user: appUser, isNew: false });
       } else {

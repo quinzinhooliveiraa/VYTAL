@@ -1554,6 +1554,41 @@ export async function registerRoutes(
         Array.isArray(winnerUserIds) ? winnerUserIds : [],
         Array.isArray(winnerGroups) ? winnerGroups : undefined
       );
+
+      // Notifica vencedores individualmente com mensagem personalizada de vitória
+      const allWinners: string[] = Array.isArray(winnerGroups)
+        ? winnerGroups.flat().filter(Boolean)
+        : (Array.isArray(winnerUserIds) ? winnerUserIds : []);
+
+      const prizePerWinner = result.prizePool / (allWinners.length || 1);
+
+      for (const winnerId of allWinners) {
+        notificationService.notify(winnerId, {
+          type: "challenge_winner",
+          title: "Voce ganhou!",
+          body: `Parabens! Voce venceu "${challenge.title}" e ganhou R$ ${prizePerWinner.toFixed(2)}!`,
+          icon: "trophy",
+          actionUrl: `/challenge/${challengeId}`,
+          challengeId,
+        }).catch(() => {});
+      }
+
+      // Notifica demais participantes que o desafio encerrou
+      const loserIds = (await storage.getChallengeParticipants(challengeId))
+        .map((p: any) => p.userId)
+        .filter((uid: string) => !allWinners.includes(uid));
+
+      if (loserIds.length > 0) {
+        notificationService.notifyMultiple(loserIds, {
+          type: "challenge_completed",
+          title: "Desafio encerrado",
+          body: `O desafio "${challenge.title}" foi finalizado.`,
+          icon: "check",
+          actionUrl: `/challenge/${challengeId}`,
+          challengeId,
+        }).catch(() => {});
+      }
+
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao finalizar desafio" });

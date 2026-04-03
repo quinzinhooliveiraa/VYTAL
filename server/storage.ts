@@ -498,17 +498,26 @@ export class DatabaseStorage implements IStorage {
       .from(checkIns)
       .where(eq(checkIns.userId, userId));
 
-    const [earningsResult] = await db.select({
-      total: sql<number>`COALESCE(SUM(${walletTransactions.amount}::numeric), 0)::numeric`
-    }).from(walletTransactions)
+    const [winsResult] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(transactions)
       .where(and(
-        eq(walletTransactions.userId, userId),
-        eq(walletTransactions.type, "prize")
+        eq(transactions.userId, userId),
+        eq(transactions.type, "challenge_win"),
+        eq(transactions.status, "completed")
+      ));
+
+    const [earningsResult] = await db.select({
+      total: sql<number>`COALESCE(SUM(${transactions.amount}::numeric), 0)::numeric`
+    }).from(transactions)
+      .where(and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, "challenge_win"),
+        eq(transactions.status, "completed")
       ));
 
     return {
       challengesCompleted: completedResult?.count || 0,
-      challengesWon: 0,
+      challengesWon: winsResult?.count || 0,
       totalEarned: Number(earningsResult?.total || 0),
       checkInCount: checkInResult?.count || 0,
     };

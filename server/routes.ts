@@ -272,16 +272,17 @@ export async function registerRoutes(
 
   app.use(session({
     store: new PgStore({
-      conString: process.env.DATABASE_URL,
+      conString: process.env.NEON_DATABASE_URL || process.env.DATABASE_URL,
       createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || "fitstake-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   }));
 
@@ -676,6 +677,7 @@ export async function registerRoutes(
           avatar: appUser.avatar || profileImage,
           ...(shouldBeAdmin ? { isAdmin: true } : {}),
         } as any);
+        await new Promise<void>((resolve) => req.session.save(() => resolve()));
         res.json({ user: appUser, isNew: false });
       } else {
         const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 20);
@@ -702,6 +704,7 @@ export async function registerRoutes(
 
         notifyAdminsNewUser(fullName, email, "Google");
         (req.session as any).userId = appUser.id;
+        await new Promise<void>((resolve) => req.session.save(() => resolve()));
         syncAbacateCustomer(appUser.id, { name: appUser.name, email: appUser.email });
         res.json({ user: appUser, isNew: true });
       }
